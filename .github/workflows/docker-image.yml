@@ -22,7 +22,7 @@ jobs:
         run: echo "branch_name=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')" >> $GITHUB_ENV
 
       - name: Docker Login
-        run: echo "${{ secrets.GB_KASPOOL_TOKEN }}" | docker login ${{ env.REGISTRY }} --username coinchimp --password-stdin
+        run: echo "${{ secrets.GB_KATPOOL_TOKEN }}" | docker login ${{ env.REGISTRY }} --username argonmining --password-stdin
 
       - name: Docker Build
         env:
