@@ -28,36 +28,39 @@ export default class trxManager {
 
   async transferBalances() {
     const balances = await this.db.getAllBalancesExcludingPool();
-    let payments: IPaymentOutput[] = [];
-
+    let payments: { [address: string]: bigint } = {};
+  
+    // Aggregate balances by wallet address
     for (const { address, balance } of balances) {
       if (balance > 0) {
-        this.monitoring.log(`TrxManager: Processing balance ${sompiToKaspaStringWithSuffix(balance, this.networkId!)} for address ${address}`);
-        
-        payments.push({
-          address: address,
-          amount: balance
-        });
-      }
-    }
-
-    if (payments.length === 0) {
-      return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
-    }
-
-    const transactionId = await this.send(payments);
-    this.monitoring.log(`TrxManager: Sent payments. Transaction ID: ${transactionId}`);
-
-    if (transactionId) {
-      for (const { address, balance } of balances) {
-      if (balance > 0) {
-        await this.db.resetBalanceByAddress(address);
-        this.monitoring.log(`TrxManager: Reset balance for address ${address}`);
-      
+        if (!payments[address]) {
+          payments[address] = balance;
+        } else {
+          payments[address] += balance;
         }
       }
     }
-
+  
+    // Convert the payments object into an array of IPaymentOutput
+    const paymentOutputs: IPaymentOutput[] = Object.entries(payments).map(([address, amount]) => ({
+      address,
+      amount,
+    }));
+  
+    if (paymentOutputs.length === 0) {
+      return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
+    }
+  
+    const transactionId = await this.send(paymentOutputs);
+    this.monitoring.log(`TrxManager: Sent payments. Transaction ID: ${transactionId}`);
+  
+    if (transactionId) {
+      // Reset balances for all affected addresses
+      for (const address of Object.keys(payments)) {
+        await this.db.resetBalancesByWallet(address);
+        this.monitoring.log(`TrxManager: Reset balances for wallet ${address}`);
+      }
+    }
   }
 
   async send(outputs: IPaymentOutput[]) {
