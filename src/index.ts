@@ -1,5 +1,5 @@
 /**
- * Made by coinchimp (Twitter: https://x.com/coinchimpx)
+ * Made by the Nacho the Kat Team -> coinchimp (Twitter: https://x.com/coinchimpx) & argonmining (Twitter: https://x.com/argonmining)
  * 
  * This script initializes the kaspool Payment App, sets up the necessary environment variables,
  * and schedules a balance transfer task based on configuration. It also provides progress logging 

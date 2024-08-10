@@ -76,7 +76,6 @@ export default class trxManager {
       if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} to be submitted`);
       await transaction.submit(this.processor.rpc);
       if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} submitted`);
-      await new Promise(resolve => setTimeout(resolve, 5000)); // 5-second delay
     }
 
     if (DEBUG) this.monitoring.debug(`TrxManager: summary.finalTransactionId: ${summary.finalTransactionId}`);
