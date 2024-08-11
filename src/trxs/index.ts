@@ -2,6 +2,7 @@ import Database from '../database';
 import { sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient, type PendingTransaction } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
+import { Address } from "../../wasm/kaspa";
 
 export default class trxManager {
   private networkId: string;
@@ -11,6 +12,7 @@ export default class trxManager {
   private context: UtxoContext;
   private db: Database;
   private monitoring: Monitoring;
+  private transactionAddressMap: Map<string, string> = new Map(); // Mapping to store transaction IDs and corresponding addresses
 
   constructor(networkId: string, privKey: string, databaseUrl: string, rpc: RpcClient) {
     this.monitoring = new Monitoring();
@@ -32,45 +34,48 @@ export default class trxManager {
     `, [walletAddress, amount.toString(), transactionHash]);
   }
 
-  async transferBalances() {
+  private async transferBalances() {
     const balances = await this.db.getAllBalancesExcludingPool();
     let payments: { [address: string]: bigint } = {};
 
     // Aggregate balances by wallet address
     for (const { address, balance } of balances) {
-      if (balance > 0) {
-        payments[address] = (payments[address] || 0n) + balance;
-      }
+        if (balance > 0) {
+            payments[address] = (payments[address] || 0n) + balance;
+        }
     }
 
-    // Convert the payments object into an array of IPaymentOutput
     const paymentOutputs: IPaymentOutput[] = Object.entries(payments).map(([address, amount]) => ({
-      address,
-      amount,
+        address: address as string, // Cast to string explicitly
+        amount,
     }));
 
     if (paymentOutputs.length === 0) {
-      return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
+        return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
     }
 
-    // Enqueue transactions for processing
-    await this.enqueueTransactions(paymentOutputs);
-    this.monitoring.log(`TrxManager: Transactions queued for processing.`);
-  }
-
-  private async enqueueTransactions(outputs: IPaymentOutput[]) {
+    // Create and map transactions to addresses
     const { transactions } = await createTransactions({
-      entries: this.context,
-      outputs,
-      changeAddress: this.address,
-      priorityFee: 0n
+        entries: this.context,
+        outputs: paymentOutputs,
+        changeAddress: this.address,
+        priorityFee: 0n
+    });
+
+    transactions.forEach((transaction, index) => {
+        const outputAddress = paymentOutputs[index].address;
+        const address = typeof outputAddress === 'string'
+            ? outputAddress
+            : (outputAddress as Address).toString();
+
+        this.transactionAddressMap.set(transaction.id, address);
     });
 
     // Process each transaction sequentially
     for (const transaction of transactions) {
-      await this.processTransaction(transaction);
+        await this.processTransaction(transaction);
     }
-  }
+}
 
   private async processTransaction(transaction: PendingTransaction) {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
@@ -83,6 +88,15 @@ export default class trxManager {
     await this.waitForMatureUtxo(transactionHash);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Transaction ID ${transactionHash} has matured. Proceeding with next transaction.`);
+
+    // Retrieve the address from the mapping and reset the balance
+    const address = this.transactionAddressMap.get(transaction.id);
+    if (address) {
+      await this.db.resetBalancesByWallet(address);
+      this.monitoring.log(`TrxManager: Reset balances for wallet ${address}`);
+    } else {
+      this.monitoring.error(`TrxManager: Address not found for transaction ID ${transaction.id}`);
+    }
   }
 
   private async waitForMatureUtxo(transactionId: string): Promise<void> {
