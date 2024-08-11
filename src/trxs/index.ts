@@ -40,42 +40,55 @@ export default class trxManager {
 
     // Aggregate balances by wallet address
     for (const { address, balance } of balances) {
-        if (balance > 0) {
-            payments[address] = (payments[address] || 0n) + balance;
-        }
+      if (balance > 0) {
+        payments[address] = (payments[address] || 0n) + balance;
+      }
     }
 
     const paymentOutputs: IPaymentOutput[] = Object.entries(payments).map(([address, amount]) => ({
-        address: address as string, // Cast to string explicitly
-        amount,
+      address: address as string, // Cast to string explicitly
+      amount,
     }));
 
     if (paymentOutputs.length === 0) {
-        return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
+      return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
     }
 
     // Create and map transactions to addresses
     const { transactions } = await createTransactions({
-        entries: this.context,
-        outputs: paymentOutputs,
-        changeAddress: this.address,
-        priorityFee: 0n
+      entries: this.context,
+      outputs: paymentOutputs,
+      changeAddress: this.address,
+      priorityFee: 0n
     });
 
-    transactions.forEach((transaction, index) => {
-        const outputAddress = paymentOutputs[index].address;
-        const address = typeof outputAddress === 'string'
-            ? outputAddress
-            : (outputAddress as Address).toString();
+    // Log the lengths to debug any potential mismatch
+    this.monitoring.debug(`Created ${transactions.length} transactions for ${paymentOutputs.length} outputs.`);
 
-        this.transactionAddressMap.set(transaction.id, address);
+    transactions.forEach((transaction, index) => {
+      if (index >= paymentOutputs.length) {
+        this.monitoring.error(`TrxManager: Index ${index} out of bounds for paymentOutputs length ${paymentOutputs.length}`);
+        return;
+      }
+
+      const outputAddress = paymentOutputs[index]?.address;
+      if (!outputAddress) {
+        this.monitoring.error(`TrxManager: No address found for transaction at index ${index}`);
+        return;
+      }
+
+      const address = typeof outputAddress === 'string'
+        ? outputAddress
+        : (outputAddress as Address).toString();
+
+      this.transactionAddressMap.set(transaction.id, address);
     });
 
     // Process each transaction sequentially
     for (const transaction of transactions) {
-        await this.processTransaction(transaction);
+      await this.processTransaction(transaction);
     }
-}
+  }
 
   private async processTransaction(transaction: PendingTransaction) {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
