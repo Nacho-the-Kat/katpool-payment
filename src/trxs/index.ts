@@ -20,7 +20,7 @@ export default class trxManager {
     this.db = new Database(databaseUrl);
     this.privateKey = new PrivateKey(privKey);
     this.address = this.privateKey.toAddress(networkId).toString();
-    if (DEBUG) this.monitoring.debug(`TrxManager: Pool Address: ${this.address}`);
+    if (DEBUG) this.monitoring.debug(`TrxManager: Pool Treasury Address: ${this.address}`);
     this.processor = new UtxoProcessor({ rpc, networkId });
     this.context = new UtxoContext({ processor: this.processor });
     this.registerProcessor()
@@ -74,14 +74,14 @@ export default class trxManager {
     });
 
     for (const transaction of transactions) {
-      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} to be signed`);
+      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with Transaction ID: ${transaction.id} to be signed`);
       await transaction.sign([this.privateKey]);
-      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} to be submitted`);
+      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with Transaction ID: ${transaction.id} to be submitted`);
       await transaction.submit(this.processor.rpc);
-      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with ransaction ID: ${transaction.id} submitted`);
+      if (DEBUG) this.monitoring.debug(`TrxManager: Payment with Transaction ID: ${transaction.id} submitted`);
     }
 
-    if (DEBUG) this.monitoring.debug(`TrxManager: summary.finalTransactionId: ${summary.finalTransactionId}`);
+    if (DEBUG) this.monitoring.debug(`TrxManager: Summary Final Transaction ID: ${summary.finalTransactionId}`);
     return summary.finalTransactionId;
 
   }
