@@ -1,4 +1,4 @@
-import Database from '../database'; // Use the existing Database class
+import Database from '../database';
 import { sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
@@ -9,14 +9,14 @@ export default class trxManager {
   private address: string;
   private processor: UtxoProcessor;
   private context: UtxoContext;
-  private db: Database; // Existing property for katpool-app database connection
+  private db: Database;
   private monitoring: Monitoring;
 
   constructor(networkId: string, privKey: string, databaseUrl: string, rpc: RpcClient) {
     this.monitoring = new Monitoring();
     this.networkId = networkId;
     if (DEBUG) this.monitoring.debug(`TrxManager: Network ID is: ${this.networkId}`);
-    this.db = new Database(databaseUrl); // Initialize with the existing DATABASE_URL for katpool-app database
+    this.db = new Database(databaseUrl);
     this.privateKey = new PrivateKey(privKey);
     this.address = this.privateKey.toAddress(networkId).toString();
     if (DEBUG) this.monitoring.debug(`TrxManager: Pool Treasury Address: ${this.address}`);
@@ -98,7 +98,7 @@ export default class trxManager {
       if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - this.context.clear()`);
       await this.context.clear();
       if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - tracking pool address`);
-      await this.context.trackAddresses([this.address]);
+      await this.context.trackAddresses([ this.address ]);
     });
     this.processor.start();
   }
