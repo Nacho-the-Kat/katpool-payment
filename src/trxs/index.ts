@@ -40,40 +40,44 @@ export default class trxManager {
     // Aggregate balances by wallet address
     for (const { address, balance } of balances) {
       if (balance > 0) {
-        if (!payments[address]) {
-          payments[address] = balance;
-        } else {
-          payments[address] += balance;
-        }
+        payments[address] = (payments[address] || 0n) + balance;
       }
     }
 
-    // Convert the payments object into an array of IPaymentOutput
-    const paymentOutputs: IPaymentOutput[] = Object.entries(payments).map(([address, amount]) => ({
-      address,
-      amount,
-    }));
+    const paymentOutputs: IPaymentOutput[] = Object.entries(payments).map(([address, amount]) => ({ address, amount }));
 
     if (paymentOutputs.length === 0) {
       return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
     }
 
-    const transactionId = await this.send(paymentOutputs);
-    this.monitoring.log(`TrxManager: Sent payments. Transaction ID: ${transactionId}`);
+    // Ensure the send method is processed sequentially
+    try {
+      const transactionId = await this.send(paymentOutputs);
+      this.monitoring.log(`TrxManager: Sent payments. Transaction ID: ${transactionId}`);
 
-    if (transactionId) {
-      // Log each payment and reset balances for all affected addresses
-      for (const [address, amount] of Object.entries(payments)) {
-        await this.recordPayment(address, amount, transactionId); // Log payment to the database
-        await this.db.resetBalancesByWallet(address);
-        this.monitoring.log(`TrxManager: Reset balances for wallet ${address}`);
+      if (transactionId) {
+        for (const [address, amount] of Object.entries(payments)) {
+          await this.recordPayment(address, amount, transactionId);
+          await this.db.resetBalancesByWallet(address);
+          this.monitoring.log(`TrxManager: Reset balances for wallet ${address}`);
+        }
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        this.monitoring.error(`Transfer failed: ${error.message}`);
+      } else {
+        this.monitoring.error('Transfer failed: An unknown error occurred');
       }
     }
   }
 
   async send(outputs: IPaymentOutput[]) {
     console.log(outputs);
-    if (DEBUG) this.monitoring.debug(`TrxManager: Context to be used: ${this.context}`);
+
+    // Recreate the context and processor to avoid reuse issues
+    this.context = new UtxoContext({ processor: this.processor });
+    if (DEBUG) this.monitoring.debug(`TrxManager: Recreated Context: ${this.context}`);
+
     const { transactions, summary } = await createTransactions({
       entries: this.context,
       outputs,
@@ -83,9 +87,27 @@ export default class trxManager {
 
     for (const transaction of transactions) {
       if (DEBUG) this.monitoring.debug(`TrxManager: Payment with Transaction ID: ${transaction.id} to be signed`);
-      await transaction.sign([this.privateKey]);
+      try {
+        await transaction.sign([this.privateKey]);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          this.monitoring.error(`Error signing transaction ${transaction.id}: ${err.message}`);
+        } else {
+          this.monitoring.error(`Error signing transaction ${transaction.id}: An unknown error occurred`);
+        }
+        return;  // Early return or handle as needed
+      }
       if (DEBUG) this.monitoring.debug(`TrxManager: Payment with Transaction ID: ${transaction.id} to be submitted`);
-      await transaction.submit(this.processor.rpc);
+      try {
+        await transaction.submit(this.processor.rpc);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          this.monitoring.error(`Error submitting transaction ${transaction.id}: ${err.message}`);
+        } else {
+          this.monitoring.error(`Error submitting transaction ${transaction.id}: An unknown error occurred`);
+        }
+        return;  // Early return or handle as needed
+      }
       if (DEBUG) this.monitoring.debug(`TrxManager: Payment with Transaction ID: ${transaction.id} submitted`);
     }
 
@@ -98,7 +120,7 @@ export default class trxManager {
       if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - this.context.clear()`);
       await this.context.clear();
       if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - tracking pool address`);
-      await this.context.trackAddresses([ this.address ]);
+      await this.context.trackAddresses([this.address]);
     });
     this.processor.start();
   }
