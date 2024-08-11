@@ -1,8 +1,7 @@
 import Database from '../database';
-import { sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient, type PendingTransaction } from "../../wasm/kaspa";
+import { sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, Address, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient, type PendingTransaction } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
-import { Address } from "../../wasm/kaspa";
 
 export default class trxManager {
   private networkId: string;
