@@ -1,5 +1,5 @@
 import Database from '../database';
-import { sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient, type PendingTransaction } from "../../wasm/kaspa";
+import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
 
@@ -44,10 +44,12 @@ export default class trxManager {
     }
 
     // Convert the payments object into an array of IPaymentOutput
-    const paymentOutputs: IPaymentOutput[] = Object.entries(payments).map(([address, amount]) => ({
-      address,
-      amount,
-    }));
+    const paymentOutputs: IPaymentOutput[] = Object.entries(payments).map(([address, amount]) => {
+      return {
+        address,
+        amount,
+      };
+    });
 
     if (paymentOutputs.length === 0) {
       return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
@@ -66,13 +68,18 @@ export default class trxManager {
       priorityFee: 0n
     });
 
-    // Process each transaction sequentially
-    for (const transaction of transactions) {
-      await this.processTransaction(transaction);
-    }
-  }
+    // Process each transaction sequentially with its associated address
+    for (let i = 0; i < transactions.length; i++) {
+        const transaction = transactions[i];
+        const address = typeof outputs[i].address === 'string'
+            ? outputs[i].address
+            : (outputs[i].address as any).toString();  // Explicitly cast Address to string
 
-  private async processTransaction(transaction: PendingTransaction) {
+        await this.processTransaction(transaction, address as string); // Explicitly cast to string here too
+    }
+}
+
+  private async processTransaction(transaction: PendingTransaction, address: string) {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
     await transaction.sign([this.privateKey]);
 
@@ -83,6 +90,10 @@ export default class trxManager {
     await this.waitForMatureUtxo(transactionHash);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Transaction ID ${transactionHash} has matured. Proceeding with next transaction.`);
+
+    // Reset the balance for the wallet after the transaction has matured
+    await this.db.resetBalancesByWallet(address);
+    this.monitoring.log(`TrxManager: Reset balances for wallet ${address}`);
   }
 
   private async waitForMatureUtxo(transactionId: string): Promise<void> {
