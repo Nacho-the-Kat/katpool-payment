@@ -68,16 +68,25 @@ export default class trxManager {
       priorityFee: 0n
     });
 
+    // Log the lengths to debug any potential mismatch
+    this.monitoring.log(`TrxManager: Created ${transactions.length} transactions for ${outputs.length} outputs.`);
+
     // Process each transaction sequentially with its associated address
     for (let i = 0; i < transactions.length; i++) {
-        const transaction = transactions[i];
-        const address = typeof outputs[i].address === 'string'
-            ? outputs[i].address
-            : (outputs[i].address as any).toString();  // Explicitly cast Address to string
+      if (!outputs[i]) {
+        this.monitoring.error(`TrxManager: Missing output for transaction at index ${i}`);
+        continue;
+      }
 
-        await this.processTransaction(transaction, address as string); // Explicitly cast to string here too
+      const transaction = transactions[i];
+      const address = typeof outputs[i].address === 'string'
+        ? outputs[i].address
+        : (outputs[i].address as any).toString();  // Explicitly cast Address to string
+
+      await this.processTransaction(transaction, address as string); // Explicitly cast to string here too
     }
-}
+  }
+
 
   private async processTransaction(transaction: PendingTransaction, address: string) {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
