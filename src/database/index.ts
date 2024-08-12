@@ -19,6 +19,10 @@ export default class Database {
     });
   }
 
+  public async getClient() {
+    return this.pool.connect();
+}
+
   async getAllBalancesExcludingPool() {
     const client = await this.pool.connect();
     try {

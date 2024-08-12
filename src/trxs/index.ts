@@ -26,10 +26,15 @@ export default class trxManager {
   }
 
   private async recordPayment(walletAddress: string, amount: bigint, transactionHash: string) {
-    await this.db.client.query(`
-        INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash)
-        VALUES ($1, $2, NOW(), $3)
-    `, [walletAddress, amount.toString(), transactionHash]);
+    const client = await this.db.getClient();
+    try {
+      await client.query(`
+            INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash)
+            VALUES ($1, $2, NOW(), $3)
+        `, [walletAddress, amount.toString(), transactionHash]);
+    } finally {
+      client.release();
+    }
   }
 
   async transferBalances() {
