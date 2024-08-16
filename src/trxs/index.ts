@@ -49,14 +49,12 @@ export default class trxManager {
     }
 
     // Convert the payments object into an array of IPaymentOutput
-    const paymentOutputs: IPaymentOutput[] = Object.entries(payments)
-      .filter(([_, amount]) => amount > 0n) // Filter out zero balances
-      .map(([address, amount]) => {
-        return {
-          address,
-          amount,
-        };
-      });
+    const paymentOutputs: IPaymentOutput[] = Object.entries(payments).map(([address, amount]) => {
+      return {
+        address,
+        amount,
+      };
+    });
 
     if (paymentOutputs.length === 0) {
       return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
@@ -68,46 +66,20 @@ export default class trxManager {
   }
 
   private async enqueueTransactions(outputs: IPaymentOutput[]) {
-    this.monitoring.log(`TrxManager: Preparing to create transactions for ${outputs.length} outputs.`);
-
-    // Log the outputs being passed to createTransactions
-    outputs.forEach((output, index) => {
-      this.monitoring.debug(`Output ${index}: Address = ${output.address}, Amount = ${output.amount}`);
+    const { transactions } = await createTransactions({
+      entries: this.context,
+      outputs,
+      changeAddress: this.address,
+      priorityFee: 0n
     });
 
-    let transactions: PendingTransaction[];
-    let attempts = 0;
-    const maxRetries = 3;
-
-    do {
-      transactions = (await createTransactions({
-        entries: this.context,
-        outputs,
-        changeAddress: this.address,
-        priorityFee: 0n
-      })).transactions;
-
-      if (transactions.length === outputs.length) {
-        break;
-      }
-
-      this.monitoring.log(`TrxManager: Mismatch detected on attempt ${attempts + 1}. Retrying...`);
-      attempts++;
-
-    } while (attempts < maxRetries);
-
-    if (transactions.length !== outputs.length) {
-      this.monitoring.error(`TrxManager: Failed to match transactions and outputs after ${maxRetries} attempts. Aborting.`);
-      return;
-    }
-
+    // Log the lengths to debug any potential mismatch
     this.monitoring.log(`TrxManager: Created ${transactions.length} transactions for ${outputs.length} outputs.`);
 
     // Process each transaction sequentially with its associated address
     for (let i = 0; i < transactions.length; i++) {
       if (!outputs[i]) {
-        this.monitoring.error(`TrxManager: Missing output for transaction at index ${i}. Transactions length: ${transactions.length}, Outputs length: ${outputs.length}`);
-        this.monitoring.debug(`Skipping transaction ID: ${transactions[i].id}`);
+        this.monitoring.error(`TrxManager: Missing output for transaction at index ${i}`);
         continue;
       }
 
@@ -116,10 +88,10 @@ export default class trxManager {
         ? outputs[i].address
         : (outputs[i].address as any).toString();  // Explicitly cast Address to string
 
-      this.monitoring.debug(`Processing transaction ID: ${transaction.id} for address: ${address}`);
-      await this.processTransaction(transaction, address as string);
+      await this.processTransaction(transaction, address as string); // Explicitly cast to string here too
     }
   }
+
 
   private async processTransaction(transaction: PendingTransaction, address: string) {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
