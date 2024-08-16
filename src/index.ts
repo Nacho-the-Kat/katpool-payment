@@ -60,7 +60,7 @@ if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
 
 
 if (DEBUG) {
-  monitoring.debug(`Main: Resolver Options:`);
+  monitoring.debug(`Main: Resolver Options:${config.node}`);
 
 }
 const rpc = new RpcClient({
