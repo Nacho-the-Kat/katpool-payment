@@ -49,12 +49,14 @@ export default class trxManager {
     }
 
     // Convert the payments object into an array of IPaymentOutput
-    const paymentOutputs: IPaymentOutput[] = Object.entries(payments).map(([address, amount]) => {
-      return {
-        address,
-        amount,
-      };
-    });
+    const paymentOutputs: IPaymentOutput[] = Object.entries(payments)
+      .filter(([_, amount]) => amount > 0n) // Filter out zero balances
+      .map(([address, amount]) => {
+        return {
+          address,
+          amount,
+        };
+      });
 
     if (paymentOutputs.length === 0) {
       return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
