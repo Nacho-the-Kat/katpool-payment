@@ -1,6 +1,7 @@
 node_modules/
 storage/
 wasm/
+wasm.nacho/
 bun*
 .secrets
 .env
