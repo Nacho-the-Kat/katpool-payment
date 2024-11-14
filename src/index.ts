@@ -1,7 +1,7 @@
 /**
  * Made by the Nacho the Kat Team
  * 
- * This script initializes the kaspool Payment App, sets up the necessary environment variables,
+ * This script initializes the katpool Payment App, sets up the necessary environment variables,
  * and schedules a balance transfer task based on configuration. It also provides progress logging 
  * every 10 minutes.
  */
@@ -20,7 +20,7 @@ if (process.env.DEBUG === "1") {
 }
 
 const monitoring = new Monitoring();
-monitoring.log(`Main: Starting kaspool Payment App`);
+monitoring.log(`Main: Starting katpool Payment App`);
 
 dotenv.config();
 
@@ -36,8 +36,8 @@ if (!config.network) {
 }
 if (DEBUG) monitoring.debug(`Main: Network Id: ${config.network}`);
 
-const kaspoolPshGw = process.env.PUSHGATEWAY;
-if (!kaspoolPshGw) {
+const katpoolPshGw = process.env.PUSHGATEWAY;
+if (!katpoolPshGw) {
   throw new Error('Environment variable PUSHGATEWAY is not set.');
 }
 if (DEBUG) monitoring.debug(`Main: PushGateway URL obtained`);
