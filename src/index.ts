@@ -49,8 +49,8 @@ if (!databaseUrl) {
 if (DEBUG) monitoring.debug(`Main: Database URL obtained`);
 
 // Configuration parameters
-const paymentIteration = config.paymentIteration || 2; // Default to twice a day if not set
-const paymentInterval = 24 / paymentIteration;
+const payoutsPerDay = config.payoutsPerDay || 2; // Default to twice a day if not set
+const paymentInterval = 24 / payoutsPerDay;
 if (paymentInterval < 1 || paymentInterval > 24) {
   throw new Error('paymentInterval must be between 1 and 24 hours.');
 }
