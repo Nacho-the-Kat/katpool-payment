@@ -2,6 +2,7 @@ import Database from '../database';
 import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
+import config from "../../config/config.json";
 
 export default class trxManager {
   private networkId: string;
@@ -56,12 +57,15 @@ export default class trxManager {
       };
     });
 
-    if (paymentOutputs.length === 0) {
+    const thresholdAmount = config.thresholdAmount;
+    const thresholdEligiblePayments = paymentOutputs.filter( data => data.amount >= BigInt(thresholdAmount));
+
+    if (thresholdEligiblePayments.length === 0) {
       return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
     }
 
     // Enqueue transactions for processing
-    await this.enqueueTransactions(paymentOutputs);
+    await this.enqueueTransactions(thresholdEligiblePayments);
     this.monitoring.log(`TrxManager: Transactions queued for processing.`);
   }
 
