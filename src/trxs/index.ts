@@ -1,5 +1,5 @@
 import Database from '../database';
-import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient } from "../../wasm/kaspa";
+import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient, createTransaction } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
 import config from "../../config/config.json";
@@ -88,6 +88,7 @@ export default class trxManager {
       }
 
       const transaction = transactions[i];
+      console.log("🚀 ~ file: index.ts:109 ~ trxManager ~ enqueueTransactions ~ transaction", transactions[0].addresses)
       const address = typeof outputs[i].address === 'string'
         ? outputs[i].address
         : (outputs[i].address as any).toString();  // Explicitly cast Address to string
@@ -111,7 +112,7 @@ export default class trxManager {
 
     await this.recordPayment(address, transaction.paymentAmount, transactionHash);
     // Reset the balance for the wallet after the transaction has matured
-    await this.db.resetBalancesByWallet(address);
+    // await this.db.resetBalancesByWallet(address);
     this.monitoring.log(`TrxManager: Reset balances for wallet ${address}`);
   }
 
