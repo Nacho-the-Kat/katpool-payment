@@ -103,15 +103,8 @@ if (!rpcConnected) {
 }
 
 
-cron.schedule(`*/10 * * * *`, async () => {
-  const now = new Date();
-  const minutes = now.getMinutes();
-  const hours = now.getHours();
-
-  const isPaymentTime = minutes === 0 && (hours % paymentInterval === 0);
-
-
-  if (isPaymentTime && rpcConnected) {
+cron.schedule(`0 */${paymentInterval} * * *`, async () => {
+  if (rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
       await transactionManager!.transferBalances();
@@ -119,7 +112,7 @@ cron.schedule(`*/10 * * * *`, async () => {
     } catch (transactionError) {
       monitoring.error(`Main: Transaction manager error: ${transactionError}`);
     }
-  } else if (isPaymentTime && !rpcConnected) {
+  } else {
     monitoring.error('Main: RPC connection is not established before balance transfer');
   }
 });

@@ -99,7 +99,7 @@ export default class trxManager {
 
   private async processTransaction(transaction: PendingTransaction, address: string) {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
-    await transaction.sign([this.privateKey]);
+    transaction.sign([this.privateKey]);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
     const transactionHash = await transaction.submit(this.processor.rpc);
@@ -109,6 +109,7 @@ export default class trxManager {
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Transaction ID ${transactionHash} has matured. Proceeding with next transaction.`);
 
+    await this.recordPayment(address, transaction.paymentAmount, transactionHash);
     // Reset the balance for the wallet after the transaction has matured
     await this.db.resetBalancesByWallet(address);
     this.monitoring.log(`TrxManager: Reset balances for wallet ${address}`);
