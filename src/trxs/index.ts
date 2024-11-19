@@ -1,8 +1,9 @@
 import Database from '../database';
-import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient, createTransaction } from "../../wasm/kaspa";
+import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient,  maximumStandardTransactionMass, addressFromScriptPublicKey, calculateTransactionFee } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
 import config from "../../config/config.json";
+import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 
 export default class trxManager {
   private networkId: string;
@@ -33,6 +34,11 @@ export default class trxManager {
             INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash)
             VALUES ($1, $2, NOW(), $3)
         `, [walletAddress, amount.toString(), transactionHash]);
+      // await client.query(`
+      //   INSERT INTO payments (wallet_addresses, amount, timestamp, transaction_hash) 
+      //   VALUES ($1, $2, NOW(),$3)`, 
+      //   [walletAddresses, amount.toString(), transactionHash]
+      // );
     } finally {
       client.release();
     }
@@ -88,7 +94,6 @@ export default class trxManager {
       }
 
       const transaction = transactions[i];
-      console.log("🚀 ~ file: index.ts:109 ~ trxManager ~ enqueueTransactions ~ transaction", transactions[0].addresses)
       const address = typeof outputs[i].address === 'string'
         ? outputs[i].address
         : (outputs[i].address as any).toString();  // Explicitly cast Address to string
@@ -102,6 +107,9 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
     transaction.sign([this.privateKey]);
 
+    const txFee = calculateTransactionFee(this.networkId, transaction.transaction)!;
+    this.monitoring.log(`TrxManager: Tx Fee ${sompiToKaspaStringWithSuffix(txFee, this.networkId)}`);
+
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
     const transactionHash = await transaction.submit(this.processor.rpc);
 
@@ -110,10 +118,19 @@ export default class trxManager {
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Transaction ID ${transactionHash} has matured. Proceeding with next transaction.`);
 
+    const txOutputs = transaction.transaction.outputs;
+    const toAddresses: string[] = [];
+    for(const data of txOutputs) {
+      const decodedAddress = addressFromScriptPublicKey(data.scriptPublicKey as ScriptPublicKey, this.networkId);
+      const address = (decodedAddress!.prefix + ":" + decodedAddress!.payload);
+      if(address == this.address) continue
+      toAddresses.push(address)
+    }
+
     await this.recordPayment(address, transaction.paymentAmount, transactionHash);
     // Reset the balance for the wallet after the transaction has matured
-    // await this.db.resetBalancesByWallet(address);
-    this.monitoring.log(`TrxManager: Reset balances for wallet ${address}`);
+    await this.db.resetBalancesByWallet(toAddresses);
+    this.monitoring.log(`TrxManager: Reset balances for wallet ${toAddresses}`);
   }
 
   private async waitForMatureUtxo(transactionId: string): Promise<void> {
