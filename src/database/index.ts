@@ -23,11 +23,6 @@ export default class Database {
     return this.pool.connect();
 }
 
-  // public async test() {
-  //   const pg = new Pool({connectionString: "postgresql://postgres:postgres@localhost:5433/test_db"});
-  //   await pg.query('INSERT INTO test_table (addresses, amount) VALUES ($1, $2)',[ ["hello", "world"], 456]);
-  // }
-
   async getAllBalancesExcludingPool() {
     const client = await this.pool.connect();
     try {

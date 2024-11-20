@@ -3,10 +3,11 @@ import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, 
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
 import config from "../../config/config.json";
-import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
+import type { ScriptPublicKey, Generator } from '../../wasm/kaspa/kaspa';
 
 export default class trxManager {
   private networkId: string;
+  private rpc: RpcClient;
   private privateKey: PrivateKey;
   private address: string;
   private processor: UtxoProcessor;
@@ -17,6 +18,7 @@ export default class trxManager {
   constructor(networkId: string, privKey: string, databaseUrl: string, rpc: RpcClient) {
     this.monitoring = new Monitoring();
     this.networkId = networkId;
+    this.rpc = rpc;
     if (DEBUG) this.monitoring.debug(`TrxManager: Network ID is: ${this.networkId}`);
     this.db = new Database(databaseUrl);
     this.privateKey = new PrivateKey(privKey);
@@ -27,18 +29,13 @@ export default class trxManager {
     this.registerProcessor();
   }
 
-  private async recordPayment(walletAddress: string, amount: bigint, transactionHash: string) {
+  private async recordPayment(walletAddresses: string[], amount: bigint, transactionHash: string) {
     const client = await this.db.getClient();
     try {
       await client.query(`
             INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash)
             VALUES ($1, $2, NOW(), $3)
-        `, [walletAddress, amount.toString(), transactionHash]);
-      // await client.query(`
-      //   INSERT INTO payments (wallet_addresses, amount, timestamp, transaction_hash) 
-      //   VALUES ($1, $2, NOW(),$3)`, 
-      //   [walletAddresses, amount.toString(), transactionHash]
-      // );
+        `, [walletAddresses, amount.toString(), transactionHash]);
     } finally {
       client.release();
     }
@@ -80,8 +77,16 @@ export default class trxManager {
       entries: this.context,
       outputs,
       changeAddress: this.address,
-      priorityFee: 0n
+      priorityFee: 0n // feeRate:?
     });
+
+    // const generator = new Generator({
+    //   entries: this.context,
+    //   outputs,
+    //   changeAddress: this.address,
+    //   priorityFee: 10000000n,
+    // });
+    // const estimate = await generator.estimate();
 
     // Log the lengths to debug any potential mismatch
     this.monitoring.log(`TrxManager: Created ${transactions.length} transactions for ${outputs.length} outputs.`);
@@ -107,8 +112,9 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
     transaction.sign([this.privateKey]);
 
+    const feeRate = await this.rpc.getFeeEstimate({});
     const txFee = calculateTransactionFee(this.networkId, transaction.transaction)!;
-    this.monitoring.log(`TrxManager: Tx Fee ${sompiToKaspaStringWithSuffix(txFee, this.networkId)}`);
+    this.monitoring.log(`TrxManager: Tx Fee ${txFee}`);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
     const transactionHash = await transaction.submit(this.processor.rpc);
@@ -127,7 +133,7 @@ export default class trxManager {
       toAddresses.push(address)
     }
 
-    await this.recordPayment(address, transaction.paymentAmount, transactionHash);
+    await this.recordPayment(toAddresses, transaction.paymentAmount, transactionHash);
     // Reset the balance for the wallet after the transaction has matured
     await this.db.resetBalancesByWallet(toAddresses);
     this.monitoring.log(`TrxManager: Reset balances for wallet ${toAddresses}`);
