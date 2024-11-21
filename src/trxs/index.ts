@@ -3,7 +3,8 @@ import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, 
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
 import config from "../../config/config.json";
-import type { ScriptPublicKey, Generator } from '../../wasm/kaspa/kaspa';
+import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
+import { Generator } from '../../wasm/kaspa/kaspa';
 
 export default class trxManager {
   private networkId: string;
@@ -77,16 +78,9 @@ export default class trxManager {
       entries: this.context,
       outputs,
       changeAddress: this.address,
-      priorityFee: 0n // feeRate:?
+      priorityFee: 0n,
+      networkId: this.networkId,
     });
-
-    // const generator = new Generator({
-    //   entries: this.context,
-    //   outputs,
-    //   changeAddress: this.address,
-    //   priorityFee: 10000000n,
-    // });
-    // const estimate = await generator.estimate();
 
     // Log the lengths to debug any potential mismatch
     this.monitoring.log(`TrxManager: Created ${transactions.length} transactions for ${outputs.length} outputs.`);
@@ -112,9 +106,8 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
     transaction.sign([this.privateKey]);
 
-    const feeRate = await this.rpc.getFeeEstimate({});
-    const txFee = calculateTransactionFee(this.networkId, transaction.transaction)!;
-    this.monitoring.log(`TrxManager: Tx Fee ${txFee}`);
+    const txFee = calculateTransactionFee(this.networkId, transaction.transaction, 1)!;
+    this.monitoring.log(`TrxManager: Tx Fee ${sompiToKaspaStringWithSuffix(txFee, this.networkId)}`);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
     const transactionHash = await transaction.submit(this.processor.rpc);
