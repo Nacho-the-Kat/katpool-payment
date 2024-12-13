@@ -64,11 +64,8 @@ if (DEBUG) {
   monitoring.debug(`Main: Resolver Options:${config.node}`);
 
 }
-const rpc = new RpcClient({
-
-  resolver: new Resolver({
-    urls: config.node
-  }),
+const rpc = new RpcClient({  
+  resolver: new Resolver(),
   encoding: Encoding.Borsh,
   networkId: config.network,
 });

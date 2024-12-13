@@ -106,8 +106,8 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
     transaction.sign([this.privateKey]);
 
-    const txFee = calculateTransactionFee(this.networkId, transaction.transaction, 1)!;
-    this.monitoring.log(`TrxManager: Tx Fee ${sompiToKaspaStringWithSuffix(txFee, this.networkId)}`);
+    // const txFee = calculateTransactionFee(this.networkId, transaction.transaction)!;
+    // this.monitoring.log(`TrxManager: Tx Fee ${sompiToKaspaStringWithSuffix(txFee, this.networkId)}`);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
     const transactionHash = await transaction.submit(this.processor.rpc);
