@@ -1,4 +1,4 @@
-name: Docker Push kaspool-payment image
+name: Docker Push katpool-payment image
 
 on:
   push:

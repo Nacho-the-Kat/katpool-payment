@@ -1,5 +1,5 @@
 {
-  "name": "kaspool-payment",
+  "name": "katpool-payment",
   "module": "src/index.ts",
   "type": "module",
   "devDependencies": {
