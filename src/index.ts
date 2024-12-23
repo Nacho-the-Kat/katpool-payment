@@ -49,7 +49,8 @@ if (!databaseUrl) {
 if (DEBUG) monitoring.debug(`Main: Database URL obtained`);
 
 // Configuration parameters
-const paymentInterval = config.paymentInterval || 2; // Default to 2 hours if not set
+const payoutsPerDay = config.payoutsPerDay || 2; // Default to twice a day if not set
+const paymentInterval = 24 / payoutsPerDay;
 if (paymentInterval < 1 || paymentInterval > 24) {
   throw new Error('paymentInterval must be between 1 and 24 hours.');
 }
@@ -63,11 +64,8 @@ if (DEBUG) {
   monitoring.debug(`Main: Resolver Options:${config.node}`);
 
 }
-const rpc = new RpcClient({
-
-  resolver: new Resolver({
-    urls: config.node
-  }),
+const rpc = new RpcClient({  
+  resolver: new Resolver(),
   encoding: Encoding.Borsh,
   networkId: config.network,
 });
@@ -102,15 +100,8 @@ if (!rpcConnected) {
 }
 
 
-cron.schedule(`*/10 * * * *`, async () => {
-  const now = new Date();
-  const minutes = now.getMinutes();
-  const hours = now.getHours();
-
-  const isPaymentTime = minutes === 0 && (hours % paymentInterval === 0);
-
-
-  if (isPaymentTime && rpcConnected) {
+cron.schedule(`0 */${paymentInterval} * * *`, async () => {
+  if (rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
       await transactionManager!.transferBalances();
@@ -118,7 +109,7 @@ cron.schedule(`*/10 * * * *`, async () => {
     } catch (transactionError) {
       monitoring.error(`Main: Transaction manager error: ${transactionError}`);
     }
-  } else if (isPaymentTime && !rpcConnected) {
+  } else {
     monitoring.error('Main: RPC connection is not established before balance transfer');
   }
 });
