@@ -87,27 +87,27 @@ export default class trxManager {
 
     // Process each transaction sequentially with its associated address
     for (let i = 0; i < transactions.length; i++) {
-      if (!outputs[i]) {
-        this.monitoring.error(`TrxManager: Missing output for transaction at index ${i}`);
-        continue;
-      }
+      // if (!outputs[i]) {
+        // this.monitoring.error(`TrxManager: Missing output for transaction at index ${i}`);
+        // continue;
+      // }
 
       const transaction = transactions[i];
-      const address = typeof outputs[i].address === 'string'
-        ? outputs[i].address
-        : (outputs[i].address as any).toString();  // Explicitly cast Address to string
+      // const address = typeof outputs[i].address === 'string'
+      //   ? outputs[i].address
+      //   : (outputs[i].address as any).toString();  // Explicitly cast Address to string
 
-      await this.processTransaction(transaction, address as string); // Explicitly cast to string here too
+      await this.processTransaction(transaction); // Explicitly cast to string here too
     }
   }
 
 
-  private async processTransaction(transaction: PendingTransaction, address: string) {
+  private async processTransaction(transaction: PendingTransaction) {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
     transaction.sign([this.privateKey]);
 
-    // const txFee = calculateTransactionFee(this.networkId, transaction.transaction)!;
-    // this.monitoring.log(`TrxManager: Tx Fee ${sompiToKaspaStringWithSuffix(txFee, this.networkId)}`);
+    //const txFee = calculateTransactionFee(this.networkId, transaction.transaction, 1)!;
+    //this.monitoring.log(`TrxManager: Tx Fee ${sompiToKaspaStringWithSuffix(txFee, this.networkId)}`);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
     const transactionHash = await transaction.submit(this.processor.rpc);
@@ -126,7 +126,9 @@ export default class trxManager {
       toAddresses.push(address)
     }
 
-    await this.recordPayment(toAddresses, transaction.paymentAmount, transactionHash);
+    if(toAddresses.length > 0) {
+      await this.recordPayment(toAddresses, transaction.paymentAmount, transactionHash);
+    }
     // Reset the balance for the wallet after the transaction has matured
     await this.db.resetBalancesByWallet(toAddresses);
     this.monitoring.log(`TrxManager: Reset balances for wallet ${toAddresses}`);
