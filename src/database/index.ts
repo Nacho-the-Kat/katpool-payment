@@ -44,10 +44,10 @@ export default class Database {
     }
   }
 
-  async resetBalancesByWallet(wallet: string) {
+  async resetBalancesByWallet(wallets: string[]) {
     const client = await this.pool.connect();
     try {
-      await client.query('UPDATE miners_balance SET balance = $1 WHERE wallet = $2', [0n, wallet]);
+      await client.query('UPDATE miners_balance SET balance = $1 WHERE wallet = ANY($2)', [0n, wallets]);
     } finally {
       client.release();
     }

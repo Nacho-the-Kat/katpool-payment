@@ -20,3 +20,12 @@ DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST
 PUSHGATEWAY="http://katpool-pushgateway:9091" # Configure the pushgateway url.
 DEBUG=1
 ```
+
+## Config file
+
+```json
+{
+    "payoutsPerDay": 2, // Number of times the payment to be scheduled in a day. I.,e., every 12 hours
+    "thresholdAmount": "10000000000" // Miner rewards will be paid above this minimum amount in sompi
+}
+```
