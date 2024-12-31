@@ -29,3 +29,5 @@ DEBUG=1
     "thresholdAmount": "10000000000" // Miner rewards will be paid above this minimum amount in sompi
 }
 ```
+
+.
