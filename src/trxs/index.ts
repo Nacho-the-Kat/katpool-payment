@@ -5,6 +5,9 @@ import { DEBUG } from "../index";
 import config from "../../config/config.json";
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { Generator } from '../../wasm/kaspa/kaspa';
+import axios from 'axios';
+
+const KASPA_BASE_URL = 'https://api.kaspa.org';
 
 export default class trxManager {
   private networkId: string;
@@ -32,11 +35,16 @@ export default class trxManager {
 
   private async recordPayment(walletAddresses: string[], amount: bigint, transactionHash: string) {
     const client = await this.db.getClient();
+
+    const response = await axios.get(`${KASPA_BASE_URL}/info/price?stringOnly=false`);
+    const usd_price = BigInt(response.data.price)
+    const usd_value = amount * usd_price
+
     try {
       await client.query(`
-            INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash)
-            VALUES ($1, $2, NOW(), $3)
-        `, [walletAddresses, amount.toString(), transactionHash]);
+            INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash, usd_value)
+            VALUES ($1, $2, NOW(), $3, $4)
+        `, [walletAddresses, amount.toString(), transactionHash, usd_value]);
     } finally {
       client.release();
     }
