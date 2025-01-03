@@ -5,9 +5,6 @@ import { DEBUG } from "../index";
 import config from "../../config/config.json";
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { Generator } from '../../wasm/kaspa/kaspa';
-import axios from 'axios';
-
-const KASPA_BASE_URL = 'https://api.kaspa.org';
 
 export default class trxManager {
   private networkId: string;
@@ -33,18 +30,21 @@ export default class trxManager {
     this.registerProcessor();
   }
 
-  private async recordPayment(walletAddresses: string[], amount: bigint, transactionHash: string) {
+  private async recordPayment(walletAddresses: string[], amount: bigint, transactionHash: string, entries: {address: string, amount: bigint}[]) {
     const client = await this.db.getClient();
 
-    const response = await axios.get(`${KASPA_BASE_URL}/info/price?stringOnly=false`);
-    const usd_price = BigInt(response.data.price)
-    const usd_value = amount * usd_price
-
+    let values: string[] = [];
+    let queryParams: string[][] = []
+    for (let i = 0; i < entries.length; i++) {
+      const address = [entries[i].address]
+      const amount = entries[i].amount
+      values.push(`($${i+1}, ${amount}, NOW(), '${transactionHash}') `)
+      queryParams.push(address)
+    }
+    const valuesPlaceHolder = values.join(',')
+    const query = `INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash) VALUES ${valuesPlaceHolder};`
     try {
-      await client.query(`
-            INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash, usd_value)
-            VALUES ($1, $2, NOW(), $3, $4)
-        `, [walletAddresses, amount.toString(), transactionHash, usd_value]);
+      await client.query(query, queryParams);
     } finally {
       client.release();
     }
@@ -109,7 +109,6 @@ export default class trxManager {
     }
   }
 
-
   private async processTransaction(transaction: PendingTransaction) {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
     transaction.sign([this.privateKey]);
@@ -126,16 +125,19 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: Transaction ID ${transactionHash} has matured. Proceeding with next transaction.`);
 
     const txOutputs = transaction.transaction.outputs;
+    const entries: {address: string,amount: bigint}[] = [];
     const toAddresses: string[] = [];
     for(const data of txOutputs) {
       const decodedAddress = addressFromScriptPublicKey(data.scriptPublicKey as ScriptPublicKey, this.networkId);
       const address = (decodedAddress!.prefix + ":" + decodedAddress!.payload);
+      const amount = data.value;
       if(address == this.address) continue
       toAddresses.push(address)
+      entries.push({address, amount})
     }
 
     if(toAddresses.length > 0) {
-      await this.recordPayment(toAddresses, transaction.paymentAmount, transactionHash);
+      await this.recordPayment(toAddresses, transaction.paymentAmount, transactionHash, entries);
     }
     // Reset the balance for the wallet after the transaction has matured
     await this.db.resetBalancesByWallet(toAddresses);
