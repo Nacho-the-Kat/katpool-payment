@@ -12,6 +12,8 @@ import dotenv from 'dotenv';
 import Monitoring from './monitoring';
 import trxManager from './trxs';
 import cron from 'node-cron';
+import * as cronParser from 'cron-parser';
+import { cronValidation } from "./cron-schedule";
 
 // Debug mode setting
 export let DEBUG = 0;
@@ -49,21 +51,19 @@ if (!databaseUrl) {
 if (DEBUG) monitoring.debug(`Main: Database URL obtained`);
 
 // Configuration parameters
-const payoutsPerDay = config.payoutsPerDay || 2; // Default to twice a day if not set
-const paymentInterval = 24 / payoutsPerDay;
-if (paymentInterval < 1 || paymentInterval > 24) {
-  throw new Error('paymentInterval must be between 1 and 24 hours.');
-}
-if (DEBUG) monitoring.debug(`Main: Payment interval set to ${paymentInterval} hours`);
-
+const paymentCronSchedule = cronValidation(config.payoutCronSchedule); // Defaults to twice a day if not set
+if (DEBUG) monitoring.debug(`Main: Payment cron is set to ${paymentCronSchedule}`);
 
 if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
 
-
 if (DEBUG) {
   monitoring.debug(`Main: Resolver Options:${config.node}`);
-
 }
+
+const interval = cronParser.parseExpression(paymentCronSchedule);
+const nextScedule = new Date(interval.next().getTime()).toISOString();
+if (DEBUG) monitoring.debug(`Main: Next payment is scheduled at ${nextScedule}`);
+
 const rpc = new RpcClient({  
   resolver: new Resolver(),
   encoding: Encoding.Borsh,
@@ -100,7 +100,7 @@ if (!rpcConnected) {
 }
 
 
-cron.schedule(`0 */${paymentInterval} * * *`, async () => {
+cron.schedule(paymentCronSchedule, async () => {
   if (rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
@@ -116,15 +116,5 @@ cron.schedule(`0 */${paymentInterval} * * *`, async () => {
 
 // Progress indicator logging every 10 minutes
 setInterval(() => {
-  const now = new Date();
-  const minutes = now.getMinutes();
-  const hours = now.getHours();
-
-  const nextTransferHours = paymentInterval - (hours % paymentInterval);
-  const remainingMinutes = nextTransferHours * 60 - minutes;
-  const remainingTime = remainingMinutes === nextTransferHours * 60 ? 0 : remainingMinutes;
-
-  if (DEBUG) monitoring.debug(`Main: ${remainingTime} minutes until the next balance transfer`);
+  if (DEBUG) monitoring.debug(`Main: Waiting for next payment cycle ...`);
 }, 10 * 60 * 1000); // 10 minutes in milliseconds
-
-monitoring.log(`Main: Scheduled balance transfer every ${paymentInterval} hours`);
