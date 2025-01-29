@@ -1,6 +1,6 @@
 {
     "node" : [],
     "network" : "mainnet",
-    "payoutCronSchedule": "*/1 * * * *",
+    "payoutCronSchedule": "* */12 * * *",
     "thresholdAmount": "500000000"
 }
