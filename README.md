@@ -23,11 +23,8 @@ DEBUG=1
 
 ## Config file
 
-```json
-{
-    "payoutsPerDay": 2, // Number of times the payment to be scheduled in a day. I.,e., every 12 hours
-    "thresholdAmount": "10000000000" // Miner rewards will be paid above this minimum amount in sompi
-}
-```
+Please refer to [Crontab.guru](https://crontab.guru/) to set the cron expression.
 
-.
+* **payoutCronSchedule**: cron schedule expression for payout. If not set or invalid, it will be defaulted to Twice a day (* */12 * * *).
+
+* **thresholdAmount**: Miner rewards will be paid above this minimum amount in sompi.
