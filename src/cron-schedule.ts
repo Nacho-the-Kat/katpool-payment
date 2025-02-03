@@ -9,6 +9,6 @@ export function cronValidation(expr: string) {
         return expr;
     } else {
         monitoring.error('Invalid cron expression. Defaulting to Twice a day.');
-        return "* */12 * * *";
+        return "0 */12 * * *";
     }    
 }

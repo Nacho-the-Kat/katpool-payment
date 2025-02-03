@@ -25,6 +25,6 @@ DEBUG=1
 
 Please refer to [Crontab.guru](https://crontab.guru/) to set the cron expression.
 
-* **payoutCronSchedule**: cron schedule expression for payout. If not set or invalid, it will be defaulted to Twice a day (* */12 * * *).
+* **payoutCronSchedule**: cron schedule expression for payout. If not set or invalid, it will be defaulted to Twice a day (0 */12 * * *).
 
 * **thresholdAmount**: Miner rewards will be paid above this minimum amount in sompi.
