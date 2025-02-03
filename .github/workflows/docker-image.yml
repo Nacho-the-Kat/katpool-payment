@@ -17,6 +17,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: get epository name
+        run: |
+          echo "REPOSITORY_NAME=${OWNER,,}" >>${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository }}'
+
       - name: Extract Branch Name
         id: extract_branch
         run: echo "branch_name=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')" >> $GITHUB_ENV
@@ -26,10 +32,10 @@ jobs:
 
       - name: Docker Build
         env:
-          IMAGE_NAME: ${{ github.repository }}:beta-v1.0.2-${{ env.branch_name }}
+          IMAGE_NAME: ${{ env.REPOSITORY_NAME }}:beta-v1.0.2-${{ env.branch_name }}
         run: docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} .
 
       - name: Docker Push
         env:
-          IMAGE_NAME: ${{ github.repository }}:beta-v1.0.2-${{ env.branch_name }}
+          IMAGE_NAME: ${{ env.REPOSITORY_NAME }}:beta-v1.0.2-${{ env.branch_name }}
         run: docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
