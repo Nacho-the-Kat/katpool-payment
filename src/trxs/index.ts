@@ -95,16 +95,7 @@ export default class trxManager {
 
     // Process each transaction sequentially with its associated address
     for (let i = 0; i < transactions.length; i++) {
-      // if (!outputs[i]) {
-        // this.monitoring.error(`TrxManager: Missing output for transaction at index ${i}`);
-        // continue;
-      // }
-
       const transaction = transactions[i];
-      // const address = typeof outputs[i].address === 'string'
-      //   ? outputs[i].address
-      //   : (outputs[i].address as any).toString();  // Explicitly cast Address to string
-
       await this.processTransaction(transaction); // Explicitly cast to string here too
     }
   }
