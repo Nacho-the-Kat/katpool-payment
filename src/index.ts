@@ -14,6 +14,7 @@ import trxManager from './trxs';
 import cron from 'node-cron';
 import * as cronParser from 'cron-parser';
 import { cronValidation } from "./cron-schedule";
+import swapToKrc20 from "./trxs/swapToKrc20";
 
 // Debug mode setting
 export let DEBUG = 0;
@@ -70,11 +71,15 @@ const rpc = new RpcClient({
   networkId: config.network,
 });
 let transactionManager: trxManager | null = null;
+let swapToKrc20Obj: swapToKrc20 | null = null;
 let rpcConnected = false;
 
 const setupTransactionManager = () => {
   if (DEBUG) monitoring.debug(`Main: Starting transaction manager`);
   transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);
+  setTimeout(() => {
+    swapToKrc20Obj = new swapToKrc20(transactionManager!); // ✅ Delayed instantiation
+  }, 0);
 };
 
 const startRpcConnection = async () => {
@@ -104,6 +109,7 @@ cron.schedule(paymentCronSchedule, async () => {
   if (rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
+      await swapToKrc20Obj!.fnCore("5"); // TODO: Set actual swap amount here in KAS.
       await transactionManager!.transferBalances();
 
     } catch (transactionError) {

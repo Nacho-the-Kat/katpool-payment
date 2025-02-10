@@ -7,14 +7,14 @@ import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { Generator } from '../../wasm/kaspa/kaspa';
 
 export default class trxManager {
-  private networkId: string;
-  private rpc: RpcClient;
-  private privateKey: PrivateKey;
-  private address: string;
-  private processor: UtxoProcessor;
-  private context: UtxoContext;
+  public networkId: string;
+  public rpc: RpcClient;
+  public privateKey: PrivateKey;
+  public address: string;
+  public processor: UtxoProcessor;
+  public context: UtxoContext;
   private db: Database;
-  private monitoring: Monitoring;
+  public monitoring: Monitoring;
 
   constructor(networkId: string, privKey: string, databaseUrl: string, rpc: RpcClient) {
     this.monitoring = new Monitoring();
