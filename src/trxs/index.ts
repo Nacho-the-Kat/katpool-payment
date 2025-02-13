@@ -4,7 +4,6 @@ import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
 import config from "../../config/config.json";
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
-import { Generator } from '../../wasm/kaspa/kaspa';
 
 export default class trxManager {
   public networkId: string;
