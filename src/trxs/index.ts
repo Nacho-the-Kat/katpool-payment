@@ -13,7 +13,7 @@ export default class trxManager {
   public address: string;
   public processor: UtxoProcessor;
   public context: UtxoContext;
-  private db: Database;
+  public db: Database;
   public monitoring: Monitoring;
 
   constructor(networkId: string, privKey: string, databaseUrl: string, rpc: RpcClient) {

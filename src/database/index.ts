@@ -44,6 +44,26 @@ export default class Database {
     }
   }
 
+  // Get Nacho Rebate KAS saved in pool entry
+  async getPoolBalances() {
+    const client = await this.pool.connect();
+    try {
+      const res = await client.query(
+        `SELECT wallet, balance
+         FROM miners_balance 
+         WHERE miner_id == $1 
+         GROUP BY wallet`,
+        ['pool']
+      );
+
+      return res.rows.map((row: { wallet: string, balance: string }) => ({
+        balance: BigInt(row.balance)
+      }));
+    } finally {
+      client.release();
+    }
+  }
+
   async resetBalancesByWallet(wallets: string[]) {
     const client = await this.pool.connect();
     try {

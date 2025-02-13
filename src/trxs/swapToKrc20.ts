@@ -4,8 +4,8 @@ import { signMessage, createTransactions, RpcClient } from "../../wasm/kaspa";
 import { DEBUG } from '../index.ts';
 import trxManager from './index.ts';
 import Monitoring from '../monitoring/index.ts';
+import config from "../../config/config.json";
 
-const fromAmountToCalculateQuote = parseUnits("10", 8).toString(); ; // Below 10KAS or some value we don't get quote
 const fromTicker = "KAS";
 const toTicker = "NACHO";
 const Chain = "KAS";
@@ -14,7 +14,7 @@ let customSlippage = "5"; // percentage format, ex: 5%
 let toAmountSwap = "";
 let toAmountMinSwap = "";
 
-let fromAmountInKAS = fromAmountToCalculateQuote;
+let fromAmountInKAS = "";
 let fromAmount = parseUnits(fromAmountInKAS, 8).toString(); // The decimals for KRC20 tokens are all set to 8.
 new Monitoring().debug(`SwapToKrc20: fromAmount in SOMPI : ${fromAmount}`)
     
@@ -28,7 +28,7 @@ export default class swapToKrc20 {
         const quoteParams = {
             fromTicker,
             toTicker,
-            fromAmount: fromAmountToCalculateQuote
+            fromAmount
         }
         
         // quote 
@@ -47,19 +47,19 @@ export default class swapToKrc20 {
 
         // Calculate the value the user should receive. 
         const receiveAmountHr = formatUnits(receiveAmount, 8)
-        
+                
         // Computed minimum, After calculating the minimum value, we need to convert it to the decimals of the target chain.
         // The slippage here is in percentage format. 
         // The slippage returned by this interface is our recommended value, but you can set your own slippage.
         const tempSlippage = customSlippage || slippage
-        const miniAmountHr = BigNumber(receiveAmountHr).multipliedBy(BigNumber((1 - (tempSlippage * 0.01)))).toFixed(8, BigNumber.ROUND_DOWN) 
-        const miniAmount = (BigInt(fromAmount) * parseUnits(miniAmountHr, 8) / BigInt(fromAmountToCalculateQuote)).toString()
-        
-        toAmountSwap = (BigInt(fromAmount) * receiveAmount / BigInt(fromAmountToCalculateQuote)).toString()
+        const miniAmountHr = BigNumber(receiveAmountHr).multipliedBy(BigNumber((1 - (tempSlippage * 0.01)))).toFixed(8, BigNumber.ROUND_DOWN)
+        const miniAmount = parseUnits(miniAmountHr, 8).toString()
+    
+        toAmountSwap = receiveAmountHr
         if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountSwap: ${toAmountSwap}`)
-            toAmountMinSwap = miniAmount;
+        toAmountMinSwap = miniAmount;
         if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountMinSwap: ${toAmountMinSwap}`)
-        }
+    }
     
     fnSubmitSwap = async (tradeHash) => {
         const params = {
@@ -111,8 +111,9 @@ export default class swapToKrc20 {
         return result.data.vault
     }
 
-    async fnCore(fromAmountInKASLocal: string): Promise<void> {
-        fromAmountInKAS = fromAmountInKASLocal;
+    async swapKaspaToKRC() {        
+        fromAmountInKAS = await this.transactionManager.db.getPoolBalances()[0];
+        fromAmountInKAS = ((BigInt(fromAmountInKAS) * BigInt(config.nachoSwap * 100)) / 10000n).toString();
         fromAmount = parseUnits(fromAmountInKAS, 8).toString(); // The decimals for KRC20 tokens are all set to 8.
 
         // step 1: quote 
@@ -146,11 +147,13 @@ export default class swapToKrc20 {
             }        
         } catch (error) {
             this.transactionManager.monitoring.error(`Error signing transaction: ${error}`);
-            return ;
+            return false;
         }
 
         // step 4: submitOrder
         this.transactionManager.monitoring.log(`SwapToKrc20: fnCore ~ txHash: ${txHash}`);
         await this.fnSubmitSwap(txHash)
+
+        return true;
     }
 }
