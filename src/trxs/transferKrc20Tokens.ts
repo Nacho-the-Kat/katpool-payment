@@ -16,7 +16,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string) {
     /* TODO: 
         1. Use NACHORebateBuffer.
         2. Add check for 100M NACHO or 1 NFT and adjust balance accordingly.
-        3. Set amount into ratio of NACHO.         3.
+        3. Set amount into ratio of NACHO.
     */
     
     Object.entries(payments).map(async ([address, amount]) => {

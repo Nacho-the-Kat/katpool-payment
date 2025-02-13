@@ -15,6 +15,7 @@
   "dependencies": {
     "async-mutex": "^0.5.0",
     "axios": "^1.7.9",
+    "axios-retry": "^4.5.0",
     "blake2b": "^2.1.4",
     "consul": "^1.2.0",
     "consul-client": "^5.0.0",
