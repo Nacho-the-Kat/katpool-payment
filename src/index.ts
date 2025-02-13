@@ -104,12 +104,11 @@ if (!rpcConnected) {
   setupTransactionManager();
 }
 
-
 cron.schedule(paymentCronSchedule, async () => {
   if (rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
-      await swapToKrc20Obj!.fnCore("5"); // TODO: Set actual swap amount here in KAS.
+      // await swapToKrc20Obj!.fnCore("5"); // TODO: Set actual swap amount here in KAS.
       await transactionManager!.transferBalances();
 
     } catch (transactionError) {

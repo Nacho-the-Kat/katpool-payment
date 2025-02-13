@@ -16,7 +16,7 @@ let toAmountMinSwap = "";
 
 let fromAmountInKAS = fromAmountToCalculateQuote;
 let fromAmount = parseUnits(fromAmountInKAS, 8).toString(); // The decimals for KRC20 tokens are all set to 8.
-if (DEBUG) new Monitoring().log(`SwapToKrc20: fromAmount in SOMPI : ${fromAmount}`)
+new Monitoring().debug(`SwapToKrc20: fromAmount in SOMPI : ${fromAmount}`)
     
 export default class swapToKrc20 {
     private transactionManager: trxManager;
