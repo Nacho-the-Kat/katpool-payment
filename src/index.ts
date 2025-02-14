@@ -40,12 +40,6 @@ if (!config.network) {
 }
 if (DEBUG) monitoring.debug(`Main: Network Id: ${config.network}`);
 
-const katpoolPshGw = process.env.PUSHGATEWAY;
-if (!katpoolPshGw) {
-  throw new Error('Environment variable PUSHGATEWAY is not set.');
-}
-if (DEBUG) monitoring.debug(`Main: PushGateway URL obtained`);
-
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
   throw new Error('Environment variable DATABASE_URL is not set.');
