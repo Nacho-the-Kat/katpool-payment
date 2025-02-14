@@ -7,6 +7,7 @@ import trxManager from '../index.ts';
 import Monitoring from '../../monitoring/index.ts';
 import config from "../../../config/config.json";
 import { parseSignatureScript } from './utils.ts';
+import { resetBalancesByWallet } from './transferKrc20Tokens.ts';
 
 let KASPA_BASE_URL = 'https://api.kaspa.org';
 
@@ -173,6 +174,8 @@ export default class swapToKrc20 {
             
             let txId = await this.fetchStatus(res.data.id);
             let amount = await this.fetchKRC20SwapData(txId);
+
+            resetBalancesByWallet('pool', BigInt(fromAmount));
 
             return amount;
         }
