@@ -1,8 +1,9 @@
 import { RpcClient } from "../../wasm/kaspa/kaspa";
 import { transferKRC20 } from "./krc20Transfer";
 import Database from '../database';
+import config from "../../config/config.json";
 
-export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string) {
+export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number) {
     const balances = await this.db.getAllBalancesExcludingPool();
     let payments: { [address: string]: bigint } = {};
     
@@ -12,14 +13,23 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string) {
             payments[address] = (payments[address] || 0n) + balance;
         }
     }
+
+    const NACHORebateBuffer = Number(config.nachoRebateBuffer);
+
+    const poolBalance = this.db.getPoolBalance();
+
+    if (krc20Amount > NACHORebateBuffer) {
+        krc20Amount = krc20Amount - NACHORebateBuffer;
+    }
     
     /* TODO: 
-        1. Use NACHORebateBuffer.
         2. Add check for 100M NACHO or 1 NFT and adjust balance accordingly.
-        3. Set amount into ratio of NACHO.
     */
     
     Object.entries(payments).map(async ([address, amount]) => {
+        // Set NACHO rebate amount in ratios.
+        amount = (amount * BigInt(krc20Amount)) / poolBalance;
+        
         let res = await transferKRC20(pRPC, pTicker, address, amount.toString());
         if (res?.error) {
             // Check

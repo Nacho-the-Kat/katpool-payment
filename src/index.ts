@@ -108,7 +108,7 @@ cron.schedule(paymentCronSchedule, async () => {
       await transactionManager!.transferBalances();
 
       if (amount != 0) {
-        transferKRC20Tokens(rpc, 'NACHO');
+        transferKRC20Tokens(rpc, 'NACHO', amount!);
       } else {
         monitoring.error("KRC20 swap could not be performed");
       }

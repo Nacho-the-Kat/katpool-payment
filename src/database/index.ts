@@ -45,7 +45,7 @@ export default class Database {
   }
 
   // Get Nacho Rebate KAS saved in pool entry
-  async getPoolBalances() {
+  async getPoolBalance() {
     const client = await this.pool.connect();
     try {
       const res = await client.query(
