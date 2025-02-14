@@ -1,7 +1,7 @@
-import { RpcClient } from "../../wasm/kaspa/kaspa";
+import { RpcClient } from "../../../wasm/kaspa/kaspa";
 import { transferKRC20 } from "./krc20Transfer";
-import Database from '../database';
-import config from "../../config/config.json";
+import Database from '../../database';
+import config from "../../../config/config.json";
 
 export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number) {
     const balances = await this.db.getAllBalancesExcludingPool();

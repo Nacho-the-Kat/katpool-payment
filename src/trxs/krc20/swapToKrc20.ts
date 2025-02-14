@@ -1,12 +1,12 @@
 import BigNumber from 'bignumber.js';
 import { formatUnits, parseUnits } from 'ethers'
 import axios, { AxiosError } from 'axios';
-import { signMessage, createTransactions, RpcClient } from "../../wasm/kaspa";
-import { DEBUG } from '../index.ts';
-import trxManager from './index.ts';
-import Monitoring from '../monitoring/index.ts';
-import config from "../../config/config.json";
-import { parseSignatureScript } from './krc20/utils.ts';
+import { signMessage, createTransactions } from "../../../wasm/kaspa";
+import { DEBUG } from '../../index.ts';
+import trxManager from '../index.ts';
+import Monitoring from '../../monitoring/index.ts';
+import config from "../../../config/config.json";
+import { parseSignatureScript } from './utils.ts';
 
 let KASPA_BASE_URL = 'https://api.kaspa.org';
 
@@ -127,7 +127,7 @@ export default class swapToKrc20 {
     }
 
     async swapKaspaToKRC() {        
-        fromAmountInKAS = await this.transactionManager.db.getPoolBalances()[0];
+        fromAmountInKAS = await this.transactionManager.db.getPoolBalance()[0];
         fromAmountInKAS = ((BigInt(fromAmountInKAS) * BigInt(config.nachoSwap * 100)) / 10000n).toString();
         fromAmount = parseUnits(fromAmountInKAS, 8).toString(); // The decimals for KRC20 tokens are all set to 8.
 

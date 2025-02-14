@@ -1,7 +1,7 @@
-import { RpcClient, Encoding, Resolver, ScriptBuilder, Opcodes, PrivateKey, addressFromScriptPublicKey, createTransactions, kaspaToSompi, UtxoProcessor, UtxoContext } from "../../wasm/kaspa";
-import config from "../../config/config.json";
-import Monitoring from "../monitoring";
-import { DEBUG } from "..";
+import { RpcClient, Encoding, Resolver, ScriptBuilder, Opcodes, PrivateKey, addressFromScriptPublicKey, createTransactions, kaspaToSompi } from "../../../wasm/kaspa";
+import config from "../../../config/config.json";
+import Monitoring from "../../monitoring";
+import { DEBUG } from "../../index.ts";
 
 let ticker = 'NACHO';
 let dest = '';

@@ -14,8 +14,8 @@ import trxManager from './trxs';
 import cron from 'node-cron';
 import * as cronParser from 'cron-parser';
 import { cronValidation } from "./cron-schedule";
-import swapToKrc20 from "./trxs/swapToKrc20";
-import { transferKRC20Tokens } from "./trxs/transferKrc20Tokens";
+import swapToKrc20 from "./trxs/krc20/swapToKrc20";
+import { transferKRC20Tokens } from "./trxs/krc20/transferKrc20Tokens";
 
 // Debug mode setting
 export let DEBUG = 0;
