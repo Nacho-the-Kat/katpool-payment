@@ -3,7 +3,7 @@ import axiosRetry from 'axios-retry';
 import Monitoring from '../../monitoring';
 
 const krc20TokenAPI = "https://api.kasplex.org/v1/krc20/address/{address}/token/{ticker}"
-const NFTAPI = "https://mainnet.krc721.stream/api/v1/krc721/mainnet/address/{address}"
+const NFTAPI = "https://mainnet.krc721.stream/api/v1/krc721/mainnet/address/{address}/{ticker}"
 
 const monitoring = new Monitoring();
 
@@ -32,18 +32,29 @@ export async function krc20Token(address: string, ticker = 'NACHO') {
     
         const response = await axios.get(url);
     
-        return response.data;
+        if (response.message === 'successful') {
+            return response.result[0].balance;
+        } else {
+            return 0;
+        }
     } catch (error) {
         monitoring.error(`Fetching ${ticker} tokens for address: ${address}`);
     }  
 }
 
-export async function nftAPI(address: string) {
+export async function nftAPI(address: string, ticker = 'NACHO') {
     try {
         const url = krc20TokenAPI
         .replace("{address}", address)
+        .replace("{ticker}", ticker);
     
         const response = await axios.get(url);
+
+        if (response.message === 'successful') {
+            return response.result.length;
+        } else {
+            return 0;
+        }
     
         return response.data;
     } catch (error) {

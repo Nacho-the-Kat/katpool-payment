@@ -2,6 +2,11 @@ import { RpcClient } from "../../../wasm/kaspa/kaspa";
 import { transferKRC20 } from "./krc20Transfer";
 import Database from '../../database';
 import config from "../../../config/config.json";
+import { krc20Token, nftAPI } from "./krc20Api";
+import { parseUnits } from "ethers";
+
+const fullRebateTokenThreshold = parseUnits("100", 14); // Minimum 100M (NACHO)
+const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 
 export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number) {
     const balances = await this.db.getAllBalancesExcludingPool();
@@ -21,12 +26,14 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
     if (krc20Amount > NACHORebateBuffer) {
         krc20Amount = krc20Amount - NACHORebateBuffer;
     }
-    
-    /* TODO: 
-        2. Add check for 100M NACHO or 1 NFT and adjust balance accordingly.
-    */
-    
+        
     Object.entries(payments).map(async ([address, amount]) => {
+        // Check if the user is eligible for full fee rebate
+        const fullRebate = await checkFullFeeRebate(address, "NACHO");
+        if (fullRebate) {
+            amount = amount * 3n;
+        }
+        
         // Set NACHO rebate amount in ratios.
         amount = (amount * BigInt(krc20Amount)) / poolBalance;
         
@@ -37,6 +44,18 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
             await recordPayment(address, amount, res?.revealHash);
         }
     });
+}
+
+async function checkFullFeeRebate(address: string, ticker: string) {    
+    const amount = await krc20Token(address, ticker);
+    if (amount >= fullRebateTokenThreshold) {
+        return true;
+    } 
+    const nftCount = await nftAPI(address, ticker);
+    if (nftCount >= fullRebateNFTThreshold) {
+        return true;
+    }
+    return false;
 }
 
 async function recordPayment(address: string, amount: bigint, transactionHash: string) {
@@ -56,7 +75,7 @@ async function recordPayment(address: string, amount: bigint, transactionHash: s
     }
 }
 
-async function resetBalancesByWallet(address : string, balance: bigint) {
+export async function resetBalancesByWallet(address : string, balance: bigint) {
     const client = await this.pool.connect();
     try {
         // Update miners_balance table
