@@ -103,12 +103,14 @@ cron.schedule(paymentCronSchedule, async () => {
   if (rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
-      const isSwapped = await swapToKrc20Obj!.swapKaspaToKRC(); 
+      const amount = await swapToKrc20Obj!.swapKaspaToKRC(); 
       
       await transactionManager!.transferBalances();
 
-      if (isSwapped) {
+      if (amount != 0) {
         transferKRC20Tokens(rpc, 'NACHO');
+      } else {
+        monitoring.error("KRC20 swap could not be performed");
       }
     } catch (transactionError) {
       monitoring.error(`Main: Transaction manager error: ${transactionError}`);

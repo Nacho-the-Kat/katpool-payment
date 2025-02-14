@@ -1,10 +1,23 @@
 import BigNumber from 'bignumber.js';
 import { formatUnits, parseUnits } from 'ethers'
+import axios, { AxiosError } from 'axios';
 import { signMessage, createTransactions, RpcClient } from "../../wasm/kaspa";
 import { DEBUG } from '../index.ts';
 import trxManager from './index.ts';
 import Monitoring from '../monitoring/index.ts';
 import config from "../../config/config.json";
+import { parseSignatureScript } from './krc20/utils.ts';
+
+let KASPA_BASE_URL = 'https://api.kaspa.org';
+
+if( config.network === "testnet-10" ) {
+ KASPA_BASE_URL = "https://api-tn10.kaspa.org"
+} else if( config.network === "testnet-11" ) {
+ KASPA_BASE_URL = "https://api-tn11.kaspa.org"
+}
+
+const KASPLEX_URL = 'https://api.kasplex.org'
+// TODO: ADD KASPLEX_URL for testnets
 
 const fromTicker = "KAS";
 const toTicker = "NACHO";
@@ -101,8 +114,10 @@ export default class swapToKrc20 {
             },
             body: JSON.stringify(params)
         })
-        const result = await response.json()
+
+        const result = await response?.json();
         console.log("Result : ", result);
+        return result
     }
 
     fnGetMinterAddr = async () => {
@@ -147,13 +162,65 @@ export default class swapToKrc20 {
             }        
         } catch (error) {
             this.transactionManager.monitoring.error(`Error signing transaction: ${error}`);
-            return false;
+            return 0;
         }
 
         // step 4: submitOrder
         this.transactionManager.monitoring.log(`SwapToKrc20: fnCore ~ txHash: ${txHash}`);
-        await this.fnSubmitSwap(txHash)
+        let res = await this.fnSubmitSwap(txHash)
 
-        return true;
+        if (res.msg === 'success') {
+            
+            let txId = await this.fetchStatus(res.data.id);
+            let amount = await this.fetchKRC20SwapData(txId);
+
+            return amount;
+        }
+        else {
+            return 0;
+        }
+    }
+
+    async fetchStatus(id: string) {
+        const response = await fetch(`https://api2.chainge.finance/fun/checkSwap?id=${id}`);
+        const result = await response?.json()
+        console.log("Result : ", result);
+        let txId = '';
+        if (result?.msg === 'success') {
+            txId = result?.data?.hash;
+        }
+        return txId;
+    }
+
+    async fetchKRC20SwapData(txId: string) {        
+        const apiURL = `${KASPA_BASE_URL}/transactions/${txId}?inputs=true&outputs=false&resolve_previous_outpoints=no`
+
+        const txs = await axios.get(apiURL).then((data) => data.data)
+    
+        const txInputs = txs.inputs
+        const { signature_script: signatureScript } = txInputs[0]
+    
+        const jsonString = parseSignatureScript(signatureScript)
+            .findLast((s) => s.indexOf('OP_PUSH') === 0)
+            .split(' ')[1]
+    
+        const krc20Data = JSON.parse(jsonString)
+        const buyer = krc20Data.to
+        const tick = krc20Data.tick.toUpperCase()
+    
+        const decimal = await this.getDecimalFromTick(tick)
+        const decimalValue = 10 ** decimal
+        const amount = Number(krc20Data.amt) / decimalValue
+        return amount;
+    }
+
+    // get decimals for KRC-20 Token
+    getDecimalFromTick = async (tick) => {
+        const tokenMetaData = await axios
+            .get(`${KASPLEX_URL}/v1/krc20/token/${tick}`)
+            .then((data) => data.data)
+        const decimal = tokenMetaData.result[0].dec
+
+        return decimal
     }
 }
