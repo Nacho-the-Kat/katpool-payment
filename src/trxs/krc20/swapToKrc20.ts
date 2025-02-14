@@ -29,7 +29,7 @@ let toAmountSwap = "";
 let toAmountMinSwap = "";
 
 let fromAmountInKAS = "";
-let fromAmount = parseUnits(fromAmountInKAS, 8).toString(); // The decimals for KRC20 tokens are all set to 8.
+let fromAmount = "";
 new Monitoring().debug(`SwapToKrc20: fromAmount in SOMPI : ${fromAmount}`)
     
 export default class swapToKrc20 {
