@@ -9,13 +9,12 @@ const fullRebateTokenThreshold = parseUnits("100", 14); // Minimum 100M (NACHO)
 const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 
 export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number, balances: any, poolBal: bigint) {
-    const db = new Database(process.env.DATABASE_URL!)
     let payments: { [address: string]: bigint } = {};
     
     // Aggregate balances by wallet address
-    for (const { address, balance } of balances) {
-        if (balance > 0) {
-            payments[address] = (payments[address] || 0n) + balance;
+    for (const { address, nachoBalance } of balances) {
+        if (nachoBalance > 0) {
+            payments[address] = (payments[address] || 0n) + nachoBalance;
         }
     }
 
