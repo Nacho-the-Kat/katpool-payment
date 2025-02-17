@@ -44,7 +44,7 @@ export async function krc20Token(address: string, ticker = 'NACHO') {
 
 export async function nftAPI(address: string, ticker = 'NACHO') {
     try {
-        const url = krc20TokenAPI
+        const url = NFTAPI
         .replace("{address}", address)
         .replace("{ticker}", ticker);
     
