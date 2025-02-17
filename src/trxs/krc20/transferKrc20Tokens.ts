@@ -8,9 +8,8 @@ import { parseUnits } from "ethers";
 const fullRebateTokenThreshold = parseUnits("100", 14); // Minimum 100M (NACHO)
 const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 
-export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number) {
+export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number, balances: any) {
     const db = new Database(process.env.DATABASE_URL!)
-    const balances = await db.getAllBalancesExcludingPool();
     let payments: { [address: string]: bigint } = {};
     
     // Aggregate balances by wallet address
