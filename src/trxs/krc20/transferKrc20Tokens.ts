@@ -9,7 +9,8 @@ const fullRebateTokenThreshold = parseUnits("100", 14); // Minimum 100M (NACHO)
 const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 
 export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number) {
-    const balances = await this.db.getAllBalancesExcludingPool();
+    const db = new Database(process.env.DATABASE_URL!)
+    const balances = await db.getAllBalancesExcludingPool();
     let payments: { [address: string]: bigint } = {};
     
     // Aggregate balances by wallet address
@@ -21,7 +22,14 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
 
     const NACHORebateBuffer = Number(config.nachoRebateBuffer);
 
-    const poolBalance = this.db.getPoolBalance();
+    let poolBalance = 0n;
+    let poolBalances = await this.transactionManager.db.getPoolBalance();
+    if (poolBalances.length > 0) {
+        poolBalance = balances[0].balance;
+    } else {
+        this.transactionManager.monitoring.error("Could not fetch Pool balance from Database.")
+        return 0;
+    }
 
     if (krc20Amount > NACHORebateBuffer) {
         krc20Amount = krc20Amount - NACHORebateBuffer;

@@ -28,7 +28,7 @@ let customSlippage = "5"; // percentage format, ex: 5%
 let toAmountSwap = "";
 let toAmountMinSwap = "";
 
-let fromAmountInKAS = "";
+let fromAmountInSompi = "";
 let fromAmount = "";
 new Monitoring().debug(`SwapToKrc20: fromAmount in SOMPI : ${fromAmount}`)
     
@@ -128,9 +128,15 @@ export default class swapToKrc20 {
     }
 
     async swapKaspaToKRC() {        
-        fromAmountInKAS = await this.transactionManager.db.getPoolBalance()[0];
-        fromAmountInKAS = ((BigInt(fromAmountInKAS) * BigInt(config.nachoSwap * 100)) / 10000n).toString();
-        fromAmount = parseUnits(fromAmountInKAS, 8).toString(); // The decimals for KRC20 tokens are all set to 8.
+        let balances = await this.transactionManager.db.getPoolBalance();
+        if (balances.length > 0) {
+            fromAmountInSompi = balances[0].balance;
+        } else {
+            this.transactionManager.monitoring.error("Could not fetch Pool balance from Database.")
+            return 0;
+        }
+        fromAmountInSompi = ((BigInt(fromAmountInSompi) * BigInt(config.nachoSwap * 100)) / 10000n).toString();
+        fromAmount = fromAmountInSompi
 
         // step 1: quote 
         await this.fnGetQuote()

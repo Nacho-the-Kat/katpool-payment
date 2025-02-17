@@ -51,13 +51,12 @@ export default class Database {
       const res = await client.query(
         `SELECT wallet, balance
          FROM miners_balance 
-         WHERE miner_id == $1 
-         GROUP BY wallet`,
+         WHERE miner_id = $1`,
         ['pool']
       );
 
       return res.rows.map((row: { wallet: string, balance: string }) => ({
-        balance: BigInt(row.balance)
+        balance: row.balance
       }));
     } finally {
       client.release();
