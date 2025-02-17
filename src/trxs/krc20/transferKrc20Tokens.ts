@@ -30,8 +30,10 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
     Object.entries(payments).map(async ([address, amount]) => {
         // Check if the user is eligible for full fee rebate
         const fullRebate = await checkFullFeeRebate(address, "NACHO");
+        let kasAmount = amount;
         if (fullRebate) {
             amount = amount * 3n;
+            kasAmount = amount;
         }
         
         // Set NACHO rebate amount in ratios.
@@ -41,7 +43,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         if (res?.error != null) {
             // Check
         } else {
-            await recordPayment(address, amount, res?.revealHash, transactionManager?.db!);
+            await recordPayment(address, amount, res?.revealHash, transactionManager?.db!, kasAmount);
         }
     });
 }
@@ -58,7 +60,7 @@ async function checkFullFeeRebate(address: string, ticker: string) {
     return false;
 }
 
-async function recordPayment(address: string, amount: bigint, transactionHash: string, db: Database) {
+async function recordPayment(address: string, amount: bigint, transactionHash: string, db: Database, kasAmount: bigint) {
     const client = await db.getClient();
 
     let values: string[] = [];
@@ -69,7 +71,7 @@ async function recordPayment(address: string, amount: bigint, transactionHash: s
     queryParams.push([address]);
     try {
       await client.query(query, queryParams);
-      await resetBalancesByWallet(address, amount, db, 'nacho_rebate_kas');
+      await resetBalancesByWallet(address, kasAmount, db, 'nacho_rebate_kas');
     } finally {
       client.release();
     }
