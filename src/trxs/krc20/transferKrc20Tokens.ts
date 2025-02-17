@@ -86,7 +86,7 @@ export async function resetBalancesByWallet(address : string, balance: bigint) {
     const client = await this.pool.connect();
     try {
         // Update miners_balance table
-        const res = await client.query('SELECT balance FROM miners_balance WHERE id = $1', [address]);
+        const res = await client.query('SELECT balance FROM miners_balance WHERE wallet = $1', [address]);
         let minerBalance = res.rows[0] ? BigInt(res.rows[0].balance) : 0n;
         minerBalance -= balance;
 
