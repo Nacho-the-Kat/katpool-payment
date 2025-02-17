@@ -108,7 +108,7 @@ cron.schedule(paymentCronSchedule, async () => {
       let poolBalances = await transactionManager!.db.getPoolBalance();
       let poolBalance = 0n;
       let amount: number = 0;
-      if (poolBalances.length > 0) {
+      if (poolBalances.length >= 0) {
         poolBalance = balances[0].balance;
       } else {
         transactionManager!.monitoring.error("Could not fetch Pool balance from Database.")
@@ -119,7 +119,7 @@ cron.schedule(paymentCronSchedule, async () => {
         amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance); 
       }
       
-      await transactionManager!.transferBalances();
+      await transactionManager!.transferBalances(balances);
 
       if (amount != 0) {
         monitoring.log(`Main: Running scheduled KRC20 balance transfer`);

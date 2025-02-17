@@ -49,8 +49,7 @@ export default class trxManager {
     }
   }
 
-  async transferBalances() {
-    const balances = await this.db.getAllBalancesExcludingPool();
+  async transferBalances(balances: any) {
     let payments: { [address: string]: bigint } = {};
 
     // Aggregate balances by wallet address
