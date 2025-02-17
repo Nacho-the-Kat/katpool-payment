@@ -4,17 +4,16 @@ import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
 import config from "../../config/config.json";
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
-import { Generator } from '../../wasm/kaspa/kaspa';
 
 export default class trxManager {
-  private networkId: string;
-  private rpc: RpcClient;
-  private privateKey: PrivateKey;
-  private address: string;
-  private processor: UtxoProcessor;
-  private context: UtxoContext;
-  private db: Database;
-  private monitoring: Monitoring;
+  public networkId: string;
+  public rpc: RpcClient;
+  public privateKey: PrivateKey;
+  public address: string;
+  public processor: UtxoProcessor;
+  public context: UtxoContext;
+  public db: Database;
+  public monitoring: Monitoring;
 
   constructor(networkId: string, privKey: string, databaseUrl: string, rpc: RpcClient) {
     this.monitoring = new Monitoring();
@@ -50,8 +49,7 @@ export default class trxManager {
     }
   }
 
-  async transferBalances() {
-    const balances = await this.db.getAllBalancesExcludingPool();
+  async transferBalances(balances: any) {
     let payments: { [address: string]: bigint } = {};
 
     // Aggregate balances by wallet address

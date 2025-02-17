@@ -27,17 +27,37 @@ export default class Database {
     const client = await this.pool.connect();
     try {
       const res = await client.query(
-        `SELECT wallet, SUM(balance) as total_balance 
+        `SELECT wallet, SUM(balance) as total_balance, SUM(nacho_rebate_kas) as nacho_total_balance
          FROM miners_balance 
          WHERE miner_id != $1 
          GROUP BY wallet`,
         ['pool']
       );
 
-      return res.rows.map((row: { wallet: string, total_balance: string }) => ({
+      return res.rows.map((row: { wallet: string, total_balance: string, nacho_total_balance: string }) => ({
         minerId: 'aggregate', // Placeholder ID for aggregated balance, since we're grouping by wallet.
         address: row.wallet,
-        balance: BigInt(row.total_balance)
+        balance: BigInt(row.total_balance),
+        nachoBalance: BigInt(row.nacho_total_balance)
+      }));
+    } finally {
+      client.release();
+    }
+  }
+
+  // Get Nacho Rebate KAS saved in pool entry
+  async getPoolBalance() {
+    const client = await this.pool.connect();
+    try {
+      const res = await client.query(
+        `SELECT balance
+         FROM miners_balance 
+         WHERE miner_id = $1`,
+        ['pool']
+      );
+
+      return res.rows.map((row: { balance: string }) => ({
+        balance: row.balance
       }));
     } finally {
       client.release();

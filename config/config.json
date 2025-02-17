@@ -2,5 +2,8 @@
     "node" : [],
     "network" : "mainnet",
     "payoutCronSchedule": "0 */12 * * *",
-    "thresholdAmount": "500000000"
+    "thresholdAmount": "500000000",
+    "nachoRebateBuffer": "500000000",
+    "nachoSwap": 95,
+    "defaultTicker": "NACHO"
 }
