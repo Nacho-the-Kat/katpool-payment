@@ -127,14 +127,8 @@ export default class swapToKrc20 {
         return result.data.vault
     }
 
-    async swapKaspaToKRC() {        
-        let balances = await this.transactionManager.db.getPoolBalance();
-        if (balances.length > 0) {
-            fromAmountInSompi = balances[0].balance;
-        } else {
-            this.transactionManager.monitoring.error("Could not fetch Pool balance from Database.")
-            return 0;
-        }
+    async swapKaspaToKRC(balance: bigint) {        
+        fromAmountInSompi = balance.toString();
         fromAmountInSompi = ((BigInt(fromAmountInSompi) * BigInt(config.nachoSwap * 100)) / 10000n).toString();
         fromAmount = fromAmountInSompi
 

@@ -105,12 +105,20 @@ cron.schedule(paymentCronSchedule, async () => {
     try {
       // Fetch and save balances map before performing payout
       const balances = await transactionManager!.db.getAllBalancesExcludingPool();
-      const amount = await swapToKrc20Obj!.swapKaspaToKRC(); 
+      let poolBalances = await transactionManager!.db.getPoolBalance();
+      let poolBalance = 0n;
+      if (balances.length > 0) {
+        poolBalance = balances[0].balance;
+      } else {
+          transactionManager!.monitoring.error("Could not fetch Pool balance from Database.")
+          return 0;
+      }
+      const amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance); 
       
       await transactionManager!.transferBalances();
 
       if (amount != 0 && balances.length != 0) {
-        transferKRC20Tokens(rpc, 'NACHO', amount!, balances);
+        transferKRC20Tokens(rpc, 'NACHO', amount!, balances, poolBalance);
       } else {
         monitoring.error("KRC20 swap could not be performed");
       }
