@@ -3,19 +3,22 @@ import axiosRetry from 'axios-retry';
 import Monitoring from '../../monitoring';
 import config from "../../../config/config.json";
 
-let krc20TokenAPI = "https://api.kasplex.org/v1/krc20/address/{address}/token/{ticker}"
+export let KASPLEX_URL = 'https://api.kasplex.org'
 if( config.network === "testnet-10" ) {
-    krc20TokenAPI = "https://tn10api.kasplex.org/v1/krc20/address/{address}/token/{ticker}"
+    KASPLEX_URL = "https://tn10api.kasplex.org"
 } else if( config.network === "testnet-11" ) {
-    krc20TokenAPI = "https://tn11api.kasplex.org/v1/krc20/address/{address}/token/{ticker}"
+    KASPLEX_URL = "https://tn11api.kasplex.org"
 }
-   
-let NFTAPI = "https://mainnet.krc721.stream/api/v1/krc721/mainnet/address/{address}/{ticker}"
+
+let krc20TokenAPI = `${KASPLEX_URL}/v1/krc20/address/{address}/token/{ticker}`;
+
+let KRC721_STREAM_URL = 'https://mainnet.krc721.stream'
 if( config.network === "testnet-10" ) {
-    NFTAPI = "https://testnet-10.krc721.stream/api/v1/krc721/testnet-10/address/{address}/{ticker}"
+    KRC721_STREAM_URL = "https://testnet-10.krc721.stream"
 } else if( config.network === "testnet-11" ) {
-    NFTAPI = "https://testnet-11.krc721.stream/api/v1/krc721/testnet-11/address/{address}/{ticker}"
+    KRC721_STREAM_URL = "https://testnet-11.krc721.stream"
 }
+let NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${config.network}}/address/{address}/{ticker`;
 
 const monitoring = new Monitoring();
 

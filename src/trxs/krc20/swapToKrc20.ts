@@ -8,7 +8,7 @@ import Monitoring from '../../monitoring/index.ts';
 import config from "../../../config/config.json";
 import { parseSignatureScript } from './utils.ts';
 import { resetBalancesByWallet } from './transferKrc20Tokens.ts';
-import { krc20Token } from './krc20Api.ts';
+import { KASPLEX_URL, krc20Token } from './krc20Api.ts';
 
 let KASPA_BASE_URL = 'https://api.kaspa.org';
 
@@ -17,14 +17,6 @@ if( config.network === "testnet-10" ) {
 } else if( config.network === "testnet-11" ) {
  KASPA_BASE_URL = "https://api-tn11.kaspa.org"
 }
-
-let KASPLEX_URL = 'https://api.kasplex.org'
-if( config.network === "testnet-10" ) {
-    KASPLEX_URL = "https://tn10api.kasplex.org"
-} else if( config.network === "testnet-11" ) {
-    KASPLEX_URL = "https://tn11api.kasplex.org"
-}
-
 
 const fromTicker = "KAS";
 const toTicker = "NACHO";
