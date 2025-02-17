@@ -8,6 +8,7 @@ import Monitoring from '../../monitoring/index.ts';
 import config from "../../../config/config.json";
 import { parseSignatureScript } from './utils.ts';
 import { resetBalancesByWallet } from './transferKrc20Tokens.ts';
+import { krc20Token } from './krc20Api.ts';
 
 let KASPA_BASE_URL = 'https://api.kaspa.org';
 
@@ -17,8 +18,13 @@ if( config.network === "testnet-10" ) {
  KASPA_BASE_URL = "https://api-tn11.kaspa.org"
 }
 
-const KASPLEX_URL = 'https://api.kasplex.org'
-// TODO: ADD KASPLEX_URL for testnets
+let KASPLEX_URL = 'https://api.kasplex.org'
+if( config.network === "testnet-10" ) {
+    KASPLEX_URL = "https://tn10api.kasplex.org"
+} else if( config.network === "testnet-11" ) {
+    KASPLEX_URL = "https://tn11api.kasplex.org"
+}
+
 
 const fromTicker = "KAS";
 const toTicker = "NACHO";
@@ -49,7 +55,7 @@ export default class swapToKrc20 {
         const response = await fetch(`https://api2.chainge.finance/fun/quote?fromTicker=${quoteParams.fromTicker}&toTicker=${quoteParams.toTicker}&fromAmount=${quoteParams.fromAmount}`)
         const quoteResult = await response.json()
         if (DEBUG) console.log("SwapToKrc20: fnGetQuote ~ quoteResult: ", quoteResult);
-        if(quoteResult.code !== 0) return
+        if(quoteResult.code !== 0) return {toAmountMinSwap, toAmountSwap};
         let { amountOut, serviceFee, gasFee, slippage } = quoteResult.data
         // slippage: 5%
         slippage = slippage.replace('%', '') // '5'
@@ -73,6 +79,8 @@ export default class swapToKrc20 {
         if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountSwap: ${toAmountSwap}`)
         toAmountMinSwap = miniAmount;
         if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountMinSwap: ${toAmountMinSwap}`)
+
+        return {toAmountMinSwap, toAmountSwap};
     }
     
     fnSubmitSwap = async (tradeHash) => {
@@ -133,7 +141,7 @@ export default class swapToKrc20 {
         fromAmount = fromAmountInSompi
 
         // step 1: quote 
-        await this.fnGetQuote()
+        const {toAmountMinSwap, toAmountSwap} = await this.fnGetQuote()
         
         // step 2: get minter address
         const minterAddr = await this.fnGetMinterAddr()
@@ -168,30 +176,34 @@ export default class swapToKrc20 {
 
         // step 4: submitOrder
         this.transactionManager.monitoring.log(`SwapToKrc20: fnCore ~ txHash: ${txHash}`);
+        const balanceBefore = await krc20Token(this.transactionManager.address, toTicker);
+        let balanceAfter = balanceBefore;
         let res = await this.fnSubmitSwap(txHash)
 
         if (res.msg === 'success') {
             
-            let txId = await this.fetchStatus(res.data.id);
-            let amount = await this.fetchKRC20SwapData(txId);
+            // Start polling the status
+            let finalStatus;
+            let txId: string = '';
+            let amount: number = 0;
+            try {
+                finalStatus = await this.pollStatus(res.data.id);
+                this.transactionManager.monitoring.log(`Final Result: ${finalStatus}`);
+            } catch (error) {
+                this.transactionManager.monitoring.error(`❌ Operation failed:", ${error}`);
+            }
+            if (finalStatus?.msg === 'success') {
+                txId = finalStatus?.data?.hash!;
+                balanceAfter = await krc20Token(this.transactionManager.address, toTicker);
+            }
+            if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap))
+                amount = await this.fetchKRC20SwapData(txId!);
 
             await resetBalancesByWallet('pool', BigInt(fromAmount), this.transactionManager.db, 'balance');
             return amount;
-        }
-        else {
+        } else {
             return 0;
         }
-    }
-
-    async fetchStatus(id: string) {
-        const response = await fetch(`https://api2.chainge.finance/fun/checkSwap?id=${id}`);
-        const result = await response?.json()
-        console.log("Result : ", result);
-        let txId = '';
-        if (result?.msg === 'success') {
-            txId = result?.data?.hash;
-        }
-        return txId;
     }
 
     async fetchKRC20SwapData(txId: string) {        
@@ -207,7 +219,6 @@ export default class swapToKrc20 {
             .split(' ')[1]
     
         const krc20Data = JSON.parse(jsonString)
-        const buyer = krc20Data.to
         const tick = krc20Data.tick.toUpperCase()
     
         const decimal = await this.getDecimalFromTick(tick)
@@ -224,5 +235,44 @@ export default class swapToKrc20 {
         const decimal = tokenMetaData.result[0].dec
 
         return decimal
+    }
+
+    async pollStatus(id: string, interval = 60000, maxAttempts = 30): Promise<any> {
+        let attempts = 0;
+    
+        return new Promise((resolve, reject) => {
+            const checkStatus = async () => {
+                attempts++;
+    
+                try {
+                    const response = await fetch(`https://api2.chainge.finance/fun/checkSwap?id=${id}`);
+
+                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    
+                    const data = await response.json();
+                    this.transactionManager.monitoring.log(`Polling attempt ${attempts}: ${data}`);
+    
+                    if (data.status === "success") {
+                        this.transactionManager.monitoring.log("✅ Operation completed successfully!");
+                        resolve(data);
+                        return;
+                    }
+    
+                    if (attempts >= maxAttempts) {
+                        this.transactionManager.monitoring.log("❌ Max polling attempts reached. Stopping...");
+                        this.transactionManager.monitoring.log(`Stopping polling for id: ${id}`);
+                        reject(new Error("Polling timed out"));
+                        return;
+                    }
+    
+                    setTimeout(checkStatus, interval);
+                } catch (error) {
+                    console.error("Error polling API:", error);
+                    reject(error);
+                }
+            };
+    
+            checkStatus();
+        });
     }
 }
