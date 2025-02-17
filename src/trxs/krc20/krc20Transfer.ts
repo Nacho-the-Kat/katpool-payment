@@ -24,7 +24,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   let SubmittedtrxId: any;
   if (!privateKeyArg || !dest) {
     console.error("Please provide a private key using the --privKey flag and the destination with --dest.");
-    process.exit(1);
+    // process.exit(1);
   }
   monitoring.debug(`Main: Submitting private key`);
   const privateKey = new PrivateKey(privateKeyArg);
@@ -109,8 +109,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     // Set a timeout to handle failure cases
     const commitTimeout = setTimeout(() => {
       if (!eventReceived) {
-        monitoring.error('Timeout: Commit transaction did not mature within 2 minutes');
-        process.exit(1);
+        monitoring.error('KRC20Transfer: Timeout - Commit transaction did not mature within 2 minutes');
       }
     }, timeout);
 
@@ -120,16 +119,16 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     }
     clearTimeout(commitTimeout);  // Clear the reveal timeout if the event is received      
   } catch (initialError) {
-    monitoring.error(`Initial transaction error: ${initialError}`);
+    monitoring.error(`KRC20Transfer: Initial transaction error: ${initialError}`);
   }
 
   if (eventReceived) {
     eventReceived = false;
-    monitoring.debug(`Main: creating UTXO entries from ${address.toString()}`);
+    monitoring.debug(`KRC20Transfer: creating UTXO entries from ${address.toString()}`);
     const { entries } = await rpc.getUtxosByAddresses({ addresses: [address.toString()] });
-    monitoring.debug(`Main: creating revealUTXOs from P2SHAddress`);
+    monitoring.debug(`KRC20Transfer: creating revealUTXOs from P2SHAddress`);
     const revealUTXOs = await rpc.getUtxosByAddresses({ addresses: [P2SHAddress.toString()] });
-    monitoring.debug(`Main: Creating Transaction with revealUTX0s entries: ${revealUTXOs.entries[0]}`);
+    monitoring.debug(`KRC20Transfer: Creating Transaction with revealUTX0s entries: ${revealUTXOs.entries[0]}`);
     const { transactions } = await createTransactions({
       priorityEntries: [revealUTXOs.entries[0]],
       entries: entries,
@@ -142,21 +141,21 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     let revealHash: any;
     for (const transaction of transactions) {
       transaction.sign([privateKey], false);
-      monitoring.debug(`Main: Transaction with revealUTX0s signed with ID: ${transaction.id}`);
+      monitoring.debug(`KRC20Transfer: Transaction with revealUTX0s signed with ID: ${transaction.id}`);
       const ourOutput = transaction.transaction.inputs.findIndex((input) => input.signatureScript === '');
       if (ourOutput !== -1) {
       const signature = await transaction.createInputSignature(ourOutput, privateKey);
       transaction.fillInput(ourOutput, script.encodePayToScriptHashSignatureScript(signature));
       }
       revealHash = await transaction.submit(rpc);
-      monitoring.log(`submitted reveal tx sequence transaction: ${revealHash}`);
+      monitoring.log(`KRC20Transfer: submitted reveal tx sequence transaction: ${revealHash}`);
       SubmittedtrxId = revealHash;
     }
 
     const revealTimeout = setTimeout(() => {
       if (!eventReceived) {
-        monitoring.error('Timeout: Reveal transaction did not mature within 2 minutes');
-        return {error: 'Timeout: Reveal transaction did not mature within 2 minutes', revealHash: ''};
+        monitoring.error('KRC20Transfer: Timeout - Reveal transaction did not mature within 2 minutes');
+        return {error: 'KRC20Transfer: Timeout - Reveal transaction did not mature within 2 minutes', revealHash: ''};
       }
     }, timeout);
 
@@ -179,19 +178,19 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   
       // If reveal transaction is accepted
       if (revealAccepted) {
-        monitoring.log(`Reveal transaction has been accepted: ${revealHash}`);
+        monitoring.log(`KRC20Transfer: Reveal transaction has been accepted: ${revealHash}`);
         return {error: null, revealHash};
       } else if (!eventReceived) { // Check eventReceived here
-        monitoring.log('Reveal transaction has not been accepted yet.');
-        return {error: 'Reveal transaction has not been accepted yet', revealHash: ''};
+        monitoring.log('KRC20Transfer: Reveal transaction has not been accepted yet.');
+        return {error: 'KRC20Transfer: Reveal transaction has not been accepted yet', revealHash: ''};
       }
     } catch (error) {
-      monitoring.error(`Error checking reveal transaction status: ${error}`);
+      monitoring.error(`KRC20Transfer: Error checking reveal transaction status: ${error}`);
       return {error, revealHash: ''};
     }
       
   } else {
-    monitoring.error('Error: No UTXOs available for reveal');
-    return {error: 'Error: No UTXOs available for reveal', revealHash: ''};
+    monitoring.error('KRC20Transfer: No UTXOs available for reveal');
+    return {error: 'KRC20Transfer: No UTXOs available for reveal', revealHash: ''};
   }
 }

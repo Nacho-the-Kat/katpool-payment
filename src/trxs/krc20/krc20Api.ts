@@ -5,16 +5,16 @@ import config from "../../../config/config.json";
 
 let krc20TokenAPI = "https://api.kasplex.org/v1/krc20/address/{address}/token/{ticker}"
 if( config.network === "testnet-10" ) {
-    krc20TokenAPI = "https://tn10api.kasplex.org/v1"
+    krc20TokenAPI = "https://tn10api.kasplex.org/v1/krc20/address/{address}/token/{ticker}"
 } else if( config.network === "testnet-11" ) {
-    krc20TokenAPI = "https://tn11api.kasplex.org/v1"
+    krc20TokenAPI = "https://tn11api.kasplex.org/v1/krc20/address/{address}/token/{ticker}"
 }
    
 let NFTAPI = "https://mainnet.krc721.stream/api/v1/krc721/mainnet/address/{address}/{ticker}"
 if( config.network === "testnet-10" ) {
-    NFTAPI = "https://testnet-10.krc721.stream/api/v1/krc721/testnet-10/address/{ticker}/{ticker}"
+    NFTAPI = "https://testnet-10.krc721.stream/api/v1/krc721/testnet-10/address/{address}/{ticker}"
 } else if( config.network === "testnet-11" ) {
-    NFTAPI = "https://testnet-11.krc721.stream/api/v1/krc721/testnet-11/address/{ticker}/{ticker}"
+    NFTAPI = "https://testnet-11.krc721.stream/api/v1/krc721/testnet-11/address/{address}/{ticker}"
 }
 
 const monitoring = new Monitoring();
@@ -70,6 +70,6 @@ export async function nftAPI(address: string, ticker = 'NACHO') {
     
         return response.data;
     } catch (error) {
-        monitoring.error(`Fetching block hash for transaction ${address}`);
+        monitoring.error(`Fetching NFT holding for address: ${address}`);
     }  
 }

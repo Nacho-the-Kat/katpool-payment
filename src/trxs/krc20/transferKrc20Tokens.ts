@@ -8,7 +8,7 @@ import { parseUnits } from "ethers";
 const fullRebateTokenThreshold = parseUnits("100", 14); // Minimum 100M (NACHO)
 const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 
-export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number, balances: any, poolBal: bigint) {
+export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number, balances: any, poolBal: bigint, db: Database) {
     let payments: { [address: string]: bigint } = {};
     
     // Aggregate balances by wallet address
@@ -37,10 +37,10 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         amount = (amount * BigInt(krc20Amount)) / poolBalance;
         
         let res = await transferKRC20(pRPC, pTicker, address, amount.toString());
-        if (res?.error) {
+        if (res?.error != null) {
             // Check
         } else {
-            await recordPayment(address, amount, res?.revealHash);
+            await recordPayment(address, amount, res?.revealHash, db);
         }
     });
 }
@@ -57,32 +57,32 @@ async function checkFullFeeRebate(address: string, ticker: string) {
     return false;
 }
 
-async function recordPayment(address: string, amount: bigint, transactionHash: string) {
-    const db = new Database(process.env.databaseUrl!);
+async function recordPayment(address: string, amount: bigint, transactionHash: string, db: Database) {
     const client = await db.getClient();
 
     let values: string[] = [];
-    values.push(`($${address}, ${amount}, NOW(), '${transactionHash}') `);
-    
-    const valuesPlaceHolder = values.join(',')
-    const query = `INSERT INTO nacho_payments (wallet_address, nacho_amount, timestamp, transaction_hash) VALUES ${valuesPlaceHolder};`
+    let queryParams: string[][] = []
+    values.push(`($${1}, ${amount}, NOW(), '${transactionHash}') `);
+    const valuesPlaceHolder = values.join(',');
+    const query = `INSERT INTO nacho_payments (wallet_address, nacho_amount, timestamp, transaction_hash) VALUES ${valuesPlaceHolder};`;
+    queryParams.push([address]);
     try {
-      await client.query(query);
-      resetBalancesByWallet(address, amount);
+      await client.query(query, queryParams);
+      await resetBalancesByWallet(address, amount, db, 'nacho_rebate_kas');
     } finally {
       client.release();
     }
 }
 
-export async function resetBalancesByWallet(address : string, balance: bigint) {
-    const client = await this.pool.connect();
+export async function resetBalancesByWallet(address : string, balance: bigint, db: Database, column: string) {
+    const client = await db.getClient();
     try {
         // Update miners_balance table
-        const res = await client.query('SELECT balance FROM miners_balance WHERE wallet = $1', [address]);
+        const res = await client.query(`SELECT ${column} FROM miners_balance WHERE wallet = $1`, [[address]]);
         let minerBalance = res.rows[0] ? BigInt(res.rows[0].balance) : 0n;
         minerBalance -= balance;
 
-        await client.query('UPDATE miners_balance SET balance = $1 WHERE wallet = ANY($2)', [minerBalance, address]);
+        await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = ANY($2)`, [minerBalance, [address]]);
     } finally {
         client.release();
     }

@@ -175,8 +175,7 @@ export default class swapToKrc20 {
             let txId = await this.fetchStatus(res.data.id);
             let amount = await this.fetchKRC20SwapData(txId);
 
-            resetBalancesByWallet('pool', BigInt(fromAmount));
-
+            await resetBalancesByWallet('pool', BigInt(fromAmount), this.transactionManager.db, 'balance');
             return amount;
         }
         else {

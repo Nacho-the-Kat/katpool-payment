@@ -123,7 +123,8 @@ cron.schedule(paymentCronSchedule, async () => {
 
       if (amount != 0) {
         monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
-        transferKRC20Tokens(rpc, 'NACHO', amount!, balances, poolBalance);
+        await transferKRC20Tokens(rpc, 'NACHO', amount!, balances, poolBalance, transactionManager?.db!);
+        monitoring.log(`Main: Running scheduled KRC20 balance transfer completed`);
       } else {
         monitoring.error("Main: KRC20 swap could not be performed");
       }
