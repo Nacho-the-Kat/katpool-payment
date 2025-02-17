@@ -50,13 +50,13 @@ export default class Database {
     const client = await this.pool.connect();
     try {
       const res = await client.query(
-        `SELECT wallet, balance
+        `SELECT balance
          FROM miners_balance 
          WHERE miner_id = $1`,
         ['pool']
       );
 
-      return res.rows.map((row: { wallet: string, balance: string }) => ({
+      return res.rows.map((row: { balance: string }) => ({
         balance: row.balance
       }));
     } finally {

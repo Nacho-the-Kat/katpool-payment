@@ -107,13 +107,17 @@ cron.schedule(paymentCronSchedule, async () => {
       const balances = await transactionManager!.db.getAllBalancesExcludingPool();
       let poolBalances = await transactionManager!.db.getPoolBalance();
       let poolBalance = 0n;
+      let amount: number = 0;
       if (poolBalances.length > 0) {
         poolBalance = balances[0].balance;
       } else {
         transactionManager!.monitoring.error("Could not fetch Pool balance from Database.")
-        return 0;
       }
-      const amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance); 
+      if (poolBalance == 0n){
+        monitoring.error("Main: Pool treasury balance is 0. Could not perform any KRC20 payout.");
+      } else {        
+        amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance); 
+      }
       
       await transactionManager!.transferBalances();
 
@@ -121,7 +125,7 @@ cron.schedule(paymentCronSchedule, async () => {
         monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
         transferKRC20Tokens(rpc, 'NACHO', amount!, balances, poolBalance);
       } else {
-        monitoring.error("KRC20 swap could not be performed");
+        monitoring.error("Main: KRC20 swap could not be performed");
       }
     } catch (transactionError) {
       monitoring.error(`Main: Transaction manager error: ${transactionError}`);

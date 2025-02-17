@@ -143,7 +143,7 @@ export default class swapToKrc20 {
         let txHash = "";
         try {
             if (this == null) {
-                return;
+                return 0;
             }
             const { transactions } = await createTransactions({
                 entries: this.transactionManager.context,
