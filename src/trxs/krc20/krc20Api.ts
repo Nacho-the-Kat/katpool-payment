@@ -1,9 +1,21 @@
 import axios, { AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import Monitoring from '../../monitoring';
+import config from "../../../config/config.json";
 
-const krc20TokenAPI = "https://api.kasplex.org/v1/krc20/address/{address}/token/{ticker}"
-const NFTAPI = "https://mainnet.krc721.stream/api/v1/krc721/mainnet/address/{address}/{ticker}"
+let krc20TokenAPI = "https://api.kasplex.org/v1/krc20/address/{address}/token/{ticker}"
+if( config.network === "testnet-10" ) {
+    krc20TokenAPI = "https://tn10api.kasplex.org/v1"
+} else if( config.network === "testnet-11" ) {
+    krc20TokenAPI = "https://tn11api.kasplex.org/v1"
+}
+   
+let NFTAPI = "https://mainnet.krc721.stream/api/v1/krc721/mainnet/address/{address}/{ticker}"
+if( config.network === "testnet-10" ) {
+    NFTAPI = "https://testnet-10.krc721.stream/api/v1/krc721/testnet-10/address/{ticker}/{ticker}"
+} else if( config.network === "testnet-11" ) {
+    NFTAPI = "https://testnet-11.krc721.stream/api/v1/krc721/testnet-11/address/{ticker}/{ticker}"
+}
 
 const monitoring = new Monitoring();
 
