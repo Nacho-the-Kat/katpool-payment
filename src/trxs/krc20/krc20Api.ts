@@ -39,7 +39,7 @@ axiosRetry(axios, {
     }
 });
  
-export async function krc20Token(address: string, ticker = 'NACHO') {
+export async function krc20Token(address: string, ticker = config.defaultTicker) {
     try {
         const url = krc20TokenAPI
         .replace("{address}", address)
@@ -57,7 +57,7 @@ export async function krc20Token(address: string, ticker = 'NACHO') {
     }  
 }
 
-export async function nftAPI(address: string, ticker = 'NACHO') {
+export async function nftAPI(address: string, ticker = config.defaultTicker) {
     try {
         const url = NFTAPI
         .replace("{address}", address)

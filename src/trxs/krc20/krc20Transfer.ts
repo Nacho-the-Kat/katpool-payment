@@ -4,7 +4,7 @@ import Monitoring from "../../monitoring";
 import { DEBUG } from "../../index.ts";
 import trxManager from "../index.ts";
 
-let ticker = 'NACHO';
+let ticker = config.defaultTicker;
 let dest = '';
 let amount = '1';
 let rpc: RpcClient;

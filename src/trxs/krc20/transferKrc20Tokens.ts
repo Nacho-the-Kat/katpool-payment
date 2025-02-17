@@ -29,7 +29,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         
     Object.entries(payments).map(async ([address, amount]) => {
         // Check if the user is eligible for full fee rebate
-        const fullRebate = await checkFullFeeRebate(address, "NACHO");
+        const fullRebate = await checkFullFeeRebate(address, config.defaultTicker);
         let kasAmount = amount;
         if (fullRebate) {
             amount = amount * 3n;

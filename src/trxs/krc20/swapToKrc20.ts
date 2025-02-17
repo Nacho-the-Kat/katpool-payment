@@ -19,7 +19,7 @@ if( config.network === "testnet-10" ) {
 }
 
 const fromTicker = "KAS";
-const toTicker = "NACHO";
+const toTicker = config.defaultTicker;
 const Chain = "KAS";
 
 let customSlippage = "5"; // percentage format, ex: 5%
