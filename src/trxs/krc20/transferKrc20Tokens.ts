@@ -4,11 +4,12 @@ import Database from '../../database';
 import config from "../../../config/config.json";
 import { krc20Token, nftAPI } from "./krc20Api";
 import { parseUnits } from "ethers";
+import trxManager from "..";
 
 const fullRebateTokenThreshold = parseUnits("100", 14); // Minimum 100M (NACHO)
 const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 
-export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number, balances: any, poolBal: bigint, db: Database) {
+export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number, balances: any, poolBal: bigint, transactionManager: trxManager) {
     let payments: { [address: string]: bigint } = {};
     
     // Aggregate balances by wallet address
@@ -36,11 +37,11 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         // Set NACHO rebate amount in ratios.
         amount = (amount * BigInt(krc20Amount)) / poolBalance;
         
-        let res = await transferKRC20(pRPC, pTicker, address, amount.toString());
+        let res = await transferKRC20(pRPC, pTicker, address, amount.toString(), transactionManager!);
         if (res?.error != null) {
             // Check
         } else {
-            await recordPayment(address, amount, res?.revealHash, db);
+            await recordPayment(address, amount, res?.revealHash, transactionManager?.db!);
         }
     });
 }

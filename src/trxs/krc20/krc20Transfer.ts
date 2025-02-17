@@ -2,19 +2,19 @@ import { RpcClient, Encoding, Resolver, ScriptBuilder, Opcodes, PrivateKey, addr
 import config from "../../../config/config.json";
 import Monitoring from "../../monitoring";
 import { DEBUG } from "../../index.ts";
+import trxManager from "../index.ts";
 
 let ticker = 'NACHO';
 let dest = '';
 let amount = '1';
 let rpc: RpcClient;
 
-const privateKeyArg = process.env.TREASURY_PRIVATE_KEY || '';
 const network = config.network || 'mainnet';
 const priorityFeeValue = '1.5';
 const timeout = 120000; // 2 minutes timeout
 const monitoring = new Monitoring();
 
-export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: string, pAmount: string) {
+export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: string, pAmount: string, transactionManager: trxManager) {
   ticker = pTicker;
   dest = pDest;
   amount = pAmount;
@@ -22,17 +22,9 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
 
   let addedEventTrxId : any;
   let SubmittedtrxId: any;
-  if (!privateKeyArg || !dest) {
-    console.error("Please provide a private key using the --privKey flag and the destination with --dest.");
-    // process.exit(1);
-  }
-  monitoring.debug(`Main: Submitting private key`);
-  const privateKey = new PrivateKey(privateKeyArg);
-  monitoring.debug(`Main: Determining public key`);
-  const publicKey = privateKey.toPublicKey();
-  monitoring.debug(`Main: Determining wallet address`);
-  const address = publicKey.toAddress(network);
-  monitoring.log(`Address: ${address.toString()}`);
+  
+  const address = transactionManager.address;
+  const privateKey = transactionManager.privateKey;
   
   // New UTXO subscription setup (ADD this):
   monitoring.debug(`Subscribing to UTXO changes for address: ${address.toString()}`);
@@ -68,7 +60,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   
   monitoring.debug(`Main: Data to use for ScriptBuilder: ${JSON.stringify(data)}`);
   const script = new ScriptBuilder()
-  .addData(publicKey.toXOnlyPublicKey().toString())
+  .addData(privateKey.toPublicKey().toXOnlyPublicKey().toString())
   .addOp(Opcodes.OpCheckSig)
   .addOp(Opcodes.OpFalse)
   .addOp(Opcodes.OpIf)
