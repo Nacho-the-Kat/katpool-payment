@@ -98,6 +98,12 @@ export async function resetBalancesByWallet(address : string, balance: bigint, d
         const res = await client.query(`SELECT ${column} FROM miners_balance WHERE wallet = $1`, [[address]]);
         let minerBalance = res.rows[0] ? BigInt(res.rows[0].balance) : 0n;
         minerBalance -= balance;
+        
+        if (minerBalance < 0n) {
+            minerBalance = 0n;
+            console.log("transferKRC20Tokens: resetBalancesByWallet ~ res:", res)
+            console.error("transferKRC20Tokens: Negative value for minerBalance : ", address);        
+        }
 
         await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = ANY($2)`, [minerBalance, [address]]);
     } finally {
