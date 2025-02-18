@@ -121,13 +121,13 @@ cron.schedule(paymentCronSchedule, async () => {
       
       await transactionManager!.transferBalances(balances);
 
-      if (amount != 0) {
-        monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
-        await transferKRC20Tokens(rpc, config.defaultTicker, amount!, balances, poolBalance, transactionManager!);
-        monitoring.log(`Main: Running scheduled KRC20 balance transfer completed`);
-      } else {
-        monitoring.error("Main: KRC20 swap could not be performed");
-      }
+      // if (amount != 0) {
+      //   monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
+      //   await transferKRC20Tokens(rpc, config.defaultTicker, amount!, balances, poolBalance, transactionManager!);
+      //   monitoring.log(`Main: Running scheduled KRC20 balance transfer completed`);
+      // } else {
+      //   monitoring.error("Main: KRC20 swap could not be performed");
+      // }
     } catch (transactionError) {
       monitoring.error(`Main: Transaction manager error: ${transactionError}`);
     }
