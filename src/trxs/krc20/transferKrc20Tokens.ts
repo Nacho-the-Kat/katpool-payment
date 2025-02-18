@@ -37,7 +37,21 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         }
         
         // Set NACHO rebate amount in ratios.
-        amount = (amount * BigInt(krc20Amount)) / poolBalance;
+        if (!krc20Amount || isNaN(Number(krc20Amount))) {
+            throw new Error("Invalid krc20Amount value");
+        }
+        if (!poolBalance || isNaN(Number(poolBalance))) {
+            throw new Error("Invalid poolBalance value");
+        }
+        
+        const numerator = BigInt(amount) * BigInt(Math.floor(krc20Amount));
+        const denominator = BigInt(poolBalance);
+        
+        if (numerator % denominator !== BigInt(0)) {
+            amount = BigInt(Math.floor(Number(numerator) / Number(denominator))); // Use safe rounding
+        } else {
+            amount = numerator / denominator;
+        }
         
         let res = await transferKRC20(pRPC, pTicker, address, amount.toString(), transactionManager!);
         if (res?.error != null) {
@@ -84,6 +98,12 @@ export async function resetBalancesByWallet(address : string, balance: bigint, d
         const res = await client.query(`SELECT ${column} FROM miners_balance WHERE wallet = $1`, [[address]]);
         let minerBalance = res.rows[0] ? BigInt(res.rows[0].balance) : 0n;
         minerBalance -= balance;
+        
+        if (minerBalance < 0n) {
+            minerBalance = 0n;
+            console.log("transferKRC20Tokens: resetBalancesByWallet ~ res:", res)
+            console.error("transferKRC20Tokens: Negative value for minerBalance : ", address);        
+        }
 
         await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = ANY($2)`, [minerBalance, [address]]);
     } finally {

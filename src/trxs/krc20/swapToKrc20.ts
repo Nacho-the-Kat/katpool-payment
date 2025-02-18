@@ -18,6 +18,8 @@ if( config.network === "testnet-10" ) {
  KASPA_BASE_URL = "https://api-tn11.kaspa.org"
 }
 
+const chaingeUrl = 'https://api2.chainge.finance';
+
 const fromTicker = "KAS";
 const toTicker = config.defaultTicker;
 const Chain = "KAS";
@@ -44,10 +46,10 @@ export default class swapToKrc20 {
         }
         
         // quote 
-        const response = await fetch(`https://api2.chainge.finance/fun/quote?fromTicker=${quoteParams.fromTicker}&toTicker=${quoteParams.toTicker}&fromAmount=${quoteParams.fromAmount}`)
+        const response = await fetch(`${chaingeUrl}/fun/quote?fromTicker=${quoteParams.fromTicker}&toTicker=${quoteParams.toTicker}&fromAmount=${quoteParams.fromAmount}`)
         const quoteResult = await response.json()
         if (DEBUG) console.log("SwapToKrc20: fnGetQuote ~ quoteResult: ", quoteResult);
-        if(quoteResult.code !== 0) return {toAmountMinSwap, toAmountSwap};
+        if(quoteResult.code !== 0) return {toAmountMinSwap: "0", toAmountSwap: "0"};
         let { amountOut, serviceFee, gasFee, slippage } = quoteResult.data
         // slippage: 5%
         slippage = slippage.replace('%', '') // '5'
@@ -67,7 +69,7 @@ export default class swapToKrc20 {
         const miniAmountHr = BigNumber(receiveAmountHr).multipliedBy(BigNumber((1 - (tempSlippage * 0.01)))).toFixed(8, BigNumber.ROUND_DOWN)
         const miniAmount = parseUnits(miniAmountHr, 8).toString()
     
-        toAmountSwap = receiveAmountHr
+        toAmountSwap = receiveAmount.toString()
         if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountSwap: ${toAmountSwap}`)
         toAmountMinSwap = miniAmount;
         if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountMinSwap: ${toAmountMinSwap}`)
@@ -75,7 +77,7 @@ export default class swapToKrc20 {
         return {toAmountMinSwap, toAmountSwap};
     }
     
-    fnSubmitSwap = async (tradeHash) => {
+    fnSubmitSwap = async (tradeHash, toAmountMinSwap, toAmountSwap) => {
         const params = {
             fromTicker,
             fromAmount: fromAmount,
@@ -107,7 +109,7 @@ export default class swapToKrc20 {
         }
         if (DEBUG) console.log("Header: ", header);
 
-        const response = await fetch('https://api2.chainge.finance/fun/submitSwap', {
+        const response = await fetch(`${chaingeUrl}/fun/submitSwap`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -122,7 +124,7 @@ export default class swapToKrc20 {
     }
 
     fnGetMinterAddr = async () => {
-        const response = await fetch('https://api2.chainge.finance/fun/getVault?ticker=KAS')
+        const response = await fetch(`${chaingeUrl}/fun/getVault?ticker=KAS`)
         const result = await response.json()
         return result.data.vault
     }
@@ -134,6 +136,9 @@ export default class swapToKrc20 {
 
         // step 1: quote 
         const {toAmountMinSwap, toAmountSwap} = await this.fnGetQuote()
+        
+        // Return when we did not get quote.
+        if (toAmountMinSwap === '0' || toAmountSwap === '0') return 0;
         
         // step 2: get minter address
         const minterAddr = await this.fnGetMinterAddr()
@@ -170,7 +175,7 @@ export default class swapToKrc20 {
         this.transactionManager.monitoring.log(`SwapToKrc20: fnCore ~ txHash: ${txHash}`);
         const balanceBefore = await krc20Token(this.transactionManager.address, toTicker);
         let balanceAfter = balanceBefore;
-        let res = await this.fnSubmitSwap(txHash)
+        let res = await this.fnSubmitSwap(txHash, toAmountMinSwap, toAmountSwap)
 
         if (res.msg === 'success') {
             
@@ -180,7 +185,7 @@ export default class swapToKrc20 {
             let amount: number = 0;
             try {
                 finalStatus = await this.pollStatus(res.data.id);
-                this.transactionManager.monitoring.log(`Final Result: ${finalStatus}`);
+                this.transactionManager.monitoring.log(`Final Result: ${JSON.stringify(finalStatus)}`);
             } catch (error) {
                 this.transactionManager.monitoring.error(`❌ Operation failed:", ${error}`);
             }
@@ -214,8 +219,8 @@ export default class swapToKrc20 {
         const tick = krc20Data.tick.toUpperCase()
     
         const decimal = await this.getDecimalFromTick(tick)
-        const decimalValue = 10 ** decimal
-        const amount = Number(krc20Data.amt) / decimalValue
+        const amount = Number(krc20Data.amt);
+        this.transactionManager.monitoring.log(`swapToKrc20 ~ fetchKRC20SwapData ~ amount: ${amount}`);
         return amount;
     }
 
@@ -237,14 +242,14 @@ export default class swapToKrc20 {
                 attempts++;
     
                 try {
-                    const response = await fetch(`https://api2.chainge.finance/fun/checkSwap?id=${id}`);
+                    const response = await fetch(`${chaingeUrl}/fun/checkSwap?id=${id}`);
 
                     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     
                     const data = await response.json();
-                    this.transactionManager.monitoring.log(`Polling attempt ${attempts}: ${data}`);
+                    console.log(`Polling attempt ${attempts}: ${JSON.stringify(data)}`);
     
-                    if (data.status === "success") {
+                    if (data!.data!.status!.toString() === "Succeeded") {
                         this.transactionManager.monitoring.log("✅ Operation completed successfully!");
                         resolve(data);
                         return;
