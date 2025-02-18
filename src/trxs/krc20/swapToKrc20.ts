@@ -69,7 +69,7 @@ export default class swapToKrc20 {
         const miniAmountHr = BigNumber(receiveAmountHr).multipliedBy(BigNumber((1 - (tempSlippage * 0.01)))).toFixed(8, BigNumber.ROUND_DOWN)
         const miniAmount = parseUnits(miniAmountHr, 8).toString()
     
-        toAmountSwap = receiveAmountHr
+        toAmountSwap = receiveAmount.toString()
         if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountSwap: ${toAmountSwap}`)
         toAmountMinSwap = miniAmount;
         if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountMinSwap: ${toAmountMinSwap}`)
@@ -185,7 +185,7 @@ export default class swapToKrc20 {
             let amount: number = 0;
             try {
                 finalStatus = await this.pollStatus(res.data.id);
-                this.transactionManager.monitoring.log(`Final Result: ${finalStatus}`);
+                this.transactionManager.monitoring.log(`Final Result: ${JSON.stringify(finalStatus)}`);
             } catch (error) {
                 this.transactionManager.monitoring.error(`❌ Operation failed:", ${error}`);
             }
@@ -219,8 +219,8 @@ export default class swapToKrc20 {
         const tick = krc20Data.tick.toUpperCase()
     
         const decimal = await this.getDecimalFromTick(tick)
-        const decimalValue = 10 ** decimal
-        const amount = Number(krc20Data.amt) / decimalValue
+        const amount = Number(krc20Data.amt);
+        this.transactionManager.monitoring.log(`swapToKrc20 ~ fetchKRC20SwapData ~ amount: ${amount}`);
         return amount;
     }
 
@@ -247,9 +247,9 @@ export default class swapToKrc20 {
                     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     
                     const data = await response.json();
-                    this.transactionManager.monitoring.log(`Polling attempt ${attempts}: ${data}`);
+                    console.log(`Polling attempt ${attempts}: ${JSON.stringify(data)}`);
     
-                    if (data.status === "success") {
+                    if (data!.data!.status!.toString() === "Succeeded") {
                         this.transactionManager.monitoring.log("✅ Operation completed successfully!");
                         resolve(data);
                         return;
