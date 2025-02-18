@@ -47,7 +47,7 @@ export default class swapToKrc20 {
         const response = await fetch(`https://api2.chainge.finance/fun/quote?fromTicker=${quoteParams.fromTicker}&toTicker=${quoteParams.toTicker}&fromAmount=${quoteParams.fromAmount}`)
         const quoteResult = await response.json()
         if (DEBUG) console.log("SwapToKrc20: fnGetQuote ~ quoteResult: ", quoteResult);
-        if(quoteResult.code !== 0) return {toAmountMinSwap, toAmountSwap};
+        if(quoteResult.code !== 0) return {toAmountMinSwap: "0", toAmountSwap: "0"};
         let { amountOut, serviceFee, gasFee, slippage } = quoteResult.data
         // slippage: 5%
         slippage = slippage.replace('%', '') // '5'
@@ -75,7 +75,7 @@ export default class swapToKrc20 {
         return {toAmountMinSwap, toAmountSwap};
     }
     
-    fnSubmitSwap = async (tradeHash) => {
+    fnSubmitSwap = async (tradeHash, toAmountMinSwap, toAmountSwap) => {
         const params = {
             fromTicker,
             fromAmount: fromAmount,
@@ -135,6 +135,9 @@ export default class swapToKrc20 {
         // step 1: quote 
         const {toAmountMinSwap, toAmountSwap} = await this.fnGetQuote()
         
+        // Return when we did not get quote.
+        if (toAmountMinSwap === '0' || toAmountSwap === '0') return 0;
+        
         // step 2: get minter address
         const minterAddr = await this.fnGetMinterAddr()
 
@@ -170,7 +173,7 @@ export default class swapToKrc20 {
         this.transactionManager.monitoring.log(`SwapToKrc20: fnCore ~ txHash: ${txHash}`);
         const balanceBefore = await krc20Token(this.transactionManager.address, toTicker);
         let balanceAfter = balanceBefore;
-        let res = await this.fnSubmitSwap(txHash)
+        let res = await this.fnSubmitSwap(txHash, toAmountMinSwap, toAmountSwap)
 
         if (res.msg === 'success') {
             
