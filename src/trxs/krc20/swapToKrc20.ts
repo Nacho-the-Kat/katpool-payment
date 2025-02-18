@@ -18,6 +18,8 @@ if( config.network === "testnet-10" ) {
  KASPA_BASE_URL = "https://api-tn11.kaspa.org"
 }
 
+const chaingeUrl = 'https://api2.chainge.finance';
+
 const fromTicker = "KAS";
 const toTicker = config.defaultTicker;
 const Chain = "KAS";
@@ -44,7 +46,7 @@ export default class swapToKrc20 {
         }
         
         // quote 
-        const response = await fetch(`https://api2.chainge.finance/fun/quote?fromTicker=${quoteParams.fromTicker}&toTicker=${quoteParams.toTicker}&fromAmount=${quoteParams.fromAmount}`)
+        const response = await fetch(`${chaingeUrl}/fun/quote?fromTicker=${quoteParams.fromTicker}&toTicker=${quoteParams.toTicker}&fromAmount=${quoteParams.fromAmount}`)
         const quoteResult = await response.json()
         if (DEBUG) console.log("SwapToKrc20: fnGetQuote ~ quoteResult: ", quoteResult);
         if(quoteResult.code !== 0) return {toAmountMinSwap: "0", toAmountSwap: "0"};
@@ -107,7 +109,7 @@ export default class swapToKrc20 {
         }
         if (DEBUG) console.log("Header: ", header);
 
-        const response = await fetch('https://api2.chainge.finance/fun/submitSwap', {
+        const response = await fetch(`${chaingeUrl}/fun/submitSwap`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -122,7 +124,7 @@ export default class swapToKrc20 {
     }
 
     fnGetMinterAddr = async () => {
-        const response = await fetch('https://api2.chainge.finance/fun/getVault?ticker=KAS')
+        const response = await fetch(`${chaingeUrl}/fun/getVault?ticker=KAS`)
         const result = await response.json()
         return result.data.vault
     }
@@ -240,7 +242,7 @@ export default class swapToKrc20 {
                 attempts++;
     
                 try {
-                    const response = await fetch(`https://api2.chainge.finance/fun/checkSwap?id=${id}`);
+                    const response = await fetch(`${chaingeUrl}/fun/checkSwap?id=${id}`);
 
                     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     
