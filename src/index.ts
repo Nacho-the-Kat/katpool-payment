@@ -125,11 +125,15 @@ cron.schedule(paymentCronSchedule, async () => {
         amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance); 
       }
 
-      // If for some reason the KRC20 transfer was not performed or failed in previous cycle. Add previous tokens to current transfer amount.
       let balanceAfter = await krc20Token(transactionManager!.address, config.defaultTicker);
       const maxAllowedBalance = amount * 115 / 100; // amount + 15%
-
-      if (balanceAfter > maxAllowedBalance) {
+      
+      /*
+        Failure cases:
+          1. If for some reason the KRC20 transfer was not performed or failed in previous cycle. Use all tokens as transfer amount.
+          2. If swap fails and we have excess KRC20 tokens.
+      */
+      if (balanceAfter > maxAllowedBalance || (amount == 0 && balanceAfter >= parseInt("3600", 8))) {
         amount = balanceAfter; // No need to deduct rebate buffer here. It will be done in below transfer call.
       }
       
