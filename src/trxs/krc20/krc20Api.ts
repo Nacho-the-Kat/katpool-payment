@@ -18,7 +18,7 @@ if( config.network === "testnet-10" ) {
 } else if( config.network === "testnet-11" ) {
     KRC721_STREAM_URL = "https://testnet-11.krc721.stream"
 }
-let NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${config.network}}/address/{address}/{ticker`;
+let NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${config.network}/address/{address}/{ticker}`;
 
 const monitoring = new Monitoring();
 
@@ -53,7 +53,7 @@ export async function krc20Token(address: string, ticker = config.defaultTicker)
             return 0;
         }
     } catch (error) {
-        monitoring.error(`Fetching ${ticker} tokens for address: ${address}`);
+        monitoring.error(`Fetching ${ticker} tokens for address: ${address} : ${error}`);
     }  
 }
 
@@ -70,9 +70,7 @@ export async function nftAPI(address: string, ticker = config.defaultTicker) {
         } else {
             return 0;
         }
-    
-        return response.data;
     } catch (error) {
-        monitoring.error(`Fetching NFT holding for address: ${address}`);
+        monitoring.error(`Fetching NFT holding for address: ${address} : ${error}`);
     }  
 }

@@ -58,7 +58,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   const gasFee = 0.3
   const data = { "p": "krc-20", "op": "transfer", "tick": ticker, "amt": amount.toString(), "to": dest  };
   
-  monitoring.debug(`Main: Data to use for ScriptBuilder: ${JSON.stringify(data)}`);
+  monitoring.debug(`transferKRC20: Data to use for ScriptBuilder: ${JSON.stringify(data)}`);
   const script = new ScriptBuilder()
   .addData(privateKey.toPublicKey().toXOnlyPublicKey().toString())
   .addOp(Opcodes.OpCheckSig)
@@ -92,7 +92,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     });
     for (const transaction of transactions) {
       transaction.sign([privateKey]);
-      monitoring.debug(`Main: Transaction signed with ID: ${transaction.id}`);
+      monitoring.debug(`transferKRC20: Transaction signed with ID: ${transaction.id}`);
       const hash = await transaction.submit(rpc);
       monitoring.log(`submitted P2SH commit sequence transaction on: ${hash}`);
       SubmittedtrxId = hash;
