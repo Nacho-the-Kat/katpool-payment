@@ -16,6 +16,7 @@ import * as cronParser from 'cron-parser';
 import { cronValidation } from "./cron-schedule";
 import swapToKrc20 from "./trxs/krc20/swapToKrc20";
 import { transferKRC20Tokens } from "./trxs/krc20/transferKrc20Tokens";
+import { krc20Token } from "./trxs/krc20/krc20Api";
 
 // Debug mode setting
 export let DEBUG = 0;
@@ -113,21 +114,37 @@ cron.schedule(paymentCronSchedule, async () => {
       } else {
         transactionManager!.monitoring.error("Could not fetch Pool balance from Database.")
       }
+
+      // KAS Payout
+      await transactionManager!.transferBalances(balances);
+
+      // Swap KASPA to KRC20
       if (poolBalance == 0n){
         monitoring.error("Main: Pool treasury balance is 0. Could not perform any KRC20 payout.");
       } else {        
         amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance); 
       }
-      
-      await transactionManager!.transferBalances(balances);
 
-      // if (amount != 0) {
-      //   monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
-      //   await transferKRC20Tokens(rpc, config.defaultTicker, amount!, balances, poolBalance, transactionManager!);
-      //   monitoring.log(`Main: Running scheduled KRC20 balance transfer completed`);
-      // } else {
-      //   monitoring.error("Main: KRC20 swap could not be performed");
-      // }
+      let balanceAfter = await krc20Token(transactionManager!.address, config.defaultTicker);
+      const maxAllowedBalance = amount * 115 / 100; // amount + 15%
+      
+      /*
+        Failure cases:
+          1. If for some reason the KRC20 transfer was not performed or failed in previous cycle. Use all tokens as transfer amount.
+          2. If swap fails and we have excess KRC20 tokens.
+      */
+      if (balanceAfter > maxAllowedBalance || (amount == 0 && balanceAfter >= parseInt("3600", 8))) {
+        amount = balanceAfter; // No need to deduct rebate buffer here. It will be done in below transfer call.
+      }
+      
+      // Transfer KRC20
+      if (amount != 0) {
+        monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
+        await transferKRC20Tokens(rpc, config.defaultTicker, amount!, balances, poolBalance, transactionManager!);
+        monitoring.log(`Main: Running scheduled KRC20 balance transfer completed`);
+      } else {
+        monitoring.error("Main: KRC20 swap could not be performed");
+      }
     } catch (transactionError) {
       monitoring.error(`Main: Transaction manager error: ${transactionError}`);
     }
