@@ -5,9 +5,12 @@ import config from "../../../config/config.json";
 import { krc20Token, nftAPI } from "./krc20Api";
 import { parseUnits } from "ethers";
 import trxManager from "..";
+import Monitoring from "../../monitoring";
 
 const fullRebateTokenThreshold = parseUnits("100", 14); // Minimum 100M (NACHO)
 const fullRebateNFTThreshold = 1; // Minimum 1 NFT
+
+const monitoring = new Monitoring();
 
 export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number, balances: any, poolBal: bigint, transactionManager: trxManager) {
     let payments: { [address: string]: bigint } = {};
@@ -27,7 +30,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         krc20Amount = krc20Amount - NACHORebateBuffer;
     }
         
-    Object.entries(payments).map(async ([address, amount]) => {
+    for (let [address, amount] of Object.entries(payments)) {
         // Check if the user is eligible for full fee rebate
         const fullRebate = await checkFullFeeRebate(address, config.defaultTicker);
         let kasAmount = amount;
@@ -53,13 +56,20 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
             amount = numerator / denominator;
         }
         
-        let res = await transferKRC20(pRPC, pTicker, address, amount.toString(), transactionManager!);
-        if (res?.error != null) {
-            // Check
-        } else {
-            await recordPayment(address, amount, res?.revealHash, transactionManager?.db!, kasAmount);
+        try {
+            let res = await transferKRC20(pRPC, pTicker, address, amount.toString(), transactionManager!);
+            if (res?.error != null) {
+                monitoring.error(`transferKRC20Tokens: Error from KRC20 transfer : ${res?.error!}`);
+            } else {
+                await recordPayment(address, amount, res?.revealHash, transactionManager?.db!, kasAmount);
+            }
+        } catch(error) {
+            monitoring.error(`transferKRC20Tokens: Transfering ${amount.toString()} ${pTicker} to ${address} : ${error}`);
         }
-    });
+
+        // ⏳ Add a small delay before sending the next transaction
+        await new Promise(resolve => setTimeout(resolve, 3000)); // 3s delay
+    }
 }
 
 async function checkFullFeeRebate(address: string, ticker: string) {    
