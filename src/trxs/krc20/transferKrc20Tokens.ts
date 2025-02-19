@@ -39,6 +39,9 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
             kasAmount = amount;
         }
         
+        // Chances are KRC20 amount is not rounded.
+        krc20Amount = Math.floor(krc20Amount);
+
         // Set NACHO rebate amount in ratios.
         if (!krc20Amount || isNaN(Number(krc20Amount))) {
             throw new Error("Invalid krc20Amount value");
