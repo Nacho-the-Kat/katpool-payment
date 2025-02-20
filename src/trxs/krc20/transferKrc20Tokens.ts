@@ -22,6 +22,13 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         }
     }
 
+    const thresholdAmount = BigInt(config.nachoThresholdAmount);
+    
+    // Filter payments that meet the threshold
+    payments = Object.fromEntries(
+        Object.entries(payments).filter(([_, amount]) => amount >= thresholdAmount)
+    );
+    
     const NACHORebateBuffer = Number(config.nachoRebateBuffer);
 
     let poolBalance = poolBal;
