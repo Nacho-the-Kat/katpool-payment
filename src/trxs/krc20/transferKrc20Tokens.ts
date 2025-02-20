@@ -42,6 +42,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         const fullRebate = await checkFullFeeRebate(address, config.defaultTicker);
         let kasAmount = amount;
         if (fullRebate) {
+            console.debug(`transferKRC20Tokens: Full rebate to address: ${address}`);
             amount = amount * 3n;
             kasAmount = amount;
         }
@@ -71,7 +72,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
             if (res?.error != null) {
                 monitoring.error(`transferKRC20Tokens: Error from KRC20 transfer : ${res?.error!}`);
             } else {
-                await recordPayment(address, amount, res?.revealHash, transactionManager?.db!, kasAmount);
+                await recordPayment(address, amount, res?.revealHash, transactionManager?.db!, kasAmount, fullRebate);
             }
         } catch(error) {
             monitoring.error(`transferKRC20Tokens: Transfering ${amount.toString()} ${pTicker} to ${address} : ${error}`);
@@ -94,7 +95,7 @@ async function checkFullFeeRebate(address: string, ticker: string) {
     return false;
 }
 
-async function recordPayment(address: string, amount: bigint, transactionHash: string, db: Database, kasAmount: bigint) {
+async function recordPayment(address: string, amount: bigint, transactionHash: string, db: Database, kasAmount: bigint, fullRebate: boolean) {
     const client = await db.getClient();
 
     let values: string[] = [];
@@ -105,13 +106,13 @@ async function recordPayment(address: string, amount: bigint, transactionHash: s
     queryParams.push([address]);
     try {
       await client.query(query, queryParams);
-      await resetBalancesByWallet(address, kasAmount, db, 'nacho_rebate_kas');
+      await resetBalancesByWallet(address, kasAmount, db, 'nacho_rebate_kas', fullRebate);
     } finally {
       client.release();
     }
 }
 
-export async function resetBalancesByWallet(address : string, balance: bigint, db: Database, column: string) {
+export async function resetBalancesByWallet(address : string, balance: bigint, db: Database, column: string, fullRebate: boolean) {
     const client = await db.getClient();
     try {
         // Update miners_balance table
@@ -121,8 +122,9 @@ export async function resetBalancesByWallet(address : string, balance: bigint, d
         
         if (minerBalance < 0n) {
             minerBalance = 0n;
-            console.log("transferKRC20Tokens: resetBalancesByWallet ~ res:", res)
-            console.error("transferKRC20Tokens: Negative value for minerBalance : ", address);        
+            if (!fullRebate) {
+                console.error("transferKRC20Tokens: Negative value for minerBalance : ", address);
+            }
         }
 
         await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = ANY($2)`, [minerBalance, [address]]);
