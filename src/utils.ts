@@ -1,7 +1,10 @@
 import axios from 'axios';
 import config from '../config/config.json';
+import Monitoring from './monitoring';
 
 const baseUrl = config.network.includes('testnet') ? 'https://api-tn10.kaspa.org' : 'https://api.kaspa.org';
+
+const monitoring = new Monitoring();
 
 async function getDaaScoreFromBlockId(blockHash: string) {
   try {
@@ -14,7 +17,7 @@ async function getDaaScoreFromBlockId(blockHash: string) {
       return undefined
     }
   } catch (err) {
-    console.error('Error while getting daaScore from block:', err)
+    monitoring.error(`utils: while getting daaScore from block: ${err}`);
     return undefined
   }
 }
@@ -29,7 +32,7 @@ export async function getDaaScoreFromTx(tx: string) {
       return daaScore
     }
   } catch (err) {
-    console.error('Error while getting daaScore from tx:', err)
+    monitoring.error(`utils: while getting daaScore from tx: ${err}`);
     return undefined
   }
 }
@@ -43,6 +46,6 @@ export async function getKaspaUSDPrice() {
       return usdPrice
     }
   } catch (err) {
-    console.error('Error while getting usd price of kaspa:', err)
+    monitoring.error(`utils: While getting usd price of KASPA: ${err}`);
   }
 }

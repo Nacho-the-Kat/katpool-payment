@@ -42,7 +42,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         const fullRebate = await checkFullFeeRebate(address, config.defaultTicker);
         let kasAmount = amount;
         if (fullRebate) {
-            console.debug(`transferKRC20Tokens: Full rebate to address: ${address}`);
+            monitoring.debug(`transferKRC20Tokens: Full rebate to address: ${address}`);
             amount = amount * 3n;
             kasAmount = amount;
         }
@@ -123,7 +123,7 @@ export async function resetBalancesByWallet(address : string, balance: bigint, d
         if (minerBalance < 0n) {
             minerBalance = 0n;
             if (!fullRebate) {
-                console.error("transferKRC20Tokens: Negative value for minerBalance : ", address);
+                monitoring.error("transferKRC20Tokens: Negative value for minerBalance : ", address);
             }
         }
 
