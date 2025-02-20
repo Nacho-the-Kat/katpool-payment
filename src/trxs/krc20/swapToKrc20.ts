@@ -48,7 +48,7 @@ export default class swapToKrc20 {
         // quote 
         const response = await fetch(`${chaingeUrl}/fun/quote?fromTicker=${quoteParams.fromTicker}&toTicker=${quoteParams.toTicker}&fromAmount=${quoteParams.fromAmount}`)
         const quoteResult = await response.json()
-        if (DEBUG) console.log("SwapToKrc20: fnGetQuote ~ quoteResult: ", quoteResult);
+        if (DEBUG) this.transactionManager.monitoring.log(`SwapToKrc20: fnGetQuote ~ quoteResult: ${JSON.stringify(quoteResult)}`);
         if(quoteResult.code !== 0) return {toAmountMinSwap: "0", toAmountSwap: "0"};
         let { amountOut, serviceFee, gasFee, slippage } = quoteResult.data
         // slippage: 5%
@@ -107,7 +107,7 @@ export default class swapToKrc20 {
             Chain,
             Signature: signature
         }
-        if (DEBUG) console.log("Header: ", header);
+        if (DEBUG) this.transactionManager.monitoring.log(`Header: ${JSON.stringify(header)}`);
 
         const response = await fetch(`${chaingeUrl}/fun/submitSwap`, {
             method: "POST",
@@ -119,7 +119,7 @@ export default class swapToKrc20 {
         })
 
         const result = await response?.json();
-        console.log("Result : ", result);
+        this.transactionManager.monitoring.log(`Result : ${JSON.stringify(result)}`);
         return result
     }
 
@@ -196,7 +196,7 @@ export default class swapToKrc20 {
             if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap))
                 amount = await this.fetchKRC20SwapData(txId!);
 
-            await resetBalancesByWallet('pool', BigInt(fromAmount), this.transactionManager.db, 'balance');
+            await resetBalancesByWallet('pool', BigInt(fromAmount), this.transactionManager.db, 'balance', false);
             return amount;
         } else {
             return 0;
@@ -247,7 +247,7 @@ export default class swapToKrc20 {
                     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     
                     const data = await response.json();
-                    console.log(`Polling attempt ${attempts}: ${JSON.stringify(data)}`);
+                    this.transactionManager.monitoring.log(`Polling attempt ${attempts}: ${JSON.stringify(data)}`);
     
                     if (data!.data!.status!.toString() === "Succeeded") {
                         this.transactionManager.monitoring.log("✅ Operation completed successfully!");
@@ -264,7 +264,7 @@ export default class swapToKrc20 {
     
                     setTimeout(checkStatus, interval);
                 } catch (error) {
-                    console.error("Error polling API:", error);
+                    this.transactionManager.monitoring.error(`Error polling API:", ${error}`);
                     reject(error);
                 }
             };
