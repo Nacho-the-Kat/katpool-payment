@@ -58,7 +58,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     const addedEntry = event.data.added.find((entry: any) => 
       entry.address.payload === address.toString().split(':')[1]
     );    
-    if (removedEntry) {
+    if (removedEntry && addedEntry) {
       // Use custom replacer function in JSON.stringify to handle BigInt
       monitoring.debug(`Added UTXO found for address: ${address.toString()} with UTXO: ${JSON.stringify(addedEntry, (key, value) =>
         typeof value === 'bigint' ? value.toString() + 'n' : value)}`);        
@@ -104,10 +104,12 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       throw new Error('No suitable UTXO found (requires at least 1 KAS)');
     }
 
-    const utxoAmount = BigInt(selectedUtxo.entry.amount);
+    let utxoAmount = BigInt(selectedUtxo.entry.amount);
     monitoring.debug(`Selected UTXO with amount: ${utxoAmount.toString()} sompi`);
 
     // First transaction: Send the UTXO to P2SH address
+    if (entries.length == 1)
+      utxoAmount = utxoAmount - (3n * kaspaToSompi(FIXED_FEE)!);
     const { transactions } = await createTransactions({
       priorityEntries: [selectedUtxo],
       entries: entries.filter(e => e !== selectedUtxo),
