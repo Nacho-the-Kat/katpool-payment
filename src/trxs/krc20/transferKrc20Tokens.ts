@@ -123,7 +123,7 @@ export async function resetBalancesByWallet(address : string, balance: bigint, d
         if (minerBalance < 0n) {
             minerBalance = 0n;
             if (!fullRebate) {
-                monitoring.error("transferKRC20Tokens: Negative value for minerBalance : ", address);
+                monitoring.error(`transferKRC20Tokens: Negative value for minerBalance: ${address}`);
             }
         }
 

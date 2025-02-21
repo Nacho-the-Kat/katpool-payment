@@ -39,7 +39,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     const addedEntry = event.data.added.find((entry: any) => 
       entry.address.payload === address.toString().split(':')[1]
     );    
-    if (removedEntry) {
+    if (removedEntry && addedEntry) {
       // Use custom replacer function in JSON.stringify to handle BigInt
       monitoring.debug(`Added UTXO found for address: ${address.toString()} with UTXO: ${JSON.stringify(addedEntry, (key, value) =>
         typeof value === 'bigint' ? value.toString() + 'n' : value)}`);        
