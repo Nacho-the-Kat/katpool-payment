@@ -11,6 +11,7 @@ let rpc: RpcClient;
 
 const network = config.network || 'mainnet';
 const FIXED_FEE = '0.0001'; // Fixed minimal fee
+const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 const timeout = 120000; // 2 minutes timeout
 const monitoring = new Monitoring();
 
@@ -109,7 +110,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
 
     // First transaction: Send the UTXO to P2SH address
     if (entries.length == 1)
-      utxoAmount = utxoAmount - (3n * kaspaToSompi(FIXED_FEE)!);
+      utxoAmount = utxoAmount - (3n * BigInt(feeInSompi)!);
     const { transactions } = await createTransactions({
       priorityEntries: [selectedUtxo],
       entries: entries.filter(e => e !== selectedUtxo),
@@ -118,7 +119,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
         amount: utxoAmount // Send the entire UTXO amount
       }],
       changeAddress: address.toString(),
-      priorityFee: kaspaToSompi(FIXED_FEE)!,
+      priorityFee: feeInSompi,
       networkId: network
     });
 
@@ -156,7 +157,6 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
 
     // Second transaction: Return everything except the fixed fee
     const revealUtxoAmount = BigInt(revealUTXOs.entries[0].entry.amount);
-    const feeInSompi = kaspaToSompi(FIXED_FEE)!;
     const returnAmount = revealUtxoAmount - BigInt(feeInSompi);
 
     const { transactions } = await createTransactions({
@@ -167,7 +167,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
         amount: returnAmount // Return everything except the fixed fee
       }],
       changeAddress: address.toString(),
-      priorityFee: kaspaToSompi(FIXED_FEE)!,
+      priorityFee: feeInSompi,
       networkId: network
     });
   
