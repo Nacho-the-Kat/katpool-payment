@@ -10,9 +10,29 @@ let amount = '1';
 let rpc: RpcClient;
 
 const network = config.network || 'mainnet';
-const priorityFeeValue = '1.5';
+const FIXED_FEE = '0.0001'; // Fixed minimal fee
+const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 const timeout = 120000; // 2 minutes timeout
 const monitoring = new Monitoring();
+
+// UTXO selection thresholds in sompi (1 KAS = 100_000_000 sompi)
+const PREFERRED_MIN_UTXO = 5_000_000_000n; // 5 KAS
+const ABSOLUTE_MIN_UTXO = 1_000_000_000n;  // 1 KAS
+
+// Helper function to find suitable UTXO
+function findSuitableUtxo(entries: any[]): any {
+  if (!entries.length) return null;
+  
+  // First try to find a UTXO ≥ 5 KAS
+  let utxo = entries.find(entry => BigInt(entry.entry.amount) >= PREFERRED_MIN_UTXO);
+  
+  // If not found, try to find a UTXO ≥ 1 KAS
+  if (!utxo) {
+    utxo = entries.find(entry => BigInt(entry.entry.amount) >= ABSOLUTE_MIN_UTXO);
+  }
+  
+  return utxo;
+}
 
 export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: string, pAmount: string, transactionManager: trxManager) {
   ticker = pTicker;
@@ -39,7 +59,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     const addedEntry = event.data.added.find((entry: any) => 
       entry.address.payload === address.toString().split(':')[1]
     );    
-    if (removedEntry) {
+    if (removedEntry && addedEntry) {
       // Use custom replacer function in JSON.stringify to handle BigInt
       monitoring.debug(`Added UTXO found for address: ${address.toString()} with UTXO: ${JSON.stringify(addedEntry, (key, value) =>
         typeof value === 'bigint' ? value.toString() + 'n' : value)}`);        
@@ -55,19 +75,18 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     }
   });
 
-  const gasFee = 0.3
   const data = { "p": "krc-20", "op": "transfer", "tick": ticker, "amt": amount.toString(), "to": dest  };
   
   monitoring.debug(`transferKRC20: Data to use for ScriptBuilder: ${JSON.stringify(data)}`);
   const script = new ScriptBuilder()
-  .addData(privateKey.toPublicKey().toXOnlyPublicKey().toString())
-  .addOp(Opcodes.OpCheckSig)
-  .addOp(Opcodes.OpFalse)
-  .addOp(Opcodes.OpIf)
-  .addData(Buffer.from("kasplex"))
-  .addI64(0n)
-  .addData(Buffer.from(JSON.stringify(data, null, 0)))
-  .addOp(Opcodes.OpEndIf);
+    .addData(privateKey.toPublicKey().toXOnlyPublicKey().toString())
+    .addOp(Opcodes.OpCheckSig)
+    .addOp(Opcodes.OpFalse)
+    .addOp(Opcodes.OpIf)
+    .addData(Buffer.from("kasplex"))
+    .addI64(0n)
+    .addData(Buffer.from(JSON.stringify(data, null, 0)))
+    .addOp(Opcodes.OpEndIf);
   
   const P2SHAddress = addressFromScriptPublicKey(script.createPayToScriptHashScript(), network)!;
   let eventReceived = false;
@@ -79,17 +98,31 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
 
   try {
     const { entries } = await rpc.getUtxosByAddresses({ addresses: [address.toString()] });
+    
+    // Find a suitable UTXO
+    const selectedUtxo = findSuitableUtxo(entries);
+    if (!selectedUtxo) {
+      throw new Error('No suitable UTXO found (requires at least 1 KAS)');
+    }
+
+    let utxoAmount = BigInt(selectedUtxo.entry.amount);
+    monitoring.debug(`Selected UTXO with amount: ${utxoAmount.toString()} sompi`);
+
+    // First transaction: Send the UTXO to P2SH address
+    if (entries.length == 1)
+      utxoAmount = utxoAmount - (3n * BigInt(feeInSompi)!);
     const { transactions } = await createTransactions({
-      priorityEntries: [],
-      entries,
+      priorityEntries: [selectedUtxo],
+      entries: entries.filter(e => e !== selectedUtxo),
       outputs: [{
-      address: P2SHAddress.toString(),
-      amount: kaspaToSompi("0.3")!
+        address: P2SHAddress.toString(),
+        amount: utxoAmount // Send the entire UTXO amount
       }],
       changeAddress: address.toString(),
-      priorityFee: kaspaToSompi(priorityFeeValue.toString())!,
+      priorityFee: feeInSompi,
       networkId: network
     });
+
     for (const transaction of transactions) {
       transaction.sign([privateKey]);
       monitoring.debug(`transferKRC20: Transaction signed with ID: ${transaction.id}`);
@@ -121,12 +154,20 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     monitoring.debug(`KRC20Transfer: creating revealUTXOs from P2SHAddress`);
     const revealUTXOs = await rpc.getUtxosByAddresses({ addresses: [P2SHAddress.toString()] });
     monitoring.debug(`KRC20Transfer: Creating Transaction with revealUTX0s entries: ${revealUTXOs.entries[0]}`);
+
+    // Second transaction: Return everything except the fixed fee
+    const revealUtxoAmount = BigInt(revealUTXOs.entries[0].entry.amount);
+    const returnAmount = revealUtxoAmount - BigInt(feeInSompi);
+
     const { transactions } = await createTransactions({
       priorityEntries: [revealUTXOs.entries[0]],
       entries: entries,
-      outputs: [],
+      outputs: [{
+        address: address.toString(), // Return to sender
+        amount: returnAmount // Return everything except the fixed fee
+      }],
       changeAddress: address.toString(),
-      priorityFee: kaspaToSompi(gasFee.toString())!,
+      priorityFee: feeInSompi,
       networkId: network
     });
   
