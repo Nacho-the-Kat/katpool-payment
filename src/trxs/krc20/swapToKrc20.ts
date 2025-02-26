@@ -174,11 +174,10 @@ export default class swapToKrc20 {
 
         // step 4: submitOrder
         this.transactionManager.monitoring.log(`SwapToKrc20: fnCore ~ txHash: ${txHash}`);
-        const balanceBefore = await krc20Token(this.transactionManager.address, toTicker);
-        if (balanceBefore === -1) {
-            this.transactionManager.monitoring.error("Network/system failure. Retry later.");
-        } else if (balanceBefore === null) {
-            this.transactionManager.monitoring.error("API failure. Could not retrieve token balance.");
+        const result = await krc20Token(this.transactionManager.address, toTicker);
+        const balanceBefore = result.amount;
+        if (result.error != '') {
+            this.transactionManager.monitoring.error(`${result.error}`);
         } else {
             this.transactionManager.monitoring.log(`Treasury wallet ${this.transactionManager?.address} has ${balanceBefore} ${CONFIG.defaultTicker} tokens.`);
         }
@@ -200,11 +199,10 @@ export default class swapToKrc20 {
             }
             if (finalStatus?.msg === 'success') {
                 txId = finalStatus?.data?.hash!;
-                balanceAfter = await krc20Token(this.transactionManager.address, toTicker);
-                if (balanceAfter === -1) {
-                    this.transactionManager.monitoring.error("Network/system failure. Retry later.");
-                } else if (balanceAfter === null) {
-                    this.transactionManager.monitoring.error("API failure. Could not retrieve token balance.");
+                const res = await krc20Token(this.transactionManager.address, toTicker);
+                balanceAfter = res.amount;
+                if (result.error != '') {
+                    this.transactionManager.monitoring.error(`${res.error}`);
                 } else {
                     this.transactionManager.monitoring.log(`Treasury wallet ${this.transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
                 }            

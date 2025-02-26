@@ -164,11 +164,10 @@ cron.schedule(paymentCronSchedule, async () => {
 
       let balanceAfter = -1;
       try {
-        balanceAfter = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
-      if (balanceAfter === -1) {
-        monitoring.error("Network/system failure. Retry later.");
-      } else if (balanceAfter === null) {
-        monitoring.error("API failure. Could not retrieve token balance.");
+        const res = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
+        balanceAfter = res.amount;
+      if (res.error != '') {
+        monitoring.error(`${res.error}`);
       } else {
         monitoring.log(`Treasury wallet ${transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
       }
