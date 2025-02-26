@@ -37,7 +37,7 @@ if (!treasuryPrivateKey) {
 if (DEBUG) monitoring.debug(`Main: Obtained treasury private key`);
 
 if (!CONFIG.network) {
-  throw new Error('No network has been set in CONFIG.json');
+  throw new Error('No network has been set in config.json');
 }
 if (DEBUG) monitoring.debug(`Main: Network Id: ${CONFIG.network}`);
 
@@ -144,7 +144,7 @@ cron.schedule(paymentCronSchedule, async () => {
       } else if (balanceAfter === null) {
         monitoring.error("API failure. Could not retrieve token balance.");
       } else {
-        monitoring.log(`Treasury wallet has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
+        monitoring.log(`Treasury wallet ${transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
       }
       const maxAllowedBalance = amount * 115 / 100; // amount + 15%
       

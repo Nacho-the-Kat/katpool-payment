@@ -179,7 +179,7 @@ export default class swapToKrc20 {
         } else if (balanceBefore === null) {
             this.transactionManager.monitoring.error("API failure. Could not retrieve token balance.");
         } else {
-            this.transactionManager.monitoring.log(`Treasury wallet has ${balanceBefore} ${CONFIG.defaultTicker} tokens.`);
+            this.transactionManager.monitoring.log(`Treasury wallet ${this.transactionManager?.address} has ${balanceBefore} ${CONFIG.defaultTicker} tokens.`);
         }
 
         let balanceAfter = balanceBefore;
@@ -205,7 +205,7 @@ export default class swapToKrc20 {
                 } else if (balanceAfter === null) {
                     this.transactionManager.monitoring.error("API failure. Could not retrieve token balance.");
                 } else {
-                    this.transactionManager.monitoring.log(`Treasury wallet has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
+                    this.transactionManager.monitoring.log(`Treasury wallet ${this.transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
                 }            
             }
             if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap))
