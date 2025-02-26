@@ -1,24 +1,24 @@
 import axios, { AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import Monitoring from '../../monitoring';
-import config from "../../../config/config.json";
+import CONFIG from "../../../config/constants";
 
 export let KASPLEX_URL = 'https://api.kasplex.org'
-if( config.network === "testnet-10" ) {
+if( CONFIG.network === "testnet-10" ) {
     KASPLEX_URL = "https://tn10api.kasplex.org"
-} else if( config.network === "testnet-11" ) {
+} else if( CONFIG.network === "testnet-11" ) {
     KASPLEX_URL = "https://tn11api.kasplex.org"
 }
 
 let krc20TokenAPI = `${KASPLEX_URL}/v1/krc20/address/{address}/token/{ticker}`;
 
 let KRC721_STREAM_URL = 'https://mainnet.krc721.stream'
-if( config.network === "testnet-10" ) {
+if( CONFIG.network === "testnet-10" ) {
     KRC721_STREAM_URL = "https://testnet-10.krc721.stream"
-} else if( config.network === "testnet-11" ) {
+} else if( CONFIG.network === "testnet-11" ) {
     KRC721_STREAM_URL = "https://testnet-11.krc721.stream"
 }
-let NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${config.network}/address/{address}/{ticker}`;
+let NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${CONFIG.network}/address/{address}/{ticker}`;
 
 const monitoring = new Monitoring();
 
@@ -39,7 +39,7 @@ axiosRetry(axios, {
     }
 });
  
-export async function krc20Token(address: string, ticker = config.defaultTicker) {
+export async function krc20Token(address: string, ticker = CONFIG.defaultTicker) {
     try {
         const url = krc20TokenAPI
         .replace("{address}", encodeURIComponent(address))
@@ -56,7 +56,7 @@ export async function krc20Token(address: string, ticker = config.defaultTicker)
     }  
 }
 
-export async function nftAPI(address: string, ticker = config.defaultTicker) {
+export async function nftAPI(address: string, ticker = CONFIG.defaultTicker) {
     try {
         const url = NFTAPI
         .replace("{address}", encodeURIComponent(address))

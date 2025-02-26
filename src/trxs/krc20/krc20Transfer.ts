@@ -1,15 +1,15 @@
 import { RpcClient, Encoding, Resolver, ScriptBuilder, Opcodes, PrivateKey, addressFromScriptPublicKey, createTransactions, kaspaToSompi } from "../../../wasm/kaspa";
-import config from "../../../config/config.json";
+import CONFIG from "../../../config/constants";
 import Monitoring from "../../monitoring";
 import { DEBUG } from "../../index.ts";
 import trxManager from "../index.ts";
 
-let ticker = config.defaultTicker;
+let ticker = CONFIG.defaultTicker;
 let dest = '';
 let amount = '1';
 let rpc: RpcClient;
 
-const network = config.network || 'mainnet';
+const network = CONFIG.network || 'mainnet';
 const FIXED_FEE = '0.0001'; // Fixed minimal fee
 const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 const timeout = 120000; // 2 minutes timeout
