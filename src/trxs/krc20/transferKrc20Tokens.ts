@@ -1,7 +1,7 @@
 import { RpcClient } from "../../../wasm/kaspa/kaspa";
 import { transferKRC20 } from "./krc20Transfer";
 import Database from '../../database';
-import config from "../../../config/config.json";
+import CONFIG from "../../../config/constants";
 import { krc20Token, nftAPI } from "./krc20Api";
 import { parseUnits } from "ethers";
 import trxManager from "..";
@@ -22,14 +22,14 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         }
     }
 
-    const thresholdAmount = BigInt(config.nachoThresholdAmount) || BigInt("100000000000");
+    const thresholdAmount = BigInt(CONFIG.nachoThresholdAmount);
     
     // Filter payments that meet the threshold
     payments = Object.fromEntries(
         Object.entries(payments).filter(([_, amount]) => amount >= thresholdAmount)
     );
     
-    const NACHORebateBuffer = Number(config.nachoRebateBuffer);
+    const NACHORebateBuffer = Number(CONFIG.nachoRebateBuffer);
 
     let poolBalance = poolBal;
     
@@ -39,7 +39,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         
     for (let [address, amount] of Object.entries(payments)) {
         // Check if the user is eligible for full fee rebate
-        const fullRebate = await checkFullFeeRebate(address, config.defaultTicker);
+        const fullRebate = await checkFullFeeRebate(address, CONFIG.defaultTicker);
         let kasAmount = amount;
         if (fullRebate) {
             monitoring.debug(`transferKRC20Tokens: Full rebate to address: ${address}`);
