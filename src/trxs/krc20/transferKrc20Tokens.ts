@@ -28,6 +28,8 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
     payments = Object.fromEntries(
         Object.entries(payments).filter(([_, amount]) => amount >= thresholdAmount)
     );
+
+    monitoring.debug(`transferKRC20Tokens ~ Number of payments exceeding threshold : ${Object.keys(payments).length}`);
     
     const NACHORebateBuffer = Number(config.nachoRebateBuffer);
 
