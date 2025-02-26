@@ -51,7 +51,7 @@ export async function krc20Token(address: string, ticker = CONFIG.defaultTicker)
         } else {
             // API responded but with an error message (controlled failure)
             monitoring.error(`Fetching ${ticker} tokens failed for ${address}. API Response: ${JSON.stringify(response)}`);
-            return 0; // API failure, return 0 as safe fallback
+            return null; // API failure, return null as safe fallback
         }
     } catch (error) {
         monitoring.error(`Fetching ${ticker} tokens for address: ${address} : ${error}`);
@@ -73,7 +73,7 @@ export async function nftAPI(address: string, ticker = CONFIG.defaultTicker) {
         } else {
             // API responded but with an error message (controlled failure)
             monitoring.error(`Fetching NFTS for ${ticker} failed for ${address}. API Response: ${JSON.stringify(response)}`);
-            return 0; // API failure, return 0 as safe fallback
+            return null; // API failure, return null as safe fallback
         }
     } catch (error) {
         monitoring.error(`Fetching NFT holding for address: ${address} : ${error}`);

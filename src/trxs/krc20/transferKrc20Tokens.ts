@@ -90,14 +90,21 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
 async function checkFullFeeRebate(address: string, ticker: string) {    
     const amount = await krc20Token(address, ticker);
     if (amount === -1) {
-      monitoring.error("Network/system failure. Retry later.");
-    } else if (amount === 0) {
-      monitoring.log("No tokens found or API returned failure.");
-    } 
+        monitoring.error("Network/system failure. Retry later.");
+    } else if (amount === null) {
+        monitoring.error("API failure. Could not retrieve token balance.");
+    }
+    
     if (amount >= fullRebateTokenThreshold) {
         return true;
     } 
     const nftCount = await nftAPI(address, ticker);
+    if (amount === -1) {
+        monitoring.error("Network/system failure. Retry later.");
+    } else if (nftCount === null) {
+        monitoring.error("API failure. Could not retrieve NFT holding count.");
+    }
+
     if (nftCount >= fullRebateNFTThreshold) {
         return true;
     }
