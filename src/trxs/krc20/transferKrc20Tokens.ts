@@ -97,12 +97,11 @@ async function checkFullFeeRebate(address: string, ticker: string) {
     if (amount >= fullRebateTokenThreshold) {
         return true;
     } 
-    const nftCount = await nftAPI(address, ticker);
-    if (amount === -1) {
-        monitoring.error("Network/system failure. Retry later.");
-    } else if (nftCount === null) {
-        monitoring.error("API failure. Could not retrieve NFT holding count.");
-    }
+    const result = await nftAPI(address, ticker);
+    const nftCount = result.count;
+    if (res.error != '') {
+        this.transactionManager.monitoring.error(`${res.error}`);
+    } 
 
     if (nftCount >= fullRebateNFTThreshold) {
         return true;
