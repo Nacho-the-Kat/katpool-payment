@@ -201,7 +201,7 @@ export default class swapToKrc20 {
                 txId = finalStatus?.data?.hash!;
                 const res = await krc20Token(this.transactionManager.address, toTicker);
                 balanceAfter = res.amount;
-                if (result.error != '') {
+                if (res.error != '') {
                     this.transactionManager.monitoring.error(`${res.error}`);
                 } else {
                     this.transactionManager.monitoring.log(`Treasury wallet ${this.transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
