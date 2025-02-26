@@ -5,23 +5,23 @@ import { signMessage, createTransactions } from "../../../wasm/kaspa";
 import { DEBUG } from '../../index.ts';
 import trxManager from '../index.ts';
 import Monitoring from '../../monitoring/index.ts';
-import CONFIG from "../../../config/constants";
+import config from "../../../config/config.json";
 import { parseSignatureScript } from './utils.ts';
 import { resetBalancesByWallet } from './transferKrc20Tokens.ts';
 import { KASPLEX_URL, krc20Token } from './krc20Api.ts';
 
 let KASPA_BASE_URL = 'https://api.kaspa.org';
 
-if( CONFIG.network === "testnet-10" ) {
+if( config.network === "testnet-10" ) {
  KASPA_BASE_URL = "https://api-tn10.kaspa.org"
-} else if( CONFIG.network === "testnet-11" ) {
+} else if( config.network === "testnet-11" ) {
  KASPA_BASE_URL = "https://api-tn11.kaspa.org"
 }
 
 const chaingeUrl = 'https://api2.chainge.finance';
 
 const fromTicker = "KAS";
-const toTicker = CONFIG.defaultTicker;
+const toTicker = config.defaultTicker;
 const Chain = "KAS";
 
 let customSlippage = "5"; // percentage format, ex: 5%
@@ -131,7 +131,7 @@ export default class swapToKrc20 {
 
     async swapKaspaToKRC(balance: bigint) {        
         fromAmountInSompi = balance.toString();
-        fromAmountInSompi = ((BigInt(fromAmountInSompi) * BigInt(CONFIG.nachoSwap * 100)) / 10000n).toString();
+        fromAmountInSompi = ((BigInt(fromAmountInSompi) * BigInt(config.nachoSwap * 100)) / 10000n).toString();
         fromAmount = fromAmountInSompi
 
         // step 1: quote 
@@ -173,14 +173,7 @@ export default class swapToKrc20 {
 
         // step 4: submitOrder
         this.transactionManager.monitoring.log(`SwapToKrc20: fnCore ~ txHash: ${txHash}`);
-        const result = await krc20Token(this.transactionManager.address, toTicker);
-        const balanceBefore = result.amount;
-        if (result.error != '') {
-            this.transactionManager.monitoring.error(`${result.error}`);
-        } else {
-            this.transactionManager.monitoring.log(`Treasury wallet ${this.transactionManager?.address} has ${balanceBefore} ${CONFIG.defaultTicker} tokens.`);
-        }
-
+        const balanceBefore = await krc20Token(this.transactionManager.address, toTicker);
         let balanceAfter = balanceBefore;
         let res = await this.fnSubmitSwap(txHash, toAmountMinSwap, toAmountSwap)
 
@@ -198,13 +191,7 @@ export default class swapToKrc20 {
             }
             if (finalStatus?.msg === 'success') {
                 txId = finalStatus?.data?.hash!;
-                const res = await krc20Token(this.transactionManager.address, toTicker);
-                balanceAfter = res.amount;
-                if (res.error != '') {
-                    this.transactionManager.monitoring.error(`${res.error}`);
-                } else {
-                    this.transactionManager.monitoring.log(`Treasury wallet ${this.transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
-                }            
+                balanceAfter = await krc20Token(this.transactionManager.address, toTicker);
             }
             if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap))
                 amount = await this.fetchKRC20SwapData(txId!);
