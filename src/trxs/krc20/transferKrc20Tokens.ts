@@ -1,7 +1,7 @@
 import { RpcClient } from "../../../wasm/kaspa/kaspa";
 import { transferKRC20 } from "./krc20Transfer";
 import Database from '../../database';
-import CONFIG from "../../../config/constants";
+import config from "../../../config/config.json";
 import { krc20Token, nftAPI } from "./krc20Api";
 import { parseUnits } from "ethers";
 import trxManager from "..";
@@ -22,14 +22,14 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         }
     }
 
-    const thresholdAmount = BigInt(CONFIG.nachoThresholdAmount);
+    const thresholdAmount = BigInt(config.nachoThresholdAmount) || BigInt("100000000000");
     
     // Filter payments that meet the threshold
     payments = Object.fromEntries(
         Object.entries(payments).filter(([_, amount]) => amount >= thresholdAmount)
     );
     
-    const NACHORebateBuffer = Number(CONFIG.nachoRebateBuffer);
+    const NACHORebateBuffer = Number(config.nachoRebateBuffer);
 
     let poolBalance = poolBal;
     
@@ -39,7 +39,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         
     for (let [address, amount] of Object.entries(payments)) {
         // Check if the user is eligible for full fee rebate
-        const fullRebate = await checkFullFeeRebate(address, CONFIG.defaultTicker);
+        const fullRebate = await checkFullFeeRebate(address, config.defaultTicker);
         let kasAmount = amount;
         if (fullRebate) {
             monitoring.debug(`transferKRC20Tokens: Full rebate to address: ${address}`);
@@ -84,21 +84,11 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
 }
 
 async function checkFullFeeRebate(address: string, ticker: string) {    
-    const res = await krc20Token(address, ticker);
-    const amount = res.amount;
-    if (res.error != '') {
-        this.transactionManager.monitoring.error(`${res.error}`);
-    } 
-    
+    const amount = await krc20Token(address, ticker);
     if (amount >= fullRebateTokenThreshold) {
         return true;
     } 
-    const result = await nftAPI(address, ticker);
-    const nftCount = result.count;
-    if (result.error != '') {
-        this.transactionManager.monitoring.error(`${result.error}`);
-    } 
-
+    const nftCount = await nftAPI(address, ticker);
     if (nftCount >= fullRebateNFTThreshold) {
         return true;
     }

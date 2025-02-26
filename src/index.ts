@@ -7,7 +7,7 @@
  */
 
 import { RpcClient, Encoding, Resolver } from "../wasm/kaspa";
-import CONFIG from "../config/constants";
+import config from "../config/config.json";
 import dotenv from 'dotenv';
 import Monitoring from './monitoring';
 import trxManager from './trxs';
@@ -36,10 +36,10 @@ if (!treasuryPrivateKey) {
 }
 if (DEBUG) monitoring.debug(`Main: Obtained treasury private key`);
 
-if (!CONFIG.network) {
+if (!config.network) {
   throw new Error('No network has been set in config.json');
 }
-if (DEBUG) monitoring.debug(`Main: Network Id: ${CONFIG.network}`);
+if (DEBUG) monitoring.debug(`Main: Network Id: ${config.network}`);
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -48,13 +48,13 @@ if (!databaseUrl) {
 if (DEBUG) monitoring.debug(`Main: Database URL obtained`);
 
 // Configuration parameters
-const paymentCronSchedule = cronValidation(CONFIG.payoutCronSchedule); // Defaults to twice a day if not set
+const paymentCronSchedule = cronValidation(config.payoutCronSchedule); // Defaults to twice a day if not set
 if (DEBUG) monitoring.debug(`Main: Payment cron is set to ${paymentCronSchedule}`);
 
 if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
 
 if (DEBUG) {
-  monitoring.debug(`Main: Resolver Options:${CONFIG.node}`);
+  monitoring.debug(`Main: Resolver Options:${config.node}`);
 }
 
 const interval = cronParser.parseExpression(paymentCronSchedule);
@@ -64,7 +64,7 @@ if (DEBUG) monitoring.debug(`Main: Next payment is scheduled at ${nextScedule}`)
 const rpc = new RpcClient({  
   resolver: new Resolver(),
   encoding: Encoding.Borsh,
-  networkId: CONFIG.network,
+  networkId: config.network,
 });
 let transactionManager: trxManager | null = null;
 let swapToKrc20Obj: swapToKrc20 | null = null;
@@ -72,7 +72,7 @@ let rpcConnected = false;
 
 const setupTransactionManager = () => {
   if (DEBUG) monitoring.debug(`Main: Starting transaction manager`);
-  transactionManager = new trxManager(CONFIG.network, treasuryPrivateKey, databaseUrl, rpc!);
+  transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);
   setTimeout(() => {
     swapToKrc20Obj = new swapToKrc20(transactionManager!); // ✅ Delayed instantiation
   }, 0);
@@ -104,19 +104,6 @@ cron.schedule(paymentCronSchedule, async () => {
   if (rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
-      if (!transactionManager) {
-        monitoring.error("Main: transactionManager is undefined.");
-      }
-      
-      if (!swapToKrc20Obj) {
-        monitoring.error("Main: swapToKrc20Obj is undefined. Swap will be skipped.");
-      }
-      
-      if (!CONFIG.defaultTicker) {
-        monitoring.error("Main: CONFIG.defaultTicker is undefined. Using fallback.");
-        CONFIG.defaultTicker = "NACHO";
-      }      
-
       // Fetch and save balances map before performing payout
       const balances = await transactionManager!.db.getAllBalancesExcludingPool();
       let poolBalances = await transactionManager!.db.getPoolBalance();
@@ -138,13 +125,7 @@ cron.schedule(paymentCronSchedule, async () => {
         amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance); 
       }
 
-      const res = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
-      const balanceAfter = res.amount;
-      if (res.error != '') {
-        monitoring.error(`${res.error}`);
-      } else {
-        monitoring.log(`Treasury wallet ${transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
-      }
+      let balanceAfter = await krc20Token(transactionManager!.address, config.defaultTicker);
       const maxAllowedBalance = amount * 115 / 100; // amount + 15%
       
       /*
@@ -159,7 +140,7 @@ cron.schedule(paymentCronSchedule, async () => {
       // Transfer KRC20
       if (amount != 0) {
         monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
-        await transferKRC20Tokens(rpc, CONFIG.defaultTicker, amount!, balances, poolBalance, transactionManager!);
+        await transferKRC20Tokens(rpc, config.defaultTicker, amount!, balances, poolBalance, transactionManager!);
         monitoring.log(`Main: Running scheduled KRC20 balance transfer completed`);
       } else {
         monitoring.error("Main: KRC20 swap could not be performed");

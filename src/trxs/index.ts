@@ -2,7 +2,7 @@ import Database from '../database';
 import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient,  maximumStandardTransactionMass, addressFromScriptPublicKey, calculateTransactionFee } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
-import CONFIG from "../../config/constants";
+import config from "../../config/config.json";
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 
 export default class trxManager {
@@ -67,7 +67,7 @@ export default class trxManager {
       };
     });
 
-    const thresholdAmount = CONFIG.thresholdAmount;
+    const thresholdAmount = config.thresholdAmount;
     const thresholdEligiblePayments = paymentOutputs.filter( data => data.amount >= BigInt(thresholdAmount));
 
     if (thresholdEligiblePayments.length === 0) {
