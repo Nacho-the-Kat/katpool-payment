@@ -174,6 +174,14 @@ export default class swapToKrc20 {
         // step 4: submitOrder
         this.transactionManager.monitoring.log(`SwapToKrc20: fnCore ~ txHash: ${txHash}`);
         const balanceBefore = await krc20Token(this.transactionManager.address, toTicker);
+        if (balanceBefore === -1) {
+          this.transactionManager.monitoring.error("Network/system failure. Retry later.");
+        } else if (balanceBefore === 0) {
+            this.transactionManager.monitoring.log("No tokens found or API returned failure.");
+        } else {
+            this.transactionManager.monitoring.log(`Treasury wallet has ${balanceBefore} ${CONFIG.defaultTicker} tokens.`);
+        }
+
         let balanceAfter = balanceBefore;
         let res = await this.fnSubmitSwap(txHash, toAmountMinSwap, toAmountSwap)
 
@@ -192,6 +200,13 @@ export default class swapToKrc20 {
             if (finalStatus?.msg === 'success') {
                 txId = finalStatus?.data?.hash!;
                 balanceAfter = await krc20Token(this.transactionManager.address, toTicker);
+                if (balanceAfter === -1) {
+                    this.transactionManager.monitoring.error("Network/system failure. Retry later.");
+                } else if (balanceAfter === 0) {
+                    this.transactionManager.monitoring.log("No tokens found or API returned failure.");
+                } else {
+                    this.transactionManager.monitoring.log(`Treasury wallet has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
+                }            
             }
             if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap))
                 amount = await this.fetchKRC20SwapData(txId!);

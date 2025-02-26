@@ -85,6 +85,11 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
 
 async function checkFullFeeRebate(address: string, ticker: string) {    
     const amount = await krc20Token(address, ticker);
+    if (amount === -1) {
+      monitoring.error("Network/system failure. Retry later.");
+    } else if (amount === 0) {
+      monitoring.log("No tokens found or API returned failure.");
+    } 
     if (amount >= fullRebateTokenThreshold) {
         return true;
     } 

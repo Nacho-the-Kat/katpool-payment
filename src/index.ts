@@ -139,6 +139,13 @@ cron.schedule(paymentCronSchedule, async () => {
       }
 
       let balanceAfter = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
+      if (balanceAfter === -1) {
+        monitoring.error("Network/system failure. Retry later.");
+      } else if (balanceAfter === 0) {
+        monitoring.log("No tokens found or API returned failure.");
+      } else {
+        monitoring.log(`Treasury wallet has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
+      }
       const maxAllowedBalance = amount * 115 / 100; // amount + 15%
       
       /*
