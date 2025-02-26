@@ -104,6 +104,19 @@ cron.schedule(paymentCronSchedule, async () => {
   if (rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
+      if (!transactionManager) {
+        monitoring.error("Main: transactionManager is undefined.");
+      }
+      
+      if (!swapToKrc20Obj) {
+        monitoring.error("Main: swapToKrc20Obj is undefined. Swap will be skipped.");
+      }
+      
+      if (!CONFIG.defaultTicker) {
+        monitoring.error("Main: CONFIG.defaultTicker is undefined. Using fallback.");
+        CONFIG.defaultTicker = "NACHO";
+      }      
+
       // Fetch and save balances map before performing payout
       const balances = await transactionManager!.db.getAllBalancesExcludingPool();
       let poolBalances = await transactionManager!.db.getPoolBalance();
