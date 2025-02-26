@@ -138,11 +138,10 @@ cron.schedule(paymentCronSchedule, async () => {
         amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance); 
       }
 
-      let balanceAfter = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
-      if (balanceAfter === -1) {
-        monitoring.error("Network/system failure. Retry later.");
-      } else if (balanceAfter === null) {
-        monitoring.error("API failure. Could not retrieve token balance.");
+      const res = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
+      const balanceAfter = res.amount;
+      if (res.error != '') {
+        monitoring.error(`${res.error}`);
       } else {
         monitoring.log(`Treasury wallet ${transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
       }
