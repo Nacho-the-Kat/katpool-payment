@@ -49,10 +49,14 @@ export async function krc20Token(address: string, ticker = CONFIG.defaultTicker)
         if (response.data.message === 'successful') {
             return response.data.result[0].balance;
         } else {
-            return 0;
+            // API responded but with an error message (controlled failure)
+            monitoring.error(`Fetching ${ticker} tokens failed for ${address}. API Response: ${JSON.stringify(response)}`);
+            return 0; // API failure, return 0 as safe fallback
         }
     } catch (error) {
         monitoring.error(`Fetching ${ticker} tokens for address: ${address} : ${error}`);
+
+        return -1; // Indicate network/system failure
     }  
 }
 
@@ -67,9 +71,13 @@ export async function nftAPI(address: string, ticker = CONFIG.defaultTicker) {
         if (response.data.message === 'successful') {
             return response.data.result.length;
         } else {
-            return 0;
+            // API responded but with an error message (controlled failure)
+            monitoring.error(`Fetching NFTS for ${ticker} failed for ${address}. API Response: ${JSON.stringify(response)}`);
+            return 0; // API failure, return 0 as safe fallback
         }
     } catch (error) {
         monitoring.error(`Fetching NFT holding for address: ${address} : ${error}`);
+        
+        return -1; // Indicate network/system failure
     }  
 }
