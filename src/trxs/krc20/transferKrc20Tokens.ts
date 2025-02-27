@@ -12,6 +12,7 @@ const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 
 const monitoring = new Monitoring();
 
+// Currently used to transfer NACHO tokens.
 export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number, balances: any, poolBal: bigint, transactionManager: trxManager) {
     let payments: { [address: string]: bigint } = {};
     
@@ -22,15 +23,8 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         }
     }
 
-    const thresholdAmount = BigInt(config.nachoThresholdAmount) || BigInt("100000000000");
-    
-    // Filter payments that meet the threshold
-    payments = Object.fromEntries(
-        Object.entries(payments).filter(([_, amount]) => amount >= thresholdAmount)
-    );
-
-    monitoring.debug(`transferKRC20Tokens ~ Number of payments exceeding threshold : ${Object.keys(payments).length}`);
-    
+    const nachoThresholdAmount = BigInt(config.nachoThresholdAmount) || BigInt("100000000000");
+        
     const NACHORebateBuffer = Number(config.nachoRebateBuffer);
 
     let poolBalance = poolBal;
@@ -63,21 +57,30 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         const numerator = BigInt(amount) * BigInt(Math.floor(krc20Amount));
         const denominator = BigInt(poolBalance);
         
+        // NACHO amount to be transferred
+        let nachoAmount = 0n;
         if (numerator % denominator !== BigInt(0)) {
-            amount = BigInt(Math.floor(Number(numerator) / Number(denominator))); // Use safe rounding
+            nachoAmount = BigInt(Math.floor(Number(numerator) / Number(denominator))); // Use safe rounding
         } else {
-            amount = numerator / denominator;
+            nachoAmount = numerator / denominator;
         }
         
-        try {
-            let res = await transferKRC20(pRPC, pTicker, address, amount.toString(), transactionManager!);
+        // Filter payments that meet the threshold
+        if (nachoAmount < nachoThresholdAmount) {
+            monitoring.debug(`transferKRC20Tokens: Skipping ${address}: nachoAmount (${nachoAmount}) is below threshold (${nachoThresholdAmount})`);
+            continue;
+        }
+
+        try {            
+            monitoring.debug(`transferKRC20Tokens: Transfering ${nachoAmount.toString()} ${pTicker} to ${address}`);
+            let res = await transferKRC20(pRPC, pTicker, address, nachoAmount.toString(), transactionManager!);
             if (res?.error != null) {
                 monitoring.error(`transferKRC20Tokens: Error from KRC20 transfer : ${res?.error!}`);
             } else {
-                await recordPayment(address, amount, res?.revealHash, transactionManager?.db!, kasAmount, fullRebate);
+                await recordPayment(address, nachoAmount, res?.revealHash, transactionManager?.db!, kasAmount, fullRebate);
             }
         } catch(error) {
-            monitoring.error(`transferKRC20Tokens: Transfering ${amount.toString()} ${pTicker} to ${address} : ${error}`);
+            monitoring.error(`transferKRC20Tokens: Transfering ${nachoAmount.toString()} ${pTicker} to ${address} : ${error}`);
         }
 
         // ⏳ Add a small delay before sending the next transaction
