@@ -1,5 +1,5 @@
 import { RpcClient, Encoding, Resolver, ScriptBuilder, Opcodes, PrivateKey, addressFromScriptPublicKey, createTransactions, kaspaToSompi } from "../../../wasm/kaspa";
-import CONFIG from "../../../config/constants";
+import CONFIG from "../../constants";
 import Monitoring from "../../monitoring";
 import { DEBUG } from "../../index.ts";
 import trxManager from "../index.ts";
