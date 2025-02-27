@@ -5,7 +5,7 @@ import { signMessage, createTransactions } from "../../../wasm/kaspa";
 import { DEBUG } from '../../index.ts';
 import trxManager from '../index.ts';
 import Monitoring from '../../monitoring/index.ts';
-import CONFIG from "../../../config/constants";
+import CONFIG from "../../constants";
 import { parseSignatureScript } from './utils.ts';
 import { resetBalancesByWallet } from './transferKrc20Tokens.ts';
 import { KASPLEX_URL, krc20Token } from './krc20Api.ts';

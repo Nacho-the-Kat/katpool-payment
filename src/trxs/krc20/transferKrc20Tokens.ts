@@ -1,7 +1,7 @@
 import { RpcClient } from "../../../wasm/kaspa/kaspa";
 import { transferKRC20 } from "./krc20Transfer";
 import Database from '../../database';
-import CONFIG from "../../../config/constants";
+import CONFIG from "../../constants";
 import { krc20Token, nftAPI } from "./krc20Api";
 import { parseUnits } from "ethers";
 import trxManager from "..";
