@@ -7,7 +7,7 @@
  */
 
 import { RpcClient, Encoding, Resolver } from "../wasm/kaspa";
-import CONFIG from "../config/constants";
+import CONFIG from "./constants";
 import dotenv from 'dotenv';
 import Monitoring from './monitoring';
 import trxManager from './trxs';
