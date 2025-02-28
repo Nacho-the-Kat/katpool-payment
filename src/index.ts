@@ -157,7 +157,7 @@ cron.schedule(paymentCronSchedule, async () => {
         monitoring.log(`Main: Running scheduled KRC20 balance transfer completed`);
         
         try {
-          // Fetch treasury wallet address balance before Payout
+          // Fetch treasury wallet address balance after Payout
           const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
           monitoring.log(`Main: KAS balance after transfer : ${treasuryKASBalance}`);
     
