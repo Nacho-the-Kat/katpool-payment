@@ -17,6 +17,7 @@ import { cronValidation } from "./cron-schedule";
 import swapToKrc20 from "./trxs/krc20/swapToKrc20";
 import { transferKRC20Tokens } from "./trxs/krc20/transferKrc20Tokens";
 import { krc20Token } from "./trxs/krc20/krc20Api";
+import { fetchKASBalance } from "./utils";
 
 // Debug mode setting
 export let DEBUG = 0;
@@ -107,12 +108,24 @@ cron.schedule(paymentCronSchedule, async () => {
       // Fetch and save balances map before performing payout
       const balances = await transactionManager!.db.getAllBalancesExcludingPool();
       let poolBalances = await transactionManager!.db.getPoolBalance();
+
+      try {
+        // Fetch treasury wallet address balance before Payout
+        const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
+        monitoring.debug(`Main: KAS balance before transfer : ${treasuryKASBalance}`);
+
+        const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, config.defaultTicker);
+        monitoring.debug(`Main: ${config.defaultTicker} balance before transfer  : ${treasuryNACHOBalance}`);
+      } catch (error) {
+        monitoring.error(`Main: Balance fetch before payout: ${error}`);  
+      }
+
       let poolBalance = 0n;
       let amount: number = 0;
       if (poolBalances.length > 0) {
         poolBalance = BigInt(poolBalances[0].balance);
       } else {
-        transactionManager!.monitoring.error("Could not fetch Pool balance from Database.")
+        transactionManager!.monitoring.error("Main: Could not fetch Pool balance from Database.")
       }
 
       // KAS Payout
@@ -142,6 +155,17 @@ cron.schedule(paymentCronSchedule, async () => {
         monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
         await transferKRC20Tokens(rpc, config.defaultTicker, amount!, balances, poolBalance, transactionManager!);
         monitoring.log(`Main: Running scheduled KRC20 balance transfer completed`);
+        
+        try {
+          // Fetch treasury wallet address balance after Payout
+          const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
+          monitoring.log(`Main: KAS balance after transfer : ${treasuryKASBalance}`);
+    
+          const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, config.defaultTicker);
+          monitoring.log(`Main: ${config.defaultTicker} balance after transfer  : ${treasuryNACHOBalance}`);
+        } catch (error) {
+          monitoring.error(`Main: Balance fetch after payout: ${error}`);  
+        }
       } else {
         monitoring.error("Main: KRC20 swap could not be performed");
       }

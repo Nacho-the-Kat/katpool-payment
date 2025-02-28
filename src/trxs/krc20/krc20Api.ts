@@ -42,13 +42,12 @@ axiosRetry(axios, {
 export async function krc20Token(address: string, ticker = config.defaultTicker) {
     try {
         const url = krc20TokenAPI
-        .replace("{address}", address)
+        .replace("{address}", encodeURIComponent(address))
         .replace("{ticker}", ticker);
     
         const response = await axios.get(url);
-    
-        if (response.message === 'successful') {
-            return response.result[0].balance;
+        if (response.data.message === 'successful') {
+            return response.data.result[0].balance;
         } else {
             return 0;
         }
@@ -60,13 +59,13 @@ export async function krc20Token(address: string, ticker = config.defaultTicker)
 export async function nftAPI(address: string, ticker = config.defaultTicker) {
     try {
         const url = NFTAPI
-        .replace("{address}", address)
+        .replace("{address}", encodeURIComponent(address))
         .replace("{ticker}", ticker);
     
         const response = await axios.get(url);
 
-        if (response.message === 'successful') {
-            return response.result.length;
+        if (response.data.message === 'successful') {
+            return response.data.result.length;
         } else {
             return 0;
         }
