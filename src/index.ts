@@ -129,16 +129,29 @@ cron.schedule(paymentCronSchedule, async () => {
       }
 
       // KAS Payout
-      await transactionManager!.transferBalances(balances);
+      try {
+        await transactionManager!.transferBalances(balances);
+      } catch(error) {
+        monitoring.error(`Main: Error during KAS payout: ${error}`);
+      }
 
       // Swap KASPA to KRC20
       if (poolBalance == 0n){
         monitoring.error("Main: Pool treasury balance is 0. Could not perform any KRC20 payout.");
       } else {        
-        amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance); 
+        try {
+          amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance);
+        } catch (error) {
+          monitoring.error(`Main: Error swapping KASPA to KRC20: ${error}`);
+        }
       }
 
-      let balanceAfter = await krc20Token(transactionManager!.address, config.defaultTicker);
+      let balanceAfter = -1;
+      try {
+        balanceAfter = await krc20Token(transactionManager!.address, config.defaultTicker);
+      } catch (error) {
+        monitoring.error(`Main: Error fetching balance after swap: ${error}`);
+      }
       const maxAllowedBalance = amount * 115 / 100; // amount + 15%
       
       /*
@@ -152,9 +165,13 @@ cron.schedule(paymentCronSchedule, async () => {
       
       // Transfer KRC20
       if (amount != 0) {
-        monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
-        await transferKRC20Tokens(rpc, config.defaultTicker, amount!, balances, poolBalance, transactionManager!);
-        monitoring.log(`Main: Running scheduled KRC20 balance transfer completed`);
+        try {
+          monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
+          await transferKRC20Tokens(rpc, config.defaultTicker, amount!, balances, poolBalance, transactionManager!);          
+          monitoring.log(`Main: Scheduled KRC20 balance transfer completed`);
+        } catch (error) {
+          monitoring.error(`Main: Error during KRC20 transfer: ${error}`);
+        }
         
         try {
           // Fetch treasury wallet address balance after Payout
