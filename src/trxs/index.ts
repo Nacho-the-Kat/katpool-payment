@@ -74,6 +74,14 @@ export default class trxManager {
       return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
     }
 
+    // All pending balance to be transferred in current payment cycle
+    const totalEligibleAmount = await this.db.getAllPendingBalanceAboveThreshold(Number(thresholdAmount));
+    this.monitoring.debug(`TrxManager: Total eligible KAS to be transferred in current payment cycle: ${totalEligibleAmount}`);
+
+    // All pending balance
+    const totalAmount = await this.db.getAllPendingBalanceAboveThreshold(0);
+    this.monitoring.debug(`TrxManager: Total pending KAS to be transferred: ${totalAmount}`);
+
     // Enqueue transactions for processing
     await this.enqueueTransactions(thresholdEligiblePayments);
     this.monitoring.log(`TrxManager: Transactions queued for processing.`);
