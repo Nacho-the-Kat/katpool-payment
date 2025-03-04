@@ -45,6 +45,27 @@ export default class Database {
     }
   }
 
+  async getAllPendingBalanceAboveThreshold(threshold: number) {
+    const client = await this.pool.connect();
+    try {
+      const res = await client.query(
+        `SELECT SUM(total_balance) 
+          FROM (
+            SELECT SUM(balance) AS total_balance
+            FROM miners_balance 
+            WHERE miner_id != $1 
+            GROUP BY wallet
+            HAVING SUM(balance) >= $2 
+          ) AS subquery`,
+        ['pool', threshold]
+      );
+
+      return res.rows[0]?.sum ? BigInt(res.rows[0].sum) : BigInt(0);
+    } finally {
+      client.release();
+    }
+  }
+
   // Get Nacho Rebate KAS saved in pool entry
   async getPoolBalance() {
     const client = await this.pool.connect();
