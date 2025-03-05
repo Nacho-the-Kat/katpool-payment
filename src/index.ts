@@ -125,10 +125,14 @@ cron.schedule(paymentCronSchedule, async () => {
       try {
         // Fetch treasury wallet address balance before Payout
         const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
-        monitoring.debug(`Main: KAS balance before transfer : ${treasuryKASBalance}`);
+        if (treasuryKASBalance == -1 || treasuryKASBalance == null) {
+          monitoring.error(`Main: Fetching KAS balance for address - ${transactionManager!.address}`);
+        } else {
+          monitoring.debug(`Main: KAS balance before transfer : ${treasuryKASBalance}`);
+        }
 
         const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
-        monitoring.debug(`Main: ${CONFIG.defaultTicker} balance before transfer  : ${treasuryNACHOBalance}`);
+        monitoring.debug(`Main: ${CONFIG.defaultTicker} balance before transfer  : ${treasuryNACHOBalance.amount}`);
       } catch (error) {
         monitoring.error(`Main: Balance fetch before payout: ${error}`);  
       }

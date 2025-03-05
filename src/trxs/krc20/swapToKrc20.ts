@@ -22,7 +22,6 @@ let toAmountMinSwap = "";
 
 let fromAmountInSompi = "";
 let fromAmount = "";
-new Monitoring().debug(`SwapToKrc20: fromAmount in SOMPI : ${fromAmount}`)
     
 export default class swapToKrc20 {
     private transactionManager: trxManager;
