@@ -8,7 +8,7 @@ export function cronValidation(expr: string) {
     if (cron.validate(expr)) {
         return expr;
     } else {
-        monitoring.error('Invalid cron expression. Defaulting to Twice a day.');
+        monitoring.error('cron-schedule: Invalid cron expression. Defaulting to Twice a day.');
         return "0 */12 * * *";
     }    
 }
