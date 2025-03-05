@@ -91,7 +91,7 @@ async function checkFullFeeRebate(address: string, ticker: string) {
     const res = await krc20Token(address, ticker);
     const amount = res.amount;
     if (res.error != '') {
-        monitoring.error(`${res.error}`);
+        monitoring.error(`transferKRC20Tokens: Error fetching ${ticker} balance for address - ${address} : ${res.error}`);
     } 
     
     if (amount >= fullRebateTokenThreshold) {
@@ -100,7 +100,7 @@ async function checkFullFeeRebate(address: string, ticker: string) {
     const result = await nftAPI(address, ticker);
     const nftCount = result.count;
     if (result.error != '') {
-        monitoring.error(`${result.error}`);
+        monitoring.error(`transferKRC20Tokens: Error fetching ${ticker} NFT holdings for address - ${address} : ${result.error}`);
     } 
 
     if (nftCount >= fullRebateNFTThreshold) {

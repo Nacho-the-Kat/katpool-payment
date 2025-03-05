@@ -138,7 +138,7 @@ cron.schedule(paymentCronSchedule, async () => {
       if (poolBalances.length > 0) {
         poolBalance = BigInt(poolBalances[0].balance);
       } else {
-        transactionManager!.monitoring.error("Main: Could not fetch Pool balance from Database.")
+        monitoring.error("Main: Could not fetch Pool balance from Database.")
       }
 
       // KAS Payout
@@ -167,9 +167,9 @@ cron.schedule(paymentCronSchedule, async () => {
         const res = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
         balanceAfter = res.amount;
       if (res.error != '') {
-        monitoring.error(`${res.error}`);
+        monitoring.error(`Main: Error fetching ${CONFIG.defaultTicker} token balance: ${res.error}`);
       } else {
-        monitoring.log(`Treasury wallet ${transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
+        monitoring.log(`Main: Treasury wallet ${transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens after swap.`);
       }
       } catch (error) {
         monitoring.error(`Main: Error fetching balance after swap: ${error}`);

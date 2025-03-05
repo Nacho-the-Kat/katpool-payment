@@ -107,7 +107,7 @@ export default class swapToKrc20 {
             Chain,
             Signature: signature
         }
-        if (DEBUG) this.transactionManager.monitoring.log(`Header: ${JSON.stringify(header)}`);
+        if (DEBUG) this.transactionManager.monitoring.log(`SwapToKrc20: Header - ${JSON.stringify(header)}`);
 
         const response = await fetch(`${chaingeUrl}/fun/submitSwap`, {
             method: "POST",
@@ -119,7 +119,7 @@ export default class swapToKrc20 {
         })
 
         const result = await response?.json();
-        this.transactionManager.monitoring.log(`Result : ${JSON.stringify(result)}`);
+        this.transactionManager.monitoring.log(`SwapToKrc20: Result - ${JSON.stringify(result)}`);
         return result
     }
 
@@ -168,7 +168,7 @@ export default class swapToKrc20 {
             }
             // TODO: Add wait for maturity check
         } catch (error) {
-            this.transactionManager.monitoring.error(`Error signing transaction: ${error}`);
+            this.transactionManager.monitoring.error(`SwapToKrc20: Error signing transaction: ${error}`);
             return 0;
         }
 
@@ -177,9 +177,9 @@ export default class swapToKrc20 {
         const result = await krc20Token(this.transactionManager.address, toTicker);
         const balanceBefore = result.amount;
         if (result.error != '') {
-            this.transactionManager.monitoring.error(`${result.error}`);
+            this.transactionManager.monitoring.error(`SwapToKrc20: Fetching ${toTicker} balance before swap : ${result.error}`);
         } else {
-            this.transactionManager.monitoring.log(`Treasury wallet ${this.transactionManager?.address} has ${balanceBefore} ${CONFIG.defaultTicker} tokens.`);
+            this.transactionManager.monitoring.log(`SwapToKrc20: Treasury wallet ${this.transactionManager?.address} has ${balanceBefore} ${CONFIG.defaultTicker} tokens before swap.`);
         }
 
         let balanceAfter = balanceBefore;
@@ -193,18 +193,18 @@ export default class swapToKrc20 {
             let amount: number = 0;
             try {
                 finalStatus = await this.pollStatus(res.data.id);
-                this.transactionManager.monitoring.log(`Final Result: ${JSON.stringify(finalStatus)}`);
+                this.transactionManager.monitoring.log(`SwapToKrc20: Final Result: ${JSON.stringify(finalStatus)}`);
             } catch (error) {
-                this.transactionManager.monitoring.error(`❌ Operation failed:", ${error}`);
+                this.transactionManager.monitoring.error(`SwapToKrc20: ❌ Operation failed:", ${error}`);
             }
             if (finalStatus?.msg === 'success') {
                 txId = finalStatus?.data?.hash!;
                 const res = await krc20Token(this.transactionManager.address, toTicker);
                 balanceAfter = res.amount;
                 if (res.error != '') {
-                    this.transactionManager.monitoring.error(`${res.error}`);
+                    this.transactionManager.monitoring.error(`SwapToKrc20: Fetching ${toTicker} balance after swap : ${result.error} `);
                 } else {
-                    this.transactionManager.monitoring.log(`Treasury wallet ${this.transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens.`);
+                    this.transactionManager.monitoring.log(`SwapToKrc20: Treasury wallet ${this.transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens after swap.`);
                 }            
             }
             if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap)) { // TODO: Check
@@ -234,7 +234,7 @@ export default class swapToKrc20 {
     
         const decimal = await this.getDecimalFromTick(tick)
         const amount = Number(krc20Data.amt);
-        this.transactionManager.monitoring.log(`swapToKrc20 ~ fetchKRC20SwapData ~ amount: ${amount}`);
+        this.transactionManager.monitoring.log(`SwapToKrc20: fetchKRC20SwapData ~ amount: ${amount}`);
         return amount;
     }
 
@@ -261,24 +261,24 @@ export default class swapToKrc20 {
                     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     
                     const data = await response.json();
-                    this.transactionManager.monitoring.log(`Polling attempt ${attempts}: ${JSON.stringify(data)}`);
+                    this.transactionManager.monitoring.log(`SwapToKrc20: Polling attempt ${attempts}: ${JSON.stringify(data)}`);
     
                     if (data!.data!.status!.toString() === "Succeeded") {
-                        this.transactionManager.monitoring.log("✅ Operation completed successfully!");
+                        this.transactionManager.monitoring.log("SwapToKrc20: ✅ Operation completed successfully!");
                         resolve(data);
                         return;
                     }
     
                     if (attempts >= maxAttempts) {
-                        this.transactionManager.monitoring.log("❌ Max polling attempts reached. Stopping...");
-                        this.transactionManager.monitoring.log(`Stopping polling for id: ${id}`);
+                        this.transactionManager.monitoring.log("SwapToKrc20: ❌ Max polling attempts reached. Stopping...");
+                        this.transactionManager.monitoring.log(`SwapToKrc20: Stopping polling for id: ${id}`);
                         reject(new Error("Polling timed out"));
                         return;
                     }
     
                     setTimeout(checkStatus, interval);
                 } catch (error) {
-                    this.transactionManager.monitoring.error(`Error polling API:", ${error}`);
+                    this.transactionManager.monitoring.error(`SwapToKrc20: Error polling API:", ${error}`);
                     reject(error);
                 }
             };
