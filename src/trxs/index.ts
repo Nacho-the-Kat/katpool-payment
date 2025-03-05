@@ -2,7 +2,7 @@ import Database from '../database';
 import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient,  maximumStandardTransactionMass, addressFromScriptPublicKey, calculateTransactionFee } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
-import CONFIG from "../constants";
+import { CONFIG } from "../constants";
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 
 export default class trxManager {

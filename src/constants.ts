@@ -42,5 +42,12 @@ try {
 
 monitoring.log(`Constants: Current configuration used for Payments is : \n ${JSON.stringify(CONFIG, null, 4)}`);
 
-// Export the config
-export default CONFIG;
+let KASPA_BASE_URL = "https://api.kaspa.org";
+
+if (CONFIG.network === "testnet-10") {
+  KASPA_BASE_URL = "https://api-tn10.kaspa.org";
+} else if (CONFIG.network === "testnet-11") {
+  KASPA_BASE_URL = "https://api-tn11.kaspa.org";
+}
+
+export { KASPA_BASE_URL, CONFIG };

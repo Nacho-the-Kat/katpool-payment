@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import Monitoring from '../../monitoring';
-import CONFIG from "../../constants";
+import { CONFIG } from "../../constants";
 
 export let KASPLEX_URL = 'https://api.kasplex.org'
 if( CONFIG.network === "testnet-10" ) {
