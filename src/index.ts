@@ -153,7 +153,7 @@ cron.schedule(paymentCronSchedule, async () => {
         monitoring.error("Main: Pool treasury balance is 0. Could not perform any KRC20 payout.");
       } else {        
         try {
-          monitoring.debug(`Main: Swapping ${poolBalance} KAS to ${CONFIG.defaultTicker} tokens`)
+          monitoring.debug(`Main: Swapping ${poolBalance} sompi to ${CONFIG.defaultTicker} tokens`)
           amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance);
         } catch (error) {
           monitoring.error(`Main: Error swapping KASPA to KRC20: ${error}`);
