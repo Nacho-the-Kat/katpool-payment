@@ -22,7 +22,7 @@ const validateConfig = (config: any, defaults: any) => {
 
   Object.keys(defaults).forEach((key) => {
       if (config[key] !== undefined && config[key] !== null) {
-          validatedConfig[key] = config[key]; // Use the value from config.json if valid
+        validatedConfig[key] = config[key]; // Use the value from config.json if valid
       }
   });
 

@@ -11,7 +11,7 @@ export async function fetchKASBalance(address: string) {
     if (response.status == 200) {
       return response.data.balance;
     } else {
-      return 0;
+      return null; // To avoid confusion with actual 0 balance.
     }
   } catch (error) {
     monitoring.error(`utils: Fetching KAS balance for address: ${address} : ${error}`);

@@ -125,10 +125,14 @@ cron.schedule(paymentCronSchedule, async () => {
       try {
         // Fetch treasury wallet address balance before Payout
         const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
-        monitoring.debug(`Main: KAS balance before transfer : ${treasuryKASBalance}`);
+        if (treasuryKASBalance == -1 || treasuryKASBalance == null) {
+          monitoring.error(`Main: Fetching KAS balance for address - ${transactionManager!.address}`);
+        } else {
+          monitoring.debug(`Main: KAS balance before transfer : ${treasuryKASBalance}`);
+        }
 
         const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
-        monitoring.debug(`Main: ${CONFIG.defaultTicker} balance before transfer  : ${treasuryNACHOBalance}`);
+        monitoring.debug(`Main: ${CONFIG.defaultTicker} balance before transfer  : ${treasuryNACHOBalance.amount}`);
       } catch (error) {
         monitoring.error(`Main: Balance fetch before payout: ${error}`);  
       }
@@ -196,10 +200,18 @@ cron.schedule(paymentCronSchedule, async () => {
         try {
           // Fetch treasury wallet address balance after Payout
           const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
-          monitoring.log(`Main: KAS balance after transfer : ${treasuryKASBalance}`);
+          if (treasuryKASBalance == -1 || treasuryKASBalance == null) {
+            monitoring.error(`Main: Fetching KAS balance for address - ${transactionManager!.address}`);
+          } else {
+            monitoring.log(`Main: KAS balance after transfer : ${treasuryKASBalance}`);
+          }
     
           const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
-          monitoring.log(`Main: ${CONFIG.defaultTicker} balance after transfer  : ${treasuryNACHOBalance}`);
+          if (treasuryNACHOBalance.error != '') {
+            monitoring.error(`Main: Fetching ${CONFIG.defaultTicker} balance after payout : ${treasuryNACHOBalance.error}`);
+          } else {
+            monitoring.log(`Main: ${CONFIG.defaultTicker} balance after transfer : ${treasuryNACHOBalance.amount}`);
+          }
         } catch (error) {
           monitoring.error(`Main: Balance fetch after payout: ${error}`);  
         }
