@@ -175,19 +175,19 @@ cron.schedule(paymentCronSchedule, async () => {
         } catch (error) {
           monitoring.error(`Main: Error during KRC20 transfer: ${error}`);
         }
-        
-        try {
-          // Fetch treasury wallet address balance after Payout
-          const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
-          monitoring.log(`Main: KAS balance after transfer : ${treasuryKASBalance}`);
-    
-          const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, config.defaultTicker);
-          monitoring.log(`Main: ${config.defaultTicker} balance after transfer  : ${treasuryNACHOBalance}`);
-        } catch (error) {
-          monitoring.error(`Main: Balance fetch after payout: ${error}`);  
-        }
       } else {
         monitoring.error("Main: KRC20 swap could not be performed");
+      }
+
+      try {
+        // Fetch treasury wallet address balance after Payout
+        const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
+        monitoring.log(`Main: KAS balance after transfer : ${treasuryKASBalance}`);
+  
+        const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, config.defaultTicker);
+        monitoring.log(`Main: ${config.defaultTicker} balance after transfer  : ${treasuryNACHOBalance}`);
+      } catch (error) {
+        monitoring.error(`Main: Balance fetch after payout: ${error}`);  
       }
     } catch (transactionError) {
       monitoring.error(`Main: Transaction manager error: ${transactionError}`);

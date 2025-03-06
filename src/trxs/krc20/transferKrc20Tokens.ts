@@ -119,22 +119,38 @@ async function recordPayment(address: string, amount: bigint, transactionHash: s
 export async function resetBalancesByWallet(address : string, balance: bigint, db: Database, column: string, fullRebate: boolean) {
     const client = await db.getClient();
     try {
-        // Update miners_balance table
-        const res = await client.query(`SELECT ${column} FROM miners_balance WHERE wallet = $1`, [[address]]);
-        let minerBalance = res.rows[0] ? BigInt(res.rows[0].balance) : 0n;
+        await client.query('BEGIN'); // Start transaction
+        
+        // Fetch balance and entry count
+        const res = await client.query(`SELECT SUM(${column}) as balance, COUNT(*) AS entry_count FROM miners_balance WHERE wallet = $1 GROUP BY wallet`, [address]);
+        
+        if (res.rows.length === 0) {
+            monitoring.error(`transferKRC20Tokens: resetBalancesByWallet - No record found for Address: ${address}, Column: ${column}. Skipping update.`);
+            await client.query('ROLLBACK'); // Rollback transaction
+            return; // Exit early
+        }
+
+        let minerBalance = BigInt(res.rows[0].balance);
+        const count = BigInt(res.rows[0].entry_count);
+
+        monitoring.debug(`transferKRC20Tokens: Address: ${address}, Column: ${column}, Initial Balance: ${minerBalance}, Entries: ${count}`);
+
         minerBalance -= balance;
         
         if (minerBalance < 0n) {
-            const logMinerBalance = res.rows[0] ? BigInt(res.rows[0].balance) : 0n;
-            monitoring.error(`transferKRC20Tokens: Address: ${address}, Column: ${column}, Original Balance: ${logMinerBalance}, new Deduction: ${balance}, NewBalance=${minerBalance}`);            
+            monitoring.error(`transferKRC20Tokens: Address: ${address}, Column: ${column}, Original Balance: ${res.rows[0].balance}, Deduction: ${balance}, New Balance: 0`);
             minerBalance = 0n;
             if (!fullRebate) {
-                monitoring.error(`transferKRC20Tokens: Negative value for minerBalance: ${address}`);
+                monitoring.error(`transferKRC20Tokens: Negative balance detected for ${address}`);
             }
         }
 
-        await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = ANY($2)`, [minerBalance, [address]]);
+        // Update balance for all matching entries
+        await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = $2`, [minerBalance / count, address]);
+
+        await client.query('COMMIT'); // Commit transaction
     } catch (error) {
+        await client.query('ROLLBACK'); // Rollback in case of an error
         monitoring.error(`transferKRC20Tokens: Error updating miner balance for ${address} - ${error}`);
     } finally {
         client.release();
