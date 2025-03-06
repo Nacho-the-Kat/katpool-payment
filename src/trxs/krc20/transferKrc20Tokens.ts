@@ -40,7 +40,6 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         if (fullRebate) {
             monitoring.debug(`transferKRC20Tokens: Full rebate to address: ${address}`);
             amount = amount * 3n;
-            kasAmount = amount;
         }
         
         // Chances are KRC20 amount is not rounded.
@@ -126,6 +125,8 @@ export async function resetBalancesByWallet(address : string, balance: bigint, d
         minerBalance -= balance;
         
         if (minerBalance < 0n) {
+            const logMinerBalance = res.rows[0] ? BigInt(res.rows[0].balance) : 0n;
+            monitoring.error(`transferKRC20Tokens: Address: ${address}, Column: ${column}, Original Balance: ${logMinerBalance}, new Deduction: ${balance}, NewBalance=${minerBalance}`);            
             minerBalance = 0n;
             if (!fullRebate) {
                 monitoring.error(`transferKRC20Tokens: Negative value for minerBalance: ${address}`);
@@ -133,6 +134,8 @@ export async function resetBalancesByWallet(address : string, balance: bigint, d
         }
 
         await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = ANY($2)`, [minerBalance, [address]]);
+    } catch (error) {
+        monitoring.error(`transferKRC20Tokens: Error updating miner balance for ${address} - ${error}`);
     } finally {
         client.release();
     }

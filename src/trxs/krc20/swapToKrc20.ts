@@ -131,7 +131,6 @@ export default class swapToKrc20 {
 
     async swapKaspaToKRC(balance: bigint) {        
         fromAmountInSompi = balance.toString();
-        fromAmountInSompi = ((BigInt(fromAmountInSompi) * BigInt(config.nachoSwap * 100)) / 10000n).toString();
         fromAmount = fromAmountInSompi
 
         // step 1: quote 
@@ -165,7 +164,8 @@ export default class swapToKrc20 {
                     
                 if (DEBUG) this.transactionManager.monitoring.log(`SwapToKrc20: Submitting transaction ID: ${transaction.id}`);
                 txHash = await transaction.submit(this.transactionManager.rpc);
-            }        
+            }
+            // TODO: Add wait for maturity check
         } catch (error) {
             this.transactionManager.monitoring.error(`Error signing transaction: ${error}`);
             return 0;
@@ -193,10 +193,10 @@ export default class swapToKrc20 {
                 txId = finalStatus?.data?.hash!;
                 balanceAfter = await krc20Token(this.transactionManager.address, toTicker);
             }
-            if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap))
+            if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap)) { // TODO: Check
                 amount = await this.fetchKRC20SwapData(txId!);
-
-            await resetBalancesByWallet('pool', BigInt(fromAmount), this.transactionManager.db, 'balance', false);
+                await resetBalancesByWallet(this.transactionManager.address, BigInt(fromAmount), this.transactionManager.db, 'balance', false);
+            }
             return amount;
         } else {
             return 0;
