@@ -120,7 +120,13 @@ export async function resetBalancesByWallet(address : string, balance: bigint, d
     const client = await db.getClient();
     try {
         // Update miners_balance table
-        const res = await client.query(`SELECT ${column} FROM miners_balance WHERE wallet = $1`, [[address]]);
+        const res = await client.query(`SELECT ${column} FROM miners_balance WHERE wallet = $1`, [address]);
+        
+        if (res.rows.length === 0) {
+            monitoring.error(`transferKRC20Tokens: resetBalancesByWallet - No record found for Address: ${address}, Column: ${column}. Skipping update.`);
+            return; // Exit early
+        }
+
         let minerBalance = res.rows[0] ? BigInt(res.rows[0].balance) : 0n;
         minerBalance -= balance;
         
@@ -133,7 +139,7 @@ export async function resetBalancesByWallet(address : string, balance: bigint, d
             }
         }
 
-        await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = ANY($2)`, [minerBalance, [address]]);
+        await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = $2`, [minerBalance, address]);
     } catch (error) {
         monitoring.error(`transferKRC20Tokens: Error updating miner balance for ${address} - ${error}`);
     } finally {
