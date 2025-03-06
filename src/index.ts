@@ -143,6 +143,7 @@ cron.schedule(paymentCronSchedule, async () => {
           poolBalance = ((BigInt(poolBalance) * BigInt(config.nachoSwap * 100)) / 10000n);
           monitoring.debug(`Main: Swapping ${poolBalance} sompi to ${config.defaultTicker} tokens`);
           amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance);
+          monitoring.debug(`Main: Amount of ${config.defaultTicker} received after swapping: ${amount} ${config.defaultTicker}`); 
         } catch (error) {
           monitoring.error(`Main: Error swapping KASPA to KRC20: ${error}`);
         }
@@ -154,16 +155,16 @@ cron.schedule(paymentCronSchedule, async () => {
       } catch (error) {
         monitoring.error(`Main: Error fetching balance after swap: ${error}`);
       }
-      const maxAllowedBalance = amount * 115 / 100; // amount + 15%
+      // const maxAllowedBalance = amount * 115 / 100; // amount + 15%
       
-      /*
-        Failure cases:
-          1. If for some reason the KRC20 transfer was not performed or failed in previous cycle. Use all tokens as transfer amount.
-          2. If swap fails and we have excess KRC20 tokens.
-      */
-      if (balanceAfter > maxAllowedBalance || (amount == 0 && balanceAfter >= parseInt("3600", 8))) {
-        amount = balanceAfter; // No need to deduct rebate buffer here. It will be done in below transfer call.
-      }
+      // /*
+      //   Failure cases:
+      //     1. If for some reason the KRC20 transfer was not performed or failed in previous cycle. Use all tokens as transfer amount.
+      //     2. If swap fails and we have excess KRC20 tokens.
+      // */
+      // if (balanceAfter > maxAllowedBalance || (amount == 0 && balanceAfter >= parseInt("3600", 8))) {
+      //   amount = balanceAfter; // No need to deduct rebate buffer here. It will be done in below transfer call.
+      // }
       
       // Transfer KRC20
       if (amount != 0) {

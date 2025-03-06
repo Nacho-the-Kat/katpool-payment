@@ -192,10 +192,10 @@ export default class swapToKrc20 {
                 txId = finalStatus?.data?.hash!;
                 balanceAfter = await krc20Token(this.transactionManager.address, toTicker);
             }
-            if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap))
+            if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap)) { // TODO: Check
                 amount = await this.fetchKRC20SwapData(txId!);
-
-            await resetBalancesByWallet('pool', BigInt(fromAmount), this.transactionManager.db, 'balance', false);
+                await resetBalancesByWallet(this.transactionManager.address, BigInt(fromAmount), this.transactionManager.db, 'balance', false);
+            }
             return amount;
         } else {
             return 0;
