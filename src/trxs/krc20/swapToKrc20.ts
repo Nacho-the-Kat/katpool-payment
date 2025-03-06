@@ -164,7 +164,8 @@ export default class swapToKrc20 {
                     
                 if (DEBUG) this.transactionManager.monitoring.log(`SwapToKrc20: Submitting transaction ID: ${transaction.id}`);
                 txHash = await transaction.submit(this.transactionManager.rpc);
-            }        
+            }
+            // TODO: Add wait for maturity check
         } catch (error) {
             this.transactionManager.monitoring.error(`Error signing transaction: ${error}`);
             return 0;
