@@ -1,14 +1,6 @@
 import axios from 'axios';
-import config from '../config/config.json';
+import { CONFIG, KASPA_BASE_URL } from './constants';
 import Monitoring from './monitoring';
-
-let KASPA_BASE_URL = 'https://api.kaspa.org';
-
-if( config.network === "testnet-10" ) {
- KASPA_BASE_URL = "https://api-tn10.kaspa.org"
-} else if( config.network === "testnet-11" ) {
- KASPA_BASE_URL = "https://api-tn11.kaspa.org"
-}
 
 const monitoring = new Monitoring();
 
@@ -19,7 +11,7 @@ export async function fetchKASBalance(address: string) {
     if (response.status == 200) {
       return response.data.balance;
     } else {
-      return 0;
+      return null; // To avoid confusion with actual 0 balance.
     }
   } catch (error) {
     monitoring.error(`utils: Fetching KAS balance for address: ${address} : ${error}`);
@@ -60,7 +52,7 @@ export async function getDaaScoreFromTx(tx: string) {
 
 export async function getKaspaUSDPrice() {
   try {
-    if (config.network.includes('mainnet')) {
+    if (CONFIG.network.includes('mainnet')) {
       const url = `${KASPA_BASE_URL}/info/price?stringOnly=false`;
       const response = await axios.get(url);
       const usdPrice = BigInt(response.data.price)

@@ -5,23 +5,15 @@ import { signMessage, createTransactions } from "../../../wasm/kaspa";
 import { DEBUG } from '../../index.ts';
 import trxManager from '../index.ts';
 import Monitoring from '../../monitoring/index.ts';
-import config from "../../../config/config.json";
+import { CONFIG, KASPA_BASE_URL } from "../../constants";
 import { parseSignatureScript } from './utils.ts';
 import { resetBalancesByWallet } from './transferKrc20Tokens.ts';
 import { KASPLEX_URL, krc20Token } from './krc20Api.ts';
 
-let KASPA_BASE_URL = 'https://api.kaspa.org';
-
-if( config.network === "testnet-10" ) {
- KASPA_BASE_URL = "https://api-tn10.kaspa.org"
-} else if( config.network === "testnet-11" ) {
- KASPA_BASE_URL = "https://api-tn11.kaspa.org"
-}
-
 const chaingeUrl = 'https://api2.chainge.finance';
-
+const monitoring = new Monitoring();
 const fromTicker = "KAS";
-const toTicker = config.defaultTicker;
+const toTicker = CONFIG.defaultTicker;
 const Chain = "KAS";
 
 let customSlippage = "5"; // percentage format, ex: 5%
@@ -30,7 +22,6 @@ let toAmountMinSwap = "";
 
 let fromAmountInSompi = "";
 let fromAmount = "";
-new Monitoring().debug(`SwapToKrc20: fromAmount in SOMPI : ${fromAmount}`)
     
 export default class swapToKrc20 {
     private transactionManager: trxManager;
@@ -48,7 +39,7 @@ export default class swapToKrc20 {
         // quote 
         const response = await fetch(`${chaingeUrl}/fun/quote?fromTicker=${quoteParams.fromTicker}&toTicker=${quoteParams.toTicker}&fromAmount=${quoteParams.fromAmount}`)
         const quoteResult = await response.json()
-        if (DEBUG) this.transactionManager.monitoring.log(`SwapToKrc20: fnGetQuote ~ quoteResult: ${JSON.stringify(quoteResult)}`);
+        if (DEBUG) monitoring.log(`SwapToKrc20: fnGetQuote ~ quoteResult: ${JSON.stringify(quoteResult)}`);
         if(quoteResult.code !== 0) return {toAmountMinSwap: "0", toAmountSwap: "0"};
         let { amountOut, serviceFee, gasFee, slippage } = quoteResult.data
         // slippage: 5%
@@ -70,9 +61,9 @@ export default class swapToKrc20 {
         const miniAmount = parseUnits(miniAmountHr, 8).toString()
     
         toAmountSwap = receiveAmount.toString()
-        if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountSwap: ${toAmountSwap}`)
+        if (DEBUG) monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountSwap: ${toAmountSwap}`)
         toAmountMinSwap = miniAmount;
-        if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountMinSwap: ${toAmountMinSwap}`)
+        if (DEBUG) monitoring.debug(`SwapToKrc20: fnGetQuote ~ toAmountMinSwap: ${toAmountMinSwap}`)
 
         return {toAmountMinSwap, toAmountSwap};
     }
@@ -107,7 +98,7 @@ export default class swapToKrc20 {
             Chain,
             Signature: signature
         }
-        if (DEBUG) this.transactionManager.monitoring.log(`Header: ${JSON.stringify(header)}`);
+        if (DEBUG) monitoring.log(`SwapToKrc20: Header - ${JSON.stringify(header)}`);
 
         const response = await fetch(`${chaingeUrl}/fun/submitSwap`, {
             method: "POST",
@@ -119,7 +110,7 @@ export default class swapToKrc20 {
         })
 
         const result = await response?.json();
-        this.transactionManager.monitoring.log(`Result : ${JSON.stringify(result)}`);
+        monitoring.log(`SwapToKrc20: Result - ${JSON.stringify(result)}`);
         return result
     }
 
@@ -159,21 +150,28 @@ export default class swapToKrc20 {
 
             for (let i = 0; i < transactions.length; i++) {
                 const transaction = transactions[i];
-                if (DEBUG) this.transactionManager.monitoring.log(`SwapToKrc20: Signing transaction ID: ${transaction.id}`);
+                if (DEBUG) monitoring.log(`SwapToKrc20: Signing transaction ID: ${transaction.id}`);
                 transaction.sign([this.transactionManager.privateKey]);
                     
-                if (DEBUG) this.transactionManager.monitoring.log(`SwapToKrc20: Submitting transaction ID: ${transaction.id}`);
+                if (DEBUG) monitoring.log(`SwapToKrc20: Submitting transaction ID: ${transaction.id}`);
                 txHash = await transaction.submit(this.transactionManager.rpc);
             }
             // TODO: Add wait for maturity check
         } catch (error) {
-            this.transactionManager.monitoring.error(`Error signing transaction: ${error}`);
+            monitoring.error(`SwapToKrc20: Error signing transaction: ${error}`);
             return 0;
         }
 
         // step 4: submitOrder
-        this.transactionManager.monitoring.log(`SwapToKrc20: fnCore ~ txHash: ${txHash}`);
-        const balanceBefore = await krc20Token(this.transactionManager.address, toTicker);
+        monitoring.log(`SwapToKrc20: fnCore ~ txHash: ${txHash}`);
+        const result = await krc20Token(this.transactionManager.address, toTicker);
+        const balanceBefore = result.amount;
+        if (result.error != '') {
+            monitoring.error(`SwapToKrc20: Fetching ${toTicker} balance before swap : ${result.error}`);
+        } else {
+            monitoring.log(`SwapToKrc20: Treasury wallet ${this.transactionManager?.address} has ${balanceBefore} ${CONFIG.defaultTicker} tokens before swap.`);
+        }
+
         let balanceAfter = balanceBefore;
         let res = await this.fnSubmitSwap(txHash, toAmountMinSwap, toAmountSwap)
 
@@ -185,13 +183,19 @@ export default class swapToKrc20 {
             let amount: number = 0;
             try {
                 finalStatus = await this.pollStatus(res.data.id);
-                this.transactionManager.monitoring.log(`Final Result: ${JSON.stringify(finalStatus)}`);
+                monitoring.log(`SwapToKrc20: Final Result: ${JSON.stringify(finalStatus)}`);
             } catch (error) {
-                this.transactionManager.monitoring.error(`❌ Operation failed:", ${error}`);
+                monitoring.error(`SwapToKrc20: ❌ Operation failed:", ${error}`);
             }
             if (finalStatus?.msg === 'success') {
                 txId = finalStatus?.data?.hash!;
-                balanceAfter = await krc20Token(this.transactionManager.address, toTicker);
+                const res = await krc20Token(this.transactionManager.address, toTicker);
+                balanceAfter = res.amount;
+                if (res.error != '') {
+                    monitoring.error(`SwapToKrc20: Fetching ${toTicker} balance after swap : ${result.error} `);
+                } else {
+                    monitoring.log(`SwapToKrc20: Treasury wallet ${this.transactionManager?.address} has ${balanceAfter} ${CONFIG.defaultTicker} tokens after swap.`);
+                }            
             }
             if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap)) { // TODO: Check
                 amount = await this.fetchKRC20SwapData(txId!);
@@ -220,7 +224,7 @@ export default class swapToKrc20 {
     
         const decimal = await this.getDecimalFromTick(tick)
         const amount = Number(krc20Data.amt);
-        this.transactionManager.monitoring.log(`swapToKrc20 ~ fetchKRC20SwapData ~ amount: ${amount}`);
+        monitoring.log(`SwapToKrc20: fetchKRC20SwapData ~ amount: ${amount}`);
         return amount;
     }
 
@@ -247,24 +251,24 @@ export default class swapToKrc20 {
                     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
     
                     const data = await response.json();
-                    this.transactionManager.monitoring.log(`Polling attempt ${attempts}: ${JSON.stringify(data)}`);
+                    monitoring.log(`SwapToKrc20: Polling attempt ${attempts}: ${JSON.stringify(data)}`);
     
                     if (data!.data!.status!.toString() === "Succeeded") {
-                        this.transactionManager.monitoring.log("✅ Operation completed successfully!");
+                        monitoring.log("SwapToKrc20: ✅ Operation completed successfully!");
                         resolve(data);
                         return;
                     }
     
                     if (attempts >= maxAttempts) {
-                        this.transactionManager.monitoring.log("❌ Max polling attempts reached. Stopping...");
-                        this.transactionManager.monitoring.log(`Stopping polling for id: ${id}`);
+                        monitoring.log("SwapToKrc20: ❌ Max polling attempts reached. Stopping...");
+                        monitoring.log(`SwapToKrc20: Stopping polling for id: ${id}`);
                         reject(new Error("Polling timed out"));
                         return;
                     }
     
                     setTimeout(checkStatus, interval);
                 } catch (error) {
-                    this.transactionManager.monitoring.error(`Error polling API:", ${error}`);
+                    monitoring.error(`SwapToKrc20: Error polling API:", ${error}`);
                     reject(error);
                 }
             };
