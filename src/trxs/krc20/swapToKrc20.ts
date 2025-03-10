@@ -216,7 +216,7 @@ export default class swapToKrc20 {
             }
             if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap)) { // TODO: Check
                 amount = await this.fetchKRC20SwapData(txId!);
-                await resetBalancesByWallet(this.transactionManager.address, BigInt(fromAmount), this.transactionManager.db, 'balance', false);
+                // await resetBalancesByWallet(this.transactionManager.address, BigInt(fromAmount), this.transactionManager.db, 'balance', false);
             }
             return amount;
         } else {
