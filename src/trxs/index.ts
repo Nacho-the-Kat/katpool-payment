@@ -117,7 +117,7 @@ export default class trxManager {
     const transactionHash = await transaction.submit(this.processor.rpc);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Waiting for transaction ID: ${transaction.id} to mature`);
-    await this.waitForMatureUtxo(transactionHash);
+    await waitForMatureUtxo(transactionHash, this.context);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Transaction ID ${transactionHash} has matured. Proceeding with next transaction.`);
 
@@ -141,22 +141,6 @@ export default class trxManager {
     this.monitoring.log(`TrxManager: Reset balances for wallet ${toAddresses}`);
   }
 
-  private async waitForMatureUtxo(transactionId: string): Promise<void> {
-    const pollingInterval = 5000; // 5 seconds
-    const maxAttempts = 60; // 5 minutes
-
-    for (let i = 0; i < maxAttempts; i++) {
-      const matureLength = this.context.matureLength;
-      if (matureLength > 0) {
-        if (DEBUG) this.monitoring.debug(`Transaction ID ${transactionId} is now mature.`);
-        return;
-      }
-      await new Promise(resolve => setTimeout(resolve, pollingInterval));
-    }
-
-    throw new Error(`Timeout waiting for transaction ID ${transactionId} to mature.`);
-  }
-
   private registerProcessor() {
     this.processor.addEventListener("utxo-proc-start", async () => {
       if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - this.context.clear()`);
@@ -166,4 +150,20 @@ export default class trxManager {
     });
     this.processor.start();
   }
+}
+
+export async function waitForMatureUtxo(transactionId: string, context: UtxoContext): Promise<void> {
+  const pollingInterval = 5000; // 5 seconds
+  const maxAttempts = 60; // 5 minutes
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const matureLength = context.matureLength;
+    if (matureLength > 0) {
+      if (DEBUG) new Monitoring().debug(`Transaction ID ${transactionId} is now mature.`);
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, pollingInterval));
+  }
+
+  throw new Error(`Timeout waiting for transaction ID ${transactionId} to mature.`);
 }

@@ -1,9 +1,9 @@
 import BigNumber from 'bignumber.js';
 import { formatUnits, parseUnits } from 'ethers'
 import axios, { AxiosError } from 'axios';
-import { signMessage, createTransactions } from "../../../wasm/kaspa";
+import { signMessage, createTransactions, addressFromScriptPublicKey, ScriptPublicKey } from "../../../wasm/kaspa";
 import { DEBUG } from '../../index.ts';
-import trxManager from '../index.ts';
+import trxManager, { waitForMatureUtxo } from '../index.ts';
 import Monitoring from '../../monitoring/index.ts';
 import config from "../../../config/config.json";
 import { parseSignatureScript } from './utils.ts';
@@ -164,8 +164,29 @@ export default class swapToKrc20 {
                     
                 if (DEBUG) this.transactionManager.monitoring.log(`SwapToKrc20: Submitting transaction ID: ${transaction.id}`);
                 txHash = await transaction.submit(this.transactionManager.rpc);
+                try {
+                    if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: Waiting for transaction ID: ${transaction.id} to mature`);
+                    await waitForMatureUtxo(txHash, this.transactionManager.context);
+                    if (DEBUG) this.transactionManager.monitoring.debug(`SwapToKrc20: Transaction ID ${txHash} has matured. Proceeding with next transaction.`);
+                
+                    const txOutputs = transaction.transaction.outputs;
+                    const entries: {address: string,amount: bigint}[] = [];
+                    const toAddresses: string[] = [];
+                    for(const data of txOutputs) {
+                    const decodedAddress = addressFromScriptPublicKey(data.scriptPublicKey as ScriptPublicKey, this.transactionManager.networkId);
+                    const address = (decodedAddress!.prefix + ":" + decodedAddress!.payload);
+                    const amount = data.value;
+                    if(address == this.transactionManager.address) continue
+                    toAddresses.push(address)
+                    entries.push({address, amount})
+                    }
+                    if(toAddresses.length > 0) {
+                        await resetBalancesByWallet(this.transactionManager.address, BigInt(fromAmount), this.transactionManager.db, 'balance', false);
+                    }
+                } catch(error) {
+                    this.transactionManager.monitoring.error(`Waiting for maturity: ${error}`);
+                }
             }
-            // TODO: Add wait for maturity check
         } catch (error) {
             this.transactionManager.monitoring.error(`Error signing transaction: ${error}`);
             return 0;
