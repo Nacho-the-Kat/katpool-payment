@@ -122,7 +122,6 @@ export default class swapToKrc20 {
 
     async swapKaspaToKRC(balance: bigint) {        
         fromAmountInSompi = balance.toString();
-        fromAmountInSompi = ((BigInt(fromAmountInSompi) * BigInt(CONFIG.nachoSwap * 100)) / 10000n).toString();
         fromAmount = fromAmountInSompi
 
         // step 1: quote 
