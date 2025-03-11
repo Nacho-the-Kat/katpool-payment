@@ -6,6 +6,7 @@ import { krc20Token, nftAPI } from "./krc20Api";
 import { parseUnits } from "ethers";
 import trxManager from "..";
 import Monitoring from "../../monitoring";
+import { PoolClient } from "pg";
 
 const fullRebateTokenThreshold = parseUnits("100", 14); // Minimum 100M (NACHO)
 const fullRebateNFTThreshold = 1; // Minimum 1 NFT
@@ -13,7 +14,7 @@ const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 const monitoring = new Monitoring();
 
 // Currently used to transfer NACHO tokens.
-export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number, balances: any, poolBal: bigint, transactionManager: trxManager) {
+export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: bigint, balances: any, poolBal: bigint, transactionManager: trxManager) {
     let payments: { [address: string]: bigint } = {};
     
     // Aggregate balances by wallet address
@@ -25,7 +26,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
 
     const nachoThresholdAmount = BigInt(config.nachoThresholdAmount) || BigInt("100000000000");
         
-    const NACHORebateBuffer = Number(config.nachoRebateBuffer);
+    const NACHORebateBuffer = BigInt(config.nachoRebateBuffer);
 
     let poolBalance = poolBal;
     
@@ -42,9 +43,6 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
             amount = amount * 3n;
         }
         
-        // Chances are KRC20 amount is not rounded.
-        krc20Amount = Math.floor(krc20Amount);
-
         // Set NACHO rebate amount in ratios.
         if (!krc20Amount || isNaN(Number(krc20Amount))) {
             throw new Error("Invalid krc20Amount value");
@@ -53,7 +51,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
             throw new Error("Invalid poolBalance value");
         }
         
-        const numerator = BigInt(amount) * BigInt(Math.floor(krc20Amount));
+        const numerator = BigInt(amount) * krc20Amount;
         const denominator = BigInt(poolBalance);
         
         // NACHO amount to be transferred
@@ -76,7 +74,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
             if (res?.error != null) {
                 monitoring.error(`transferKRC20Tokens: Error from KRC20 transfer : ${res?.error!}`);
             } else {
-                await recordPayment(address, nachoAmount, res?.revealHash, transactionManager?.db!, kasAmount, fullRebate);
+                await recordPayment(address, transactionManager!.address, nachoAmount, res?.revealHash, transactionManager?.db!, kasAmount, fullRebate);
             }
         } catch(error) {
             monitoring.error(`transferKRC20Tokens: Transfering ${nachoAmount.toString()} ${pTicker} to ${address} : ${error}`);
@@ -99,7 +97,7 @@ async function checkFullFeeRebate(address: string, ticker: string) {
     return false;
 }
 
-async function recordPayment(address: string, amount: bigint, transactionHash: string, db: Database, kasAmount: bigint, fullRebate: boolean) {
+async function recordPayment(address: string, treasuryAddr: string, amount: bigint, transactionHash: string, db: Database, kasAmount: bigint, fullRebate: boolean) {
     const client = await db.getClient();
 
     let values: string[] = [];
@@ -109,24 +107,28 @@ async function recordPayment(address: string, amount: bigint, transactionHash: s
     const query = `INSERT INTO nacho_payments (wallet_address, nacho_amount, timestamp, transaction_hash) VALUES ${valuesPlaceHolder};`;
     queryParams.push([address]);
     try {
+      await client.query('BEGIN'); // Start transaction
+
       await client.query(query, queryParams);
-      await resetBalancesByWallet(address, kasAmount, db, 'nacho_rebate_kas', fullRebate);
+      await resetBalancesByWallet(client, address, kasAmount, 'nacho_rebate_kas', fullRebate);
+      await resetBalancesByWallet(client, treasuryAddr, kasAmount, 'balance', false);
+
+      await client.query("COMMIT"); // Commit everything together
+    } catch (error) {
+      await client.query("ROLLBACK"); // Rollback everything if any step fails
+      throw error;
     } finally {
       client.release();
     }
 }
 
-export async function resetBalancesByWallet(address : string, balance: bigint, db: Database, column: string, fullRebate: boolean) {
-    const client = await db.getClient();
-    try {
-        await client.query('BEGIN'); // Start transaction
-        
+export async function resetBalancesByWallet(client: PoolClient, address : string, balance: bigint, column: string, fullRebate: boolean) {
+    try {        
         // Fetch balance and entry count
         const res = await client.query(`SELECT SUM(${column}) as balance, COUNT(*) AS entry_count FROM miners_balance WHERE wallet = $1 GROUP BY wallet`, [address]);
         
         if (res.rows.length === 0) {
             monitoring.error(`transferKRC20Tokens: resetBalancesByWallet - No record found for Address: ${address}, Column: ${column}. Skipping update.`);
-            await client.query('ROLLBACK'); // Rollback transaction
             return; // Exit early
         }
 
@@ -145,14 +147,12 @@ export async function resetBalancesByWallet(address : string, balance: bigint, d
             }
         }
 
-        // Update balance for all matching entries
-        await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = $2`, [minerBalance / count, address]);
+        const newBalance = count > 0 ? minerBalance / count : 0n; // ✅ Prevent division by zero 
 
-        await client.query('COMMIT'); // Commit transaction
+        // Update balance for all matching entries
+        await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = $2`, [newBalance, address]);
+
     } catch (error) {
-        await client.query('ROLLBACK'); // Rollback in case of an error
         monitoring.error(`transferKRC20Tokens: Error updating miner balance for ${address} - ${error}`);
-    } finally {
-        client.release();
-    }
+    } 
 }

@@ -1,28 +1,15 @@
 import BigNumber from 'bignumber.js';
 import { formatUnits, parseUnits } from 'ethers'
-import axios, { AxiosError } from 'axios';
-import { signMessage, createTransactions } from "../../../wasm/kaspa";
 import { DEBUG } from '../../index.ts';
 import trxManager from '../index.ts';
 import Monitoring from '../../monitoring/index.ts';
 import config from "../../../config/config.json";
-import { parseSignatureScript } from './utils.ts';
 import { resetBalancesByWallet } from './transferKrc20Tokens.ts';
-import { KASPLEX_URL, krc20Token } from './krc20Api.ts';
-
-let KASPA_BASE_URL = 'https://api.kaspa.org';
-
-if( config.network === "testnet-10" ) {
- KASPA_BASE_URL = "https://api-tn10.kaspa.org"
-} else if( config.network === "testnet-11" ) {
- KASPA_BASE_URL = "https://api-tn11.kaspa.org"
-}
 
 const chaingeUrl = 'https://api2.chainge.finance';
 
 const fromTicker = "KAS";
 const toTicker = config.defaultTicker;
-const Chain = "KAS";
 
 let customSlippage = "5"; // percentage format, ex: 5%
 let toAmountSwap = "";
@@ -76,200 +63,28 @@ export default class swapToKrc20 {
 
         return {toAmountMinSwap, toAmountSwap};
     }
-    
-    fnSubmitSwap = async (tradeHash, toAmountMinSwap, toAmountSwap) => {
-        const params = {
-            fromTicker,
-            fromAmount: fromAmount,
-            toTicker,    
-            toAmount: toAmountSwap,
-            toAmountMin: toAmountMinSwap,
-            certHash: tradeHash,
-            channel: "knot",
-        };
-        
-        let raw = `${params.channel}_${params.certHash}_${params.fromTicker}_${params.fromAmount}_${params.toTicker}_${params.toAmount}_${params.toAmountMin}`
-        
-        // Use the signMessage method of the kasWare wallet to sign a string.
-        let signature = signMessage({
-            privateKey: this.transactionManager.privateKey!,
-            message: raw,
-        })
 
-        const PublicKey = this.transactionManager.privateKey.toPublicKey().toString();
-        if (!PublicKey) {
-            throw new Error('Can not derive public key from private key');
-        }
-
-        const header = {
-            Address: this.transactionManager.address!,
-            PublicKey,
-            Chain,
-            Signature: signature
-        }
-        if (DEBUG) this.transactionManager.monitoring.log(`Header: ${JSON.stringify(header)}`);
-
-        const response = await fetch(`${chaingeUrl}/fun/submitSwap`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                ...header
-            },
-            body: JSON.stringify(params)
-        })
-
-        const result = await response?.json();
-        this.transactionManager.monitoring.log(`Result : ${JSON.stringify(result)}`);
-        return result
-    }
-
-    fnGetMinterAddr = async () => {
-        const response = await fetch(`${chaingeUrl}/fun/getVault?ticker=KAS`)
-        const result = await response.json()
-        return result.data.vault
-    }
-
+    /**
+     * Calculates the equivalent amount of NACHO that can be obtained for a given KAS balance based on market rates.  
+     * This determines the amount of NACHO to be distributed in the current payment cycle.  
+     *  
+     * - If a market swap for the given KAS balance can be performed, the corresponding NACHO amount is used for distribution.  
+     * - If a swap cannot be executed at current market conditions, NACHO distribution is omitted for this cycle.  
+     *  
+     * @param balance - The amount of KAS (in bigint) to be swapped for NACHO.  
+     * @returns The equivalent amount of NACHO if a swap is possible; otherwise, an indication that no swap occurred.  
+     */ 
     async swapKaspaToKRC(balance: bigint) {        
         fromAmountInSompi = balance.toString();
         fromAmount = fromAmountInSompi
 
         // step 1: quote 
         const {toAmountMinSwap, toAmountSwap} = await this.fnGetQuote()
-        
-        // Return when we did not get quote.
-        if (toAmountMinSwap === '0' || toAmountSwap === '0') return 0;
-        
-        // step 2: get minter address
-        const minterAddr = await this.fnGetMinterAddr()
 
-        // step 3: Send transaction 
-        // You need to initiate a transaction to our minter through the wallet, and obtain the hash. This hash will be the transaction hash.
-        let txHash = "";
-        try {
-            if (this == null) {
-                return 0;
-            }
-            const { transactions } = await createTransactions({
-                entries: this.transactionManager.context,
-                outputs: [{address: minterAddr, amount: BigInt(fromAmount)}],
-                changeAddress: this.transactionManager.address,
-                priorityFee: 0n,
-                networkId: this.transactionManager.networkId,
-            });
+        // if (toAmountSwap != "0") {
+        //     await resetBalancesByWallet(this.transactionManager.address, BigInt(fromAmount), this.transactionManager.db, 'balance', false);
+        // }
 
-            for (let i = 0; i < transactions.length; i++) {
-                const transaction = transactions[i];
-                if (DEBUG) this.transactionManager.monitoring.log(`SwapToKrc20: Signing transaction ID: ${transaction.id}`);
-                transaction.sign([this.transactionManager.privateKey]);
-                    
-                if (DEBUG) this.transactionManager.monitoring.log(`SwapToKrc20: Submitting transaction ID: ${transaction.id}`);
-                txHash = await transaction.submit(this.transactionManager.rpc);
-            }
-            // TODO: Add wait for maturity check
-        } catch (error) {
-            this.transactionManager.monitoring.error(`Error signing transaction: ${error}`);
-            return 0;
-        }
-
-        // step 4: submitOrder
-        this.transactionManager.monitoring.log(`SwapToKrc20: fnCore ~ txHash: ${txHash}`);
-        const balanceBefore = await krc20Token(this.transactionManager.address, toTicker);
-        let balanceAfter = balanceBefore;
-        let res = await this.fnSubmitSwap(txHash, toAmountMinSwap, toAmountSwap)
-
-        if (res.msg === 'success') {
-            
-            // Start polling the status
-            let finalStatus;
-            let txId: string = '';
-            let amount: number = 0;
-            try {
-                finalStatus = await this.pollStatus(res.data.id);
-                this.transactionManager.monitoring.log(`Final Result: ${JSON.stringify(finalStatus)}`);
-            } catch (error) {
-                this.transactionManager.monitoring.error(`❌ Operation failed:", ${error}`);
-            }
-            if (finalStatus?.msg === 'success') {
-                txId = finalStatus?.data?.hash!;
-                balanceAfter = await krc20Token(this.transactionManager.address, toTicker);
-            }
-            if (txId != '' || BigInt(balanceAfter) - BigInt(balanceBefore) >= BigInt(toAmountMinSwap)) { // TODO: Check
-                amount = await this.fetchKRC20SwapData(txId!);
-                await resetBalancesByWallet(this.transactionManager.address, BigInt(fromAmount), this.transactionManager.db, 'balance', false);
-            }
-            return amount;
-        } else {
-            return 0;
-        }
-    }
-
-    async fetchKRC20SwapData(txId: string) {        
-        const apiURL = `${KASPA_BASE_URL}/transactions/${txId}?inputs=true&outputs=false&resolve_previous_outpoints=no`
-
-        const txs = await axios.get(apiURL).then((data) => data.data)
-    
-        const txInputs = txs.inputs
-        const { signature_script: signatureScript } = txInputs[0]
-    
-        const jsonString = parseSignatureScript(signatureScript)
-            .findLast((s) => s.indexOf('OP_PUSH') === 0)
-            .split(' ')[1]
-    
-        const krc20Data = JSON.parse(jsonString)
-        const tick = krc20Data.tick.toUpperCase()
-    
-        const decimal = await this.getDecimalFromTick(tick)
-        const amount = Number(krc20Data.amt);
-        this.transactionManager.monitoring.log(`swapToKrc20 ~ fetchKRC20SwapData ~ amount: ${amount}`);
-        return amount;
-    }
-
-    // get decimals for KRC-20 Token
-    getDecimalFromTick = async (tick) => {
-        const tokenMetaData = await axios
-            .get(`${KASPLEX_URL}/v1/krc20/token/${tick}`)
-            .then((data) => data.data)
-        const decimal = tokenMetaData.result[0].dec
-
-        return decimal
-    }
-
-    async pollStatus(id: string, interval = 60000, maxAttempts = 30): Promise<any> {
-        let attempts = 0;
-    
-        return new Promise((resolve, reject) => {
-            const checkStatus = async () => {
-                attempts++;
-    
-                try {
-                    const response = await fetch(`${chaingeUrl}/fun/checkSwap?id=${id}`);
-
-                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-    
-                    const data = await response.json();
-                    this.transactionManager.monitoring.log(`Polling attempt ${attempts}: ${JSON.stringify(data)}`);
-    
-                    if (data!.data!.status!.toString() === "Succeeded") {
-                        this.transactionManager.monitoring.log("✅ Operation completed successfully!");
-                        resolve(data);
-                        return;
-                    }
-    
-                    if (attempts >= maxAttempts) {
-                        this.transactionManager.monitoring.log("❌ Max polling attempts reached. Stopping...");
-                        this.transactionManager.monitoring.log(`Stopping polling for id: ${id}`);
-                        reject(new Error("Polling timed out"));
-                        return;
-                    }
-    
-                    setTimeout(checkStatus, interval);
-                } catch (error) {
-                    this.transactionManager.monitoring.error(`Error polling API:", ${error}`);
-                    reject(error);
-                }
-            };
-    
-            checkStatus();
-        });
+        return BigInt(toAmountSwap);
     }
 }
