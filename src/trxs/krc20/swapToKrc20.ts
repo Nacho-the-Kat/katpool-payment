@@ -81,9 +81,9 @@ export default class swapToKrc20 {
         // step 1: quote 
         const {toAmountMinSwap, toAmountSwap} = await this.fnGetQuote()
 
-        if (toAmountSwap != "0") {
-            await resetBalancesByWallet(this.transactionManager.address, BigInt(fromAmount), this.transactionManager.db, 'balance', false);
-        }
+        // if (toAmountSwap != "0") {
+        //     await resetBalancesByWallet(this.transactionManager.address, BigInt(fromAmount), this.transactionManager.db, 'balance', false);
+        // }
 
         return BigInt(toAmountSwap);
     }
