@@ -136,20 +136,18 @@ cron.schedule(paymentCronSchedule, async () => {
         monitoring.error(`Main: Error during KAS payout: ${error}`);
       }
 
-      // Swap KASPA to KRC20
+      // Get quote for KASPA to KRC20
       if (poolBalance == 0n){
         monitoring.error("Main: Pool treasury balance is 0. Could not perform any KRC20 payout.");
       } else {        
         try {
           poolBalance = ((BigInt(poolBalance) * BigInt(config.nachoSwap * 100)) / 10000n);
-          monitoring.debug(`Main: Swapping ${poolBalance} sompi to ${config.defaultTicker} tokens`);
           amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance);
-          monitoring.debug(`Main: Amount of ${config.defaultTicker} received after swapping: ${amount} ${config.defaultTicker}`); 
+          monitoring.debug(`Main: Amount of ${config.defaultTicker} tokens to be used for NACHO rebate: ${amount} ${config.defaultTicker}`); 
         } catch (error) {
-          monitoring.error(`Main: Error swapping KASPA to KRC20: ${error}`);
+          monitoring.error(`Main: Fetching KAS to NACHO quote: ${error}`);
         }
       }
-
       
       // Transfer KRC20
       if (amount != 0n && treasuryNACHOBalance > amount) {
@@ -161,7 +159,7 @@ cron.schedule(paymentCronSchedule, async () => {
           monitoring.error(`Main: Error during KRC20 transfer: ${error}`);
         }
       } else {
-        monitoring.error("Main: KRC20 swap could not be performed");
+        monitoring.debug(`Main: Current amount of KASPA is to low.`);
       }
 
       try {

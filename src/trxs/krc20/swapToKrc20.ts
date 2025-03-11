@@ -6,19 +6,10 @@ import Monitoring from '../../monitoring/index.ts';
 import config from "../../../config/config.json";
 import { resetBalancesByWallet } from './transferKrc20Tokens.ts';
 
-let KASPA_BASE_URL = 'https://api.kaspa.org';
-
-if( config.network === "testnet-10" ) {
- KASPA_BASE_URL = "https://api-tn10.kaspa.org"
-} else if( config.network === "testnet-11" ) {
- KASPA_BASE_URL = "https://api-tn11.kaspa.org"
-}
-
 const chaingeUrl = 'https://api2.chainge.finance';
 
 const fromTicker = "KAS";
 const toTicker = config.defaultTicker;
-const Chain = "KAS";
 
 let customSlippage = "5"; // percentage format, ex: 5%
 let toAmountSwap = "";
