@@ -136,7 +136,7 @@ cron.schedule(paymentCronSchedule, async () => {
         monitoring.error(`Main: Error during KAS payout: ${error}`);
       }
 
-      // Get quote for KASPA to KRC20
+      // Get quote for KASPA to NACHO for rebate
       if (poolBalance == 0n){
         monitoring.error("Main: Pool treasury balance is 0. Could not perform any KRC20 payout.");
       } else {        
@@ -149,7 +149,7 @@ cron.schedule(paymentCronSchedule, async () => {
         }
       }
       
-      // Transfer KRC20
+      // Transfer NACHO
       if (amount != 0n && treasuryNACHOBalance > amount) {
         try {
           monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
@@ -159,7 +159,7 @@ cron.schedule(paymentCronSchedule, async () => {
           monitoring.error(`Main: Error during KRC20 transfer: ${error}`);
         }
       } else {
-        monitoring.debug(`Main: Current amount of KASPA is to low.`);
+        monitoring.debug(`Main: Current amount of KASPA is to low to distribute NACHO rebate.`);
       }
 
       try {
