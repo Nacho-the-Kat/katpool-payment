@@ -109,19 +109,20 @@ cron.schedule(paymentCronSchedule, async () => {
       const balances = await transactionManager!.db.getAllBalancesExcludingPool();
       let poolBalances = await transactionManager!.db.getPoolBalance();
 
+      let treasuryNACHOBalance = 0n;
       try {
         // Fetch treasury wallet address balance before Payout
         const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
         monitoring.debug(`Main: KAS balance before transfer : ${treasuryKASBalance}`);
 
-        const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, config.defaultTicker);
+        treasuryNACHOBalance = await krc20Token(transactionManager!.address, config.defaultTicker);
         monitoring.debug(`Main: ${config.defaultTicker} balance before transfer  : ${treasuryNACHOBalance}`);
       } catch (error) {
         monitoring.error(`Main: Balance fetch before payout: ${error}`);  
       }
 
       let poolBalance = 0n;
-      let amount: number = 0;
+      let amount: bigint = 0n;
       if (poolBalances.length > 0) {
         poolBalance = BigInt(poolBalances[0].balance);
       } else {
@@ -149,25 +150,9 @@ cron.schedule(paymentCronSchedule, async () => {
         }
       }
 
-      let balanceAfter = -1;
-      try {
-        balanceAfter = await krc20Token(transactionManager!.address, config.defaultTicker);
-      } catch (error) {
-        monitoring.error(`Main: Error fetching balance after swap: ${error}`);
-      }
-      // const maxAllowedBalance = amount * 115 / 100; // amount + 15%
-      
-      // /*
-      //   Failure cases:
-      //     1. If for some reason the KRC20 transfer was not performed or failed in previous cycle. Use all tokens as transfer amount.
-      //     2. If swap fails and we have excess KRC20 tokens.
-      // */
-      // if (balanceAfter > maxAllowedBalance || (amount == 0 && balanceAfter >= parseInt("3600", 8))) {
-      //   amount = balanceAfter; // No need to deduct rebate buffer here. It will be done in below transfer call.
-      // }
       
       // Transfer KRC20
-      if (amount != 0) {
+      if (amount != 0n && treasuryNACHOBalance > amount) {
         try {
           monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
           await transferKRC20Tokens(rpc, config.defaultTicker, amount!, balances, poolBalance, transactionManager!);          

@@ -13,7 +13,7 @@ const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 const monitoring = new Monitoring();
 
 // Currently used to transfer NACHO tokens.
-export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: number, balances: any, poolBal: bigint, transactionManager: trxManager) {
+export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: bigint, balances: any, poolBal: bigint, transactionManager: trxManager) {
     let payments: { [address: string]: bigint } = {};
     
     // Aggregate balances by wallet address
@@ -25,7 +25,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
 
     const nachoThresholdAmount = BigInt(config.nachoThresholdAmount) || BigInt("100000000000");
         
-    const NACHORebateBuffer = Number(config.nachoRebateBuffer);
+    const NACHORebateBuffer = BigInt(config.nachoRebateBuffer);
 
     let poolBalance = poolBal;
     
@@ -42,8 +42,6 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
             amount = amount * 3n;
         }
         
-        // Chances are KRC20 amount is not rounded.
-        krc20Amount = Math.floor(krc20Amount);
 
         // Set NACHO rebate amount in ratios.
         if (!krc20Amount || isNaN(Number(krc20Amount))) {
@@ -53,7 +51,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
             throw new Error("Invalid poolBalance value");
         }
         
-        const numerator = BigInt(amount) * BigInt(Math.floor(krc20Amount));
+        const numerator = BigInt(amount) * krc20Amount;
         const denominator = BigInt(poolBalance);
         
         // NACHO amount to be transferred
