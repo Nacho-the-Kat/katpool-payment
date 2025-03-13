@@ -70,6 +70,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       monitoring.debug(`KRC20Transfer: Added UTXO TransactionId: ${addedEventTrxId}`);
       if (addedEventTrxId == SubmittedtrxId){
         eventReceived = true;
+        control.stopPolling = true; // 🛑 Stop polling here
       }
     } else {
       monitoring.debug(`KRC20Transfer: No removed UTXO found for address: ${address.toString()} in this UTXO change event`);
@@ -91,6 +92,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   
   const P2SHAddress = addressFromScriptPublicKey(script.createPayToScriptHashScript(), network)!;
   let eventReceived = false;
+  let control = { stopPolling: false }; // Track polling status
 
   if (DEBUG) {
     monitoring.debug(`KRC20Transfer: Constructed Script: ${script.toString()}`);
@@ -239,11 +241,17 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   }
 }
 
-async function pollStatus(P2SHAddress: string, utxoAmount: bigint, interval = 60000, maxAttempts = 30): Promise<boolean> {
+async function pollStatus(P2SHAddress: string, utxoAmount: bigint, interval = 60000, maxAttempts = 30, control: { stopPolling: boolean }): Promise<boolean> {
   let attempts = 0;
 
   return new Promise((resolve, reject) => {
     const checkStatus = async () => {
+      if (!control.stopPolling) {
+        monitoring.log(`KRC20Transfer: ⏹ Polling stopped manually.`);
+        resolve(false);
+        return;
+      }
+
       attempts++;
 
       try {
@@ -252,6 +260,7 @@ async function pollStatus(P2SHAddress: string, utxoAmount: bigint, interval = 60
 
         if (p2shKASBalance > 0 || p2shKASBalance >= utxoAmount) {
           monitoring.log("KRC20Transfer: ✅ Operation completed successfully!");
+          control.stopPolling = true;
           resolve(true); // ✅ Resolve with `true`
           return;
         }
