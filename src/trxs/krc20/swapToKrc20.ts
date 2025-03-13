@@ -1,5 +1,4 @@
 import Monitoring from '../../monitoring/index.ts';
-import { kaspaToSompi } from '../../../wasm/kaspa/kaspa';
 import axios from 'axios';
 
 const quoteURL = 'https://api.kaspa.com/api/floor-price?ticker=NACHO';
