@@ -6,7 +6,7 @@
  * every 10 minutes.
  */
 
-import { RpcClient, Encoding, Resolver } from "../wasm/kaspa";
+import { RpcClient, Encoding, Resolver, kaspaToSompi } from "../wasm/kaspa";
 import config from "../config/config.json";
 import dotenv from 'dotenv';
 import Monitoring from './monitoring';
@@ -17,7 +17,7 @@ import { cronValidation } from "./cron-schedule";
 import swapToKrc20 from "./trxs/krc20/swapToKrc20";
 import { transferKRC20Tokens } from "./trxs/krc20/transferKrc20Tokens";
 import { krc20Token } from "./trxs/krc20/krc20Api";
-import { fetchKASBalance } from "./utils";
+import { fetchKASBalance, sompiToKAS } from "./utils";
 
 // Debug mode setting
 export let DEBUG = 0;
@@ -67,16 +67,14 @@ const rpc = new RpcClient({
   encoding: Encoding.Borsh,
   networkId: config.network,
 });
+const swapToKrc20Obj = new swapToKrc20();
+
 let transactionManager: trxManager | null = null;
-let swapToKrc20Obj: swapToKrc20 | null = null;
 let rpcConnected = false;
 
 const setupTransactionManager = () => {
   if (DEBUG) monitoring.debug(`Main: Starting transaction manager`);
-  transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);
-  setTimeout(() => {
-    swapToKrc20Obj = new swapToKrc20(transactionManager!); // ✅ Delayed instantiation
-  }, 0);
+  transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);  
 };
 
 const startRpcConnection = async () => {
@@ -109,14 +107,17 @@ cron.schedule(paymentCronSchedule, async () => {
       const balances = await transactionManager!.db.getAllBalancesExcludingPool();
       let poolBalances = await transactionManager!.db.getPoolBalance();
 
+      monitoring.log(`Main: KAS payout threshold: ${sompiToKAS(Number(config.thresholdAmount))} KAS`)
+      monitoring.log(`Main: NACHO payout threshold: ${sompiToKAS(Number(config.nachoThresholdAmount))} ${config.defaultTicker}`)
+
       let treasuryNACHOBalance = 0n;
       try {
         // Fetch treasury wallet address balance before Payout
         const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
-        monitoring.debug(`Main: KAS balance before transfer : ${treasuryKASBalance}`);
+        monitoring.debug(`Main: KAS balance before transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`);
 
         treasuryNACHOBalance = await krc20Token(transactionManager!.address, config.defaultTicker);
-        monitoring.debug(`Main: ${config.defaultTicker} balance before transfer  : ${treasuryNACHOBalance}`);
+        monitoring.debug(`Main: ${config.defaultTicker} balance before transfer  : ${sompiToKAS(Number(treasuryNACHOBalance))} ${config.defaultTicker}`);
       } catch (error) {
         monitoring.error(`Main: Balance fetch before payout: ${error}`);  
       }
@@ -143,7 +144,7 @@ cron.schedule(paymentCronSchedule, async () => {
         try {
           poolBalance = ((BigInt(poolBalance) * BigInt(config.nachoSwap * 100)) / 10000n);
           amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance);
-          monitoring.debug(`Main: Amount of ${config.defaultTicker} tokens to be used for NACHO rebate: ${amount} ${config.defaultTicker}`); 
+          monitoring.debug(`Main: Amount of ${config.defaultTicker} tokens to be used for NACHO rebate: ${sompiToKAS(Number(amount))} ${config.defaultTicker}`); 
         } catch (error) {
           monitoring.error(`Main: Fetching KAS to NACHO quote: ${error}`);
         }
@@ -165,10 +166,10 @@ cron.schedule(paymentCronSchedule, async () => {
       try {
         // Fetch treasury wallet address balance after Payout
         const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
-        monitoring.log(`Main: KAS balance after transfer : ${treasuryKASBalance}`);
+        monitoring.log(`Main: KAS balance after transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`);
   
         const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, config.defaultTicker);
-        monitoring.log(`Main: ${config.defaultTicker} balance after transfer  : ${treasuryNACHOBalance}`);
+        monitoring.log(`Main: ${config.defaultTicker} balance after transfer  : ${sompiToKAS(Number(treasuryNACHOBalance))} ${config.defaultTicker}`);
       } catch (error) {
         monitoring.error(`Main: Balance fetch after payout: ${error}`);  
       }
