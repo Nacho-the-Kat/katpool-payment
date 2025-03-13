@@ -22,9 +22,7 @@ export default class swapToKrc20 {
         
         const floorPrice = Number(response.data[0]?.floor_price);
         monitoring.log(`swapKaspaToKRC: floor price ${floorPrice}`);
-
-        const kasPrice = BigInt(Math.floor(floorPrice * Number(kaspaToSompi('1'))!));
         
-        return BigInt(balance / kasPrice);
+        return BigInt(Math.floor(Number(balance) / floorPrice));
     }
 }
