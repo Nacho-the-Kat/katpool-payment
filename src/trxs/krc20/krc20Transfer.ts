@@ -13,7 +13,7 @@ let rpc: RpcClient;
 const network = config.network || 'mainnet';
 const FIXED_FEE = '0.0001'; // Fixed minimal fee
 const feeInSompi = kaspaToSompi(FIXED_FEE)!;
-const timeout = 120000; // 2 minutes timeout
+const timeout = 180000; // 3 minutes timeout
 const monitoring = new Monitoring();
 
 // UTXO selection thresholds in sompi (1 KAS = 100_000_000 sompi)
@@ -146,7 +146,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     // Set a timeout to handle failure cases
     const commitTimeout = setTimeout(() => {
       if (!eventReceived) {
-        monitoring.error('KRC20Transfer: Timeout - Commit transaction did not mature within 2 minutes');
+        monitoring.error('KRC20Transfer: Timeout - Commit transaction did not mature within 3 minutes');
       }
     }, timeout);
 
