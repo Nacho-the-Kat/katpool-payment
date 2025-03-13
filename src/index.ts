@@ -144,7 +144,7 @@ cron.schedule(paymentCronSchedule, async () => {
         try {
           poolBalance = ((BigInt(poolBalance) * BigInt(config.nachoSwap * 100)) / 10000n);
           amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance);
-          monitoring.debug(`Main: Amount of ${config.defaultTicker} tokens to be used for NACHO rebate: ${Number(amount) / Number(kaspaToSompi('1')!)} ${config.defaultTicker}`); 
+          monitoring.debug(`Main: Amount of ${config.defaultTicker} tokens to be used for NACHO rebate: ${sompiToKAS(Number(amount))} ${config.defaultTicker}`); 
         } catch (error) {
           monitoring.error(`Main: Fetching KAS to NACHO quote: ${error}`);
         }
