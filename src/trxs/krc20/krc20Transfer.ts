@@ -135,7 +135,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       let finalStatus;
       try {
         monitoring.log(`KRC20Transfer: Polling balance for P2SH address: ${P2SHAddress.toString()}`);
-        finalStatus = await pollStatus(P2SHAddress.toString(), utxoAmount);
+        finalStatus = await pollStatus(P2SHAddress.toString(), utxoAmount, control);
       } catch (error) {
         monitoring.error(`KRC20Transfer: ❌ Operation failed:", ${error}`);
       }
@@ -241,7 +241,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   }
 }
 
-async function pollStatus(P2SHAddress: string, utxoAmount: bigint, interval = 60000, maxAttempts = 30, control: { stopPolling: boolean }): Promise<boolean> {
+async function pollStatus(P2SHAddress: string, utxoAmount: bigint, control: { stopPolling: boolean }, interval = 60000, maxAttempts = 30): Promise<boolean> {
   let attempts = 0;
 
   return new Promise((resolve, reject) => {
