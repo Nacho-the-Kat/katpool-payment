@@ -1,6 +1,7 @@
 import axios from 'axios';
 import config from '../config/config.json';
 import Monitoring from './monitoring';
+import { kaspaToSompi } from '../wasm/kaspa/kaspa';
 
 let KASPA_BASE_URL = 'https://api.kaspa.org';
 
@@ -11,6 +12,11 @@ if( config.network === "testnet-10" ) {
 }
 
 const monitoring = new Monitoring();
+
+// Also to be used for NACHO as it also has 8 decimals
+export function sompiToKAS(amount: number) {
+  return Number((amount / Number(kaspaToSompi('1')!)).toFixed(2));
+}
 
 export async function fetchKASBalance(address: string) {
   try {
