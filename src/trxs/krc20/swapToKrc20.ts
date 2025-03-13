@@ -1,10 +1,28 @@
 import Monitoring from '../../monitoring/index.ts';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
 
 const quoteURL = 'https://api.kaspa.com/api/floor-price?ticker=NACHO';
 
 const monitoring = new Monitoring();
 
+axiosRetry(axios, { 
+    retries: 3,
+    retryDelay: (retryCount) => {
+     return retryCount * 1000;
+    },
+    retryCondition(error) {
+     // Ensure error.response exists before accessing status
+     if (!error.response) {
+       new Monitoring().error(`No response received: ${error.message}`);
+       return false; // Do not retry if no response (e.g., network failure)
+     }
+ 
+     const retryableStatusCodes = [404, 422, 429, 500, 501];
+     return retryableStatusCodes.includes(error.response.status);
+    }
+});
+ 
 export default class swapToKrc20 {
     /**
      * Calculates the equivalent amount of NACHO that can be obtained for a given KAS balance based on market rates.  
