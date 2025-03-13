@@ -67,16 +67,14 @@ const rpc = new RpcClient({
   encoding: Encoding.Borsh,
   networkId: config.network,
 });
+const swapToKrc20Obj = new swapToKrc20();
+
 let transactionManager: trxManager | null = null;
-let swapToKrc20Obj: swapToKrc20 | null = null;
 let rpcConnected = false;
 
 const setupTransactionManager = () => {
   if (DEBUG) monitoring.debug(`Main: Starting transaction manager`);
-  transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);
-  setTimeout(() => {
-    swapToKrc20Obj = new swapToKrc20(transactionManager!); // ✅ Delayed instantiation
-  }, 0);
+  transactionManager = new trxManager(config.network, treasuryPrivateKey, databaseUrl, rpc!);  
 };
 
 const startRpcConnection = async () => {
@@ -109,14 +107,17 @@ cron.schedule(paymentCronSchedule, async () => {
       const balances = await transactionManager!.db.getAllBalancesExcludingPool();
       let poolBalances = await transactionManager!.db.getPoolBalance();
 
+      monitoring.log(`Main: KAS payout threshold: ${config.thresholdAmount} sompi`)
+      monitoring.log(`Main: NACHO payout threshold: ${config.nachoThresholdAmount} ${config.defaultTicker}`)
+
       let treasuryNACHOBalance = 0n;
       try {
         // Fetch treasury wallet address balance before Payout
         const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
-        monitoring.debug(`Main: KAS balance before transfer : ${treasuryKASBalance}`);
+        monitoring.debug(`Main: KAS balance before transfer : ${treasuryKASBalance} sompi`);
 
         treasuryNACHOBalance = await krc20Token(transactionManager!.address, config.defaultTicker);
-        monitoring.debug(`Main: ${config.defaultTicker} balance before transfer  : ${treasuryNACHOBalance}`);
+        monitoring.debug(`Main: ${config.defaultTicker} balance before transfer  : ${treasuryNACHOBalance} ${config.defaultTicker}`);
       } catch (error) {
         monitoring.error(`Main: Balance fetch before payout: ${error}`);  
       }
