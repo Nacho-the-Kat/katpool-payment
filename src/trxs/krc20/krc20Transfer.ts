@@ -3,6 +3,7 @@ import config from "../../../config/config.json";
 import Monitoring from "../../monitoring";
 import { DEBUG } from "../../index.ts";
 import trxManager from "../index.ts";
+import { fetchKASBalance } from "../../utils.ts";
 
 let ticker = config.defaultTicker;
 let dest = '';
@@ -12,7 +13,7 @@ let rpc: RpcClient;
 const network = config.network || 'mainnet';
 const FIXED_FEE = '0.0001'; // Fixed minimal fee
 const feeInSompi = kaspaToSompi(FIXED_FEE)!;
-const timeout = 120000; // 2 minutes timeout
+const timeout = 180000; // 3 minutes timeout
 const monitoring = new Monitoring();
 
 // UTXO selection thresholds in sompi (1 KAS = 100_000_000 sompi)
@@ -47,10 +48,10 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   const privateKey = transactionManager.privateKey;
   
   // New UTXO subscription setup (ADD this):
-  monitoring.debug(`Subscribing to UTXO changes for address: ${address.toString()}`);
+  monitoring.debug(`KRC20Transfer: Subscribing to UTXO changes for address: ${address.toString()}`);
   await rpc.subscribeUtxosChanged([address.toString()]);
   rpc.addEventListener('utxos-changed', async (event: any) => {
-    monitoring.debug(`UTXO changes detected for address: ${address.toString()}`);
+    monitoring.debug(`KRC20Transfer: UTXO changes detected for address: ${address.toString()}`);
     
     // Check for UTXOs removed for the specific address
     const removedEntry = event.data.removed.find((entry: any) => 
@@ -61,23 +62,23 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     );    
     if (removedEntry && addedEntry) {
       // Use custom replacer function in JSON.stringify to handle BigInt
-      monitoring.debug(`Added UTXO found for address: ${address.toString()} with UTXO: ${JSON.stringify(addedEntry, (key, value) =>
+      monitoring.debug(`KRC20Transfer: Added UTXO found for address: ${address.toString()} with UTXO: ${JSON.stringify(addedEntry, (key, value) =>
         typeof value === 'bigint' ? value.toString() + 'n' : value)}`);        
-      monitoring.debug(`Removed UTXO found for address: ${address.toString()} with UTXO: ${JSON.stringify(removedEntry, (key, value) =>
+      monitoring.debug(`KRC20Transfer: Removed UTXO found for address: ${address.toString()} with UTXO: ${JSON.stringify(removedEntry, (key, value) =>
         typeof value === 'bigint' ? value.toString() + 'n' : value)}`);
         addedEventTrxId = addedEntry.outpoint.transactionId;
-      monitoring.debug(`Added UTXO TransactionId: ${addedEventTrxId}`);
+      monitoring.debug(`KRC20Transfer: Added UTXO TransactionId: ${addedEventTrxId}`);
       if (addedEventTrxId == SubmittedtrxId){
         eventReceived = true;
       }
     } else {
-      monitoring.debug(`No removed UTXO found for address: ${address.toString()} in this UTXO change event`);
+      monitoring.debug(`KRC20Transfer: No removed UTXO found for address: ${address.toString()} in this UTXO change event`);
     }
   });
 
   const data = { "p": "krc-20", "op": "transfer", "tick": ticker, "amt": amount.toString(), "to": dest  };
   
-  monitoring.debug(`transferKRC20: Data to use for ScriptBuilder: ${JSON.stringify(data)}`);
+  monitoring.debug(`KRC20Transfer: Data to use for ScriptBuilder: ${JSON.stringify(data)}`);
   const script = new ScriptBuilder()
     .addData(privateKey.toPublicKey().toXOnlyPublicKey().toString())
     .addOp(Opcodes.OpCheckSig)
@@ -92,8 +93,8 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   let eventReceived = false;
 
   if (DEBUG) {
-    monitoring.debug(`Constructed Script: ${script.toString()}`);
-    monitoring.debug(`P2SH Address: ${P2SHAddress.toString()}`);
+    monitoring.debug(`KRC20Transfer: Constructed Script: ${script.toString()}`);
+    monitoring.debug(`KRC20Transfer: P2SH Address: ${P2SHAddress.toString()}`);
   }
 
   try {
@@ -102,21 +103,21 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     // Find a suitable UTXO
     const selectedUtxo = findSuitableUtxo(entries);
     if (!selectedUtxo) {
-      throw new Error('No suitable UTXO found (requires at least 1 KAS)');
+      throw new Error('KRC20Transfer: No suitable UTXO found (requires at least 1 KAS)');
     }
 
     let utxoAmount = BigInt(selectedUtxo.entry.amount);
-    monitoring.debug(`Selected UTXO with amount: ${utxoAmount.toString()} sompi`);
+    monitoring.debug(`KRC20Transfer: Selected UTXO with amount: ${utxoAmount.toString()} sompi`);
 
     // First transaction: Send the UTXO to P2SH address
-    if (entries.length == 1)
+    if (entries.length === 1)
       utxoAmount = utxoAmount - (3n * BigInt(feeInSompi)!);
     const { transactions } = await createTransactions({
       priorityEntries: [selectedUtxo],
       entries: entries.filter(e => e !== selectedUtxo),
       outputs: [{
         address: P2SHAddress.toString(),
-        amount: utxoAmount // Send the entire UTXO amount
+        amount: PREFERRED_MIN_UTXO // Send PREFERRED_MIN_UTXO
       }],
       changeAddress: address.toString(),
       priorityFee: feeInSompi,
@@ -125,16 +126,27 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
 
     for (const transaction of transactions) {
       transaction.sign([privateKey]);
-      monitoring.debug(`transferKRC20: Transaction signed with ID: ${transaction.id}`);
+      monitoring.debug(`KRC20Transfer: Transaction signed with ID: ${transaction.id}`);
       const hash = await transaction.submit(rpc);
-      monitoring.log(`submitted P2SH commit sequence transaction on: ${hash}`);
+      monitoring.log(`KRC20Transfer: submitted P2SH commit sequence transaction on: ${hash}`);
       SubmittedtrxId = hash;
+      let finalStatus;
+      try {
+        monitoring.log(`KRC20Transfer: Polling balance for P2SH address: ${P2SHAddress.toString()}`);
+        finalStatus = await pollStatus(P2SHAddress.toString(), utxoAmount);
+      } catch (error) {
+        monitoring.error(`KRC20Transfer: ❌ Operation failed:", ${error}`);
+      }
+      if (finalStatus === true) {
+        monitoring.log(`KRC20Transfer: Maturity event is not received. Balance is received. So submitting reveal transaction.`);
+        eventReceived = true;
+      }
     }
     
     // Set a timeout to handle failure cases
     const commitTimeout = setTimeout(() => {
       if (!eventReceived) {
-        monitoring.error('KRC20Transfer: Timeout - Commit transaction did not mature within 2 minutes');
+        monitoring.error('KRC20Transfer: Timeout - Commit transaction did not mature within 3 minutes');
       }
     }, timeout);
 
@@ -157,14 +169,13 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
 
     // Second transaction: Return everything except the fixed fee
     const revealUtxoAmount = BigInt(revealUTXOs.entries[0].entry.amount);
-    const returnAmount = revealUtxoAmount - BigInt(feeInSompi);
 
     const { transactions } = await createTransactions({
       priorityEntries: [revealUTXOs.entries[0]],
       entries: entries,
       outputs: [{
         address: address.toString(), // Return to sender
-        amount: returnAmount // Return everything except the fixed fee
+        amount: revealUtxoAmount // Return everything
       }],
       changeAddress: address.toString(),
       priorityFee: feeInSompi,
@@ -226,4 +237,39 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     monitoring.error('KRC20Transfer: No UTXOs available for reveal');
     return {error: 'KRC20Transfer: No UTXOs available for reveal', revealHash: ''};
   }
+}
+
+async function pollStatus(P2SHAddress: string, utxoAmount: bigint, interval = 60000, maxAttempts = 30): Promise<boolean> {
+  let attempts = 0;
+
+  return new Promise((resolve, reject) => {
+    const checkStatus = async () => {
+      attempts++;
+
+      try {
+        const p2shKASBalance = BigInt(await fetchKASBalance(P2SHAddress));
+        monitoring.log(`KRC20Transfer: Polling attempt ${attempts}: ${p2shKASBalance} sompi`);
+
+        if (p2shKASBalance > 0 || p2shKASBalance >= utxoAmount) {
+          monitoring.log("KRC20Transfer: ✅ Operation completed successfully!");
+          resolve(true); // ✅ Resolve with `true`
+          return;
+        }
+
+        if (attempts >= maxAttempts) {
+          monitoring.log(`KRC20Transfer: ❌ Max polling attempts reached. Stopping...`);
+          monitoring.log(`KRC20Transfer: Stopping polling for id: ${P2SHAddress}`);
+          resolve(false); // ✅ Resolve with `false` instead of rejecting
+          return;
+        }
+
+        setTimeout(checkStatus, interval);
+      } catch (error) {
+        monitoring.error(`KRC20Transfer: Error polling API: ${error}`);
+        reject(error);
+      }
+    };
+
+    checkStatus();
+  });
 }
