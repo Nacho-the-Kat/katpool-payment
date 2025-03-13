@@ -70,6 +70,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
 
         try {            
             monitoring.debug(`transferKRC20Tokens: Transfering ${nachoAmount.toString()} ${pTicker} to ${address}`);
+            monitoring.debug(`transferKRC20Tokens: Transfering NACHO equivalent to ${amount} KAS in current cycle to ${address}.`);
             let res = await transferKRC20(pRPC, pTicker, address, nachoAmount.toString(), transactionManager!);
             if (res?.error != null) {
                 monitoring.error(`transferKRC20Tokens: Error from KRC20 transfer : ${res?.error!}`);

@@ -17,8 +17,8 @@ const timeout = 180000; // 3 minutes timeout
 const monitoring = new Monitoring();
 
 // UTXO selection thresholds in sompi (1 KAS = 100_000_000 sompi)
-const PREFERRED_MIN_UTXO = 5_000_000_000n; // 5 KAS
-const ABSOLUTE_MIN_UTXO = 1_000_000_000n;  // 1 KAS
+const PREFERRED_MIN_UTXO = 5_00_000_000n; // 5 KAS
+const ABSOLUTE_MIN_UTXO = 1_00_000_000n;  // 1 KAS
 
 // Helper function to find suitable UTXO
 function findSuitableUtxo(entries: any[]): any {
