@@ -4,6 +4,7 @@ import Monitoring from "../../monitoring";
 import { DEBUG } from "../../index.ts";
 import trxManager from "../index.ts";
 import { fetchKASBalance } from "../../utils.ts";
+import { pendingKRC20TransferField, status } from "../../database/index.ts";
 
 let ticker = config.defaultTicker;
 let dest = '';
@@ -35,7 +36,7 @@ function findSuitableUtxo(entries: any[]): any {
   return utxo;
 }
 
-export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: string, pAmount: string, transactionManager: trxManager) {
+export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: string, pAmount: string, kasAmount: bigint, transactionManager: trxManager) {
   ticker = pTicker;
   dest = pDest;
   amount = pAmount;
@@ -132,6 +133,13 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       const hash = await transaction.submit(rpc);
       monitoring.log(`KRC20Transfer: submitted P2SH commit sequence transaction on: ${hash}`);
       SubmittedtrxId = hash;
+
+      try {
+        await transactionManager!.db.recordPendingKRC20Transfer(hash, kasAmount, BigInt(amount), pDest, P2SHAddress.toString(), status.PENDING, status.PENDING);
+      } catch (error) {
+        monitoring.error(`KRC20Transfer: Inserting into pending_krc20_transfers: ${error}`);
+      }
+
       let finalStatus;
       try {
         monitoring.log(`KRC20Transfer: Polling balance for P2SH address: ${P2SHAddress.toString()}`);
@@ -201,7 +209,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     const revealTimeout = setTimeout(() => {
       if (!eventReceived) {
         monitoring.error('KRC20Transfer: Timeout - Reveal transaction did not mature within 2 minutes');
-        return {error: 'KRC20Transfer: Timeout - Reveal transaction did not mature within 2 minutes', revealHash: ''};
+        return {error: 'KRC20Transfer: Timeout - Reveal transaction did not mature within 2 minutes', revealHash: '', P2SHAddress: ''};
       }
     }, timeout);
 
@@ -225,19 +233,20 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       // If reveal transaction is accepted
       if (revealAccepted) {
         monitoring.log(`KRC20Transfer: Reveal transaction has been accepted: ${revealHash}`);
-        return {error: null, revealHash};
+        transactionManager!.db.updatePendingKRC20TransferStatus(P2SHAddress.toString(), pendingKRC20TransferField.nachoTransferStatus, status.COMPLETED);
+        return {error: null, revealHash, P2SHAddress: P2SHAddress.toString()};
       } else if (!eventReceived) { // Check eventReceived here
         monitoring.log('KRC20Transfer: Reveal transaction has not been accepted yet.');
-        return {error: 'KRC20Transfer: Reveal transaction has not been accepted yet', revealHash: ''};
+        return {error: 'KRC20Transfer: Reveal transaction has not been accepted yet', revealHash: '', P2SHAddress: ''};
       }
     } catch (error) {
       monitoring.error(`KRC20Transfer: Error checking reveal transaction status: ${error}`);
-      return {error, revealHash: ''};
+      return {error, revealHash: '', P2SHAddress: ''};
     }
       
   } else {
     monitoring.error('KRC20Transfer: No UTXOs available for reveal');
-    return {error: 'KRC20Transfer: No UTXOs available for reveal', revealHash: ''};
+    return {error: 'KRC20Transfer: No UTXOs available for reveal', revealHash: '', P2SHAddress: ''};
   }
 }
 
