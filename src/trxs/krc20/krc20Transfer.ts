@@ -4,6 +4,7 @@ import Monitoring from "../../monitoring";
 import { DEBUG } from "../../index.ts";
 import trxManager from "../index.ts";
 import { fetchKASBalance } from "../../utils.ts";
+import { status } from "../../database/index.ts";
 
 let ticker = config.defaultTicker;
 let dest = '';
@@ -35,7 +36,7 @@ function findSuitableUtxo(entries: any[]): any {
   return utxo;
 }
 
-export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: string, pAmount: string, transactionManager: trxManager) {
+export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: string, pAmount: string, kasAmount: bigint, transactionManager: trxManager, fullRebate: boolean) {
   ticker = pTicker;
   dest = pDest;
   amount = pAmount;
@@ -132,6 +133,13 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       const hash = await transaction.submit(rpc);
       monitoring.log(`KRC20Transfer: submitted P2SH commit sequence transaction on: ${hash}`);
       SubmittedtrxId = hash;
+
+      try {
+        await transactionManager!.db.recordPendingKRC20Transfer(hash, kasAmount, BigInt(amount), pDest, P2SHAddress.toString(), status.PENDING, status.PENDING);
+      } catch (error) {
+        monitoring.error(`KRC20Transfer: Inserting into pending_krc20_transfers: ${error}`);
+      }
+
       let finalStatus;
       try {
         monitoring.log(`KRC20Transfer: Polling balance for P2SH address: ${P2SHAddress.toString()}`);

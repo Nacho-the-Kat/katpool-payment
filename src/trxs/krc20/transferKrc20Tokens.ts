@@ -71,11 +71,15 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         try {            
             monitoring.debug(`transferKRC20Tokens: Transfering ${nachoAmount.toString()} ${pTicker} to ${address}`);
             monitoring.debug(`transferKRC20Tokens: Transfering NACHO equivalent to ${amount} KAS in current cycle to ${address}.`);
-            let res = await transferKRC20(pRPC, pTicker, address, nachoAmount.toString(), transactionManager!);
+            let res = await transferKRC20(pRPC, pTicker, address, nachoAmount.toString(), amount, transactionManager!, fullRebate);
             if (res?.error != null) {
                 monitoring.error(`transferKRC20Tokens: Error from KRC20 transfer : ${res?.error!}`);
             } else {
-                await recordPayment(address, transactionManager!.address, nachoAmount, res?.revealHash, transactionManager?.db!, kasAmount, fullRebate);
+                try {
+                    await recordPayment(address, transactionManager!.address, nachoAmount, res?.revealHash, transactionManager?.db!, kasAmount, fullRebate);
+                } catch (error) {
+                    monitoring.error(`transferKRC20Tokens: Recording KRC20 transfer ${nachoAmount.toString()} ${pTicker} to ${address}: ${error}`);        
+                }
             }
         } catch(error) {
             monitoring.error(`transferKRC20Tokens: Transfering ${nachoAmount.toString()} ${pTicker} to ${address} : ${error}`);
@@ -117,7 +121,6 @@ async function recordPayment(address: string, treasuryAddr: string, amount: bigi
       await client.query("COMMIT"); // Commit everything together
     } catch (error) {
       await client.query("ROLLBACK"); // Rollback everything if any step fails
-      throw error;
     } finally {
       client.release();
     }

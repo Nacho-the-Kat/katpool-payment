@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import Monitoring from '../monitoring';
 
 type Miner = {
   balance: bigint;
@@ -9,6 +10,12 @@ type MinerBalanceRow = {
   wallet: string;
   balance: string;
 };
+
+export enum status {
+  PENDING = "PENDING",
+  FAILED = "FAILED",
+  COMPLETED = "COMPLETED"
+}
 
 export default class Database {
   private pool: Pool;
@@ -89,6 +96,36 @@ export default class Database {
     const client = await this.pool.connect();
     try {
       await client.query('UPDATE miners_balance SET balance = $1 WHERE wallet = ANY($2)', [0n, wallets]);
+    } finally {
+      client.release();
+    }
+  }
+
+  async recordPendingKRC20Transfer(firstTxnID: string, 
+    sompiToMiner: bigint, 
+    nachoAmount: bigint, 
+    address: string, 
+    p2shAddress: string, 
+    nachoTransferStatus: status, 
+    dbEntryStatus: status) {
+    const client = await this.pool.connect();
+    
+    const query = `INSERT INTO pending_krc20_transfers (first_txn_id, sompi_to_miner, nacho_amount, address, p2sh_address, nacho_transfer_status, db_entry_status, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW());`;
+
+    const values = [
+      firstTxnID,
+      sompiToMiner.toString(), // Convert BigInt to string if using PostgreSQL
+      nachoAmount.toString(),  // Convert BigInt to string if using PostgreSQL
+      address,
+      p2shAddress,
+      nachoTransferStatus,
+      dbEntryStatus
+    ];
+  
+    try {
+      await client.query(query, values);
+    } catch (error) {
+      new Monitoring().error(`database: recording pending KRC20 transfer: ${error}`);      
     } finally {
       client.release();
     }
