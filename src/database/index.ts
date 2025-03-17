@@ -17,6 +17,11 @@ export enum status {
   COMPLETED = "COMPLETED"
 }
 
+export enum pendingKRC20TransferField {
+  nachoTransferStatus = 'nacho_transfer_status',
+  dbEntryStatus = 'db_entry_status'
+}
+
 export default class Database {
   private pool: Pool;
 
@@ -126,6 +131,22 @@ export default class Database {
       await client.query(query, values);
     } catch (error) {
       new Monitoring().error(`database: recording pending KRC20 transfer: ${error}`);      
+    } finally {
+      client.release();
+    }
+  }
+
+  async updatePendingKRC20TransferStatus(p2shAddr: string, fieldToBeUpdated: string, updatedStatus: status) {
+    const client = await this.pool.connect();
+
+    const query = `UPDATE pending_krc20_transfers 
+                   SET ${fieldToBeUpdated} = $1 
+                   WHERE p2sh_address = $2`;
+    
+    try {
+      await client.query(query, [updatedStatus, p2shAddr]);
+    } catch (error) {
+      new Monitoring().error(`database: updating pending KRC20 transfer: ${error}`);      
     } finally {
       client.release();
     }
