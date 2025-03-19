@@ -1,10 +1,11 @@
-import { RpcClient, Encoding, Resolver, ScriptBuilder, Opcodes, PrivateKey, addressFromScriptPublicKey, createTransactions, kaspaToSompi } from "../../../wasm/kaspa";
+import { RpcClient, ScriptBuilder, Opcodes, addressFromScriptPublicKey, createTransactions, kaspaToSompi } from "../../../wasm/kaspa";
 import config from "../../../config/config.json";
 import Monitoring from "../../monitoring";
 import { DEBUG } from "../../index.ts";
 import trxManager from "../index.ts";
 import { fetchKASBalance } from "../../utils.ts";
 import { pendingKRC20TransferField, status } from "../../database/index.ts";
+import { resetBalancesByWallet } from "./transferKrc20Tokens.ts";
 
 let ticker = config.defaultTicker;
 let dest = '';
@@ -36,7 +37,7 @@ function findSuitableUtxo(entries: any[]): any {
   return utxo;
 }
 
-export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: string, pAmount: string, kasAmount: bigint, transactionManager: trxManager) {
+export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: string, pAmount: string, kasAmount: bigint, transactionManager: trxManager, fullRebate: boolean) {
   ticker = pTicker;
   dest = pDest;
   amount = pAmount;
@@ -137,7 +138,19 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       try {
         await transactionManager!.db.recordPendingKRC20Transfer(hash, kasAmount, BigInt(amount), pDest, P2SHAddress.toString(), status.PENDING, status.PENDING);
       } catch (error) {
-        monitoring.error(`KRC20Transfer: Inserting into pending_krc20_transfers: ${error}`);
+        monitoring.error(`KRC20Transfer: Failed to record pending KRC20 transfer: ${error}`);
+      }
+      
+      try {
+        await resetBalancesByWallet(transactionManager!.db, address, kasAmount, 'nacho_rebate_kas', fullRebate);
+      } catch (error) {
+        monitoring.error(`KRC20Transfer: Failed to reset balances for nacho_rebate_kas of ${amount} sompi for ${pDest}: ${error}`);
+      }
+      
+      try {
+        await resetBalancesByWallet(transactionManager!.db, transactionManager!.address, kasAmount, 'balance', false);
+      } catch (error) {
+        monitoring.error(`KRC20Transfer: Failed to reset balances for pool balance with needed reduction of ${kasAmount} sompi for ${pDest} : ${error}`);
       }
 
       let finalStatus;

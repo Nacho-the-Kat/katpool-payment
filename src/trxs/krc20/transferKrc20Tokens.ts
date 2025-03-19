@@ -71,12 +71,14 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         try {            
             monitoring.debug(`transferKRC20Tokens: Transfering ${nachoAmount.toString()} ${pTicker} to ${address}`);
             monitoring.debug(`transferKRC20Tokens: Transfering NACHO equivalent to ${amount} KAS in current cycle to ${address}.`);
-            let res = await transferKRC20(pRPC, pTicker, address, nachoAmount.toString(), amount, transactionManager!);
+            let res = await transferKRC20(pRPC, pTicker, address, nachoAmount.toString(), amount, transactionManager!, fullRebate);
             if (res?.error != null) {
                 monitoring.error(`transferKRC20Tokens: Error from KRC20 transfer : ${res?.error!}`);
             } else {
                 try {
-                    await recordPayment(address, transactionManager!.address, nachoAmount, res?.revealHash, res?.P2SHAddress!, transactionManager?.db!, kasAmount, fullRebate);
+                    if (res?.error == null && res?.revealHash == '') 
+                        monitoring.debug(`transferKRC20Tokens: Reveal hash is not available for ${nachoAmount} NACHO for ${address} at ${new Date().toISOString()}`);
+                    await recordPayment(address, nachoAmount, res?.revealHash, res?.P2SHAddress!, transactionManager?.db!);
                 } catch (error) {
                     monitoring.error(`transferKRC20Tokens: Recording KRC20 transfer ${nachoAmount.toString()} ${pTicker} to ${address}: ${error}`);        
                 }
@@ -102,7 +104,7 @@ async function checkFullFeeRebate(address: string, ticker: string) {
     return false;
 }
 
-async function recordPayment(address: string, treasuryAddr: string, amount: bigint, transactionHash: string, p2shAddr: string, db: Database, kasAmount: bigint, fullRebate: boolean) {
+async function recordPayment(address: string, amount: bigint, transactionHash: string, p2shAddr: string, db: Database) {
     const client = await db.getClient();
 
     let values: string[] = [];
@@ -115,8 +117,6 @@ async function recordPayment(address: string, treasuryAddr: string, amount: bigi
       await client.query('BEGIN'); // Start transaction
 
       await client.query(query, queryParams);
-      await resetBalancesByWallet(client, address, kasAmount, 'nacho_rebate_kas', fullRebate);
-      await resetBalancesByWallet(client, treasuryAddr, kasAmount, 'balance', false);
 
       if (!p2shAddr || p2shAddr != '') {
           await db.updatePendingKRC20TransferStatus(p2shAddr, pendingKRC20TransferField.dbEntryStatus, status.COMPLETED);
@@ -125,13 +125,15 @@ async function recordPayment(address: string, treasuryAddr: string, amount: bigi
       await client.query("COMMIT"); // Commit everything together
     } catch (error) {
       await client.query("ROLLBACK"); // Rollback everything if any step fails
+      monitoring.error(`transferKRC20Tokens: DB Rollback performed due to error: ${error}`);
     } finally {
       client.release();
     }
 }
 
-export async function resetBalancesByWallet(client: PoolClient, address : string, balance: bigint, column: string, fullRebate: boolean) {
+export async function resetBalancesByWallet(db: Database, address : string, balance: bigint, column: string, fullRebate: boolean) {
     try {        
+        const client = await db.getClient(); 
         // Fetch balance and entry count
         const res = await client.query(`SELECT SUM(${column}) as balance, COUNT(*) AS entry_count FROM miners_balance WHERE wallet = $1 GROUP BY wallet`, [address]);
         
