@@ -136,12 +136,12 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       SubmittedtrxId = hash;
 
       try {
-        let amount = kasAmount;
+        let actualKASAmount = kasAmount;
         if (fullRebate) {
           monitoring.debug(`KRC20Transfer: Full rebate to address: ${address}`);
-          amount = amount * 3n;
+          actualKASAmount = actualKASAmount * 3n;
         }
-        await transactionManager!.db.recordPendingKRC20Transfer(hash, amount, BigInt(amount), pDest, P2SHAddress.toString(), status.PENDING, status.PENDING);
+        await transactionManager!.db.recordPendingKRC20Transfer(hash, actualKASAmount, BigInt(amount), pDest, P2SHAddress.toString(), status.PENDING, status.PENDING);
       } catch (error) {
         monitoring.error(`KRC20Transfer: Failed to record pending KRC20 transfer: ${error}`);
       }
