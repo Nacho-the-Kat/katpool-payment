@@ -136,7 +136,12 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       SubmittedtrxId = hash;
 
       try {
-        await transactionManager!.db.recordPendingKRC20Transfer(hash, kasAmount, BigInt(amount), pDest, P2SHAddress.toString(), status.PENDING, status.PENDING);
+        let actualKASAmount = kasAmount;
+        if (fullRebate) {
+          monitoring.debug(`KRC20Transfer: Full rebate to address: ${address}`);
+          actualKASAmount = actualKASAmount * 3n;
+        }
+        await transactionManager!.db.recordPendingKRC20Transfer(hash, actualKASAmount, BigInt(amount), pDest, P2SHAddress.toString(), status.PENDING, status.PENDING);
       } catch (error) {
         monitoring.error(`KRC20Transfer: Failed to record pending KRC20 transfer: ${error}`);
       }
@@ -148,9 +153,10 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       }
       
       try {
-        await resetBalancesByWallet(transactionManager!.db, transactionManager!.address, kasAmount, 'balance', false);
+        // Deduct full amount from POOL balance entry, despite non-eligibility for full rebate.
+        await resetBalancesByWallet(transactionManager!.db, transactionManager!.address, kasAmount * 3n, 'balance', false);
       } catch (error) {
-        monitoring.error(`KRC20Transfer: Failed to reset balances for pool balance with needed reduction of ${kasAmount} sompi for ${pDest} : ${error}`);
+        monitoring.error(`KRC20Transfer: Failed to reset balances for pool balance with needed reduction of ${kasAmount * 3n} sompi for ${pDest} : ${error}`);
       }
 
       let finalStatus;
