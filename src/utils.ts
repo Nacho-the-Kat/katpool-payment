@@ -80,7 +80,6 @@ export async function getKaspaUSDPrice() {
 export async function fetchAccountTransactionCount(address: string) {
   const url = `${KASPA_BASE_URL}/addresses/${encodeURIComponent(address)}/transactions-count`;
   try {
-    const url = `${KASPA_BASE_URL}/info/price?stringOnly=false`;
     const response = await axios.get(url);
     const count = response.data.total;
     return count;
