@@ -76,3 +76,16 @@ export async function getKaspaUSDPrice() {
     monitoring.error(`utils: While getting usd price of KASPA: ${err}`);
   }
 }
+
+export async function fetchAccountTransactionCount(address: string) {
+  const url = `${KASPA_BASE_URL}/addresses/${encodeURIComponent(address)}/transactions-count`;
+  try {
+    const url = `${KASPA_BASE_URL}/info/price?stringOnly=false`;
+    const response = await axios.get(url);
+    const count = response.data.total;
+    return count;
+  } catch (err) {
+    monitoring.error(`utils: While getting transaction count of ${address} : ${err}`);
+    return 0;
+  }
+}

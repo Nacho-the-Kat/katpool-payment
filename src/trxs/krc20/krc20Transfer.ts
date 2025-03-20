@@ -3,7 +3,7 @@ import config from "../../../config/config.json";
 import Monitoring from "../../monitoring";
 import { DEBUG } from "../../index.ts";
 import trxManager from "../index.ts";
-import { fetchKASBalance } from "../../utils.ts";
+import { fetchAccountTransactionCount, fetchKASBalance } from "../../utils.ts";
 import { pendingKRC20TransferField, status } from "../../database/index.ts";
 import { resetBalancesByWallet } from "./transferKrc20Tokens.ts";
 
@@ -51,7 +51,13 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   
   // New UTXO subscription setup (ADD this):
   monitoring.debug(`KRC20Transfer: Subscribing to UTXO changes for address: ${address.toString()}`);
-  await rpc.subscribeUtxosChanged([address.toString()]);
+  
+  try {
+    await rpc.subscribeUtxosChanged([address.toString()]);
+  } catch (error) {
+    return { error: 'KRC20Transfer: Failed to subscribe to UTXO changes: ${error}', revealHash: '', P2SHAddress: '' };
+  }
+  
   rpc.addEventListener('utxos-changed', async (event: any) => {
     monitoring.debug(`KRC20Transfer: UTXO changes detected for address: ${address.toString()}`);
     
@@ -70,7 +76,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
         typeof value === 'bigint' ? value.toString() + 'n' : value)}`);
         addedEventTrxId = addedEntry.outpoint.transactionId;
       monitoring.debug(`KRC20Transfer: Added UTXO TransactionId: ${addedEventTrxId}`);
-      if (addedEventTrxId == SubmittedtrxId){
+      if (addedEventTrxId == SubmittedtrxId) {
         eventReceived = true;
         control.stopPolling = true; // 🛑 Stop polling here
       }
@@ -161,8 +167,8 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
 
       let finalStatus;
       try {
-        monitoring.log(`KRC20Transfer: Polling balance for P2SH address: ${P2SHAddress.toString()}`);
-        finalStatus = await pollStatus(P2SHAddress.toString(), utxoAmount, control);
+        monitoring.log(`KRC20Transfer: Polling balance for P2SH address: ${P2SHAddress.toString()} for submit transaction.`);
+        finalStatus = await pollStatus(P2SHAddress.toString(), utxoAmount, control, false);
       } catch (error) {
         monitoring.error(`KRC20Transfer: ❌ Operation failed:", ${error}`);
       }
@@ -232,6 +238,23 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       }
     }, timeout);
 
+    // Add Polling for Reveal Transaction 
+    let revealFinalStatus;
+    control = { stopPolling: false };  // Control for polling the reveal transaction
+
+    try {
+      monitoring.log(`KRC20Transfer: Polling balance for reveal transaction at P2SH address: ${P2SHAddress.toString()}`);
+      revealFinalStatus = await pollStatus(P2SHAddress.toString(), revealUtxoAmount, control, true);
+    } catch (error) {
+      monitoring.error(`KRC20Transfer: ❌ Reveal transaction polling failed: ${error}`);
+      return { error, revealHash: '', P2SHAddress: '' };
+    }
+
+    if (revealFinalStatus === true) {
+      monitoring.log(`KRC20Transfer: Reveal transaction matured successfully.`);
+      eventReceived = true;
+    }
+
     // Wait until the maturity event has been received
     while (!eventReceived) {
       await new Promise(resolve => setTimeout(resolve, 500)); // wait and check every 500ms
@@ -269,12 +292,12 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   }
 }
 
-async function pollStatus(P2SHAddress: string, utxoAmount: bigint, control: { stopPolling: boolean }, interval = 60000, maxAttempts = 30): Promise<boolean> {
+async function pollStatus(P2SHAddress: string, utxoAmount: bigint, control: { stopPolling: boolean }, checkReveal: boolean, interval = 60000, maxAttempts = 30): Promise<boolean> {
   let attempts = 0;
 
   return new Promise((resolve, reject) => {
     const checkStatus = async () => {
-      if (!control.stopPolling) {
+      if (control.stopPolling) {
         monitoring.log(`KRC20Transfer: ⏹ Polling stopped manually.`);
         resolve(false);
         return;
@@ -286,8 +309,15 @@ async function pollStatus(P2SHAddress: string, utxoAmount: bigint, control: { st
         const p2shKASBalance = BigInt(await fetchKASBalance(P2SHAddress));
         monitoring.log(`KRC20Transfer: Polling attempt ${attempts}: ${p2shKASBalance} sompi`);
 
-        if (p2shKASBalance > 0 || p2shKASBalance >= utxoAmount) {
-          monitoring.log("KRC20Transfer: ✅ Operation completed successfully!");
+        if (checkReveal && p2shKASBalance === 0n && await fetchAccountTransactionCount(P2SHAddress) % 2 == 0) {
+          monitoring.log("KRC20Transfer: ✅ Reveal operation completed successfully!");
+          control.stopPolling = true;
+          resolve(true); // ✅ Resolve with `true`
+          return;
+        }
+
+        if (!checkReveal && (p2shKASBalance > 0 || p2shKASBalance >= utxoAmount)) {
+          monitoring.log("KRC20Transfer: ✅ Submit operation completed successfully!");
           control.stopPolling = true;
           resolve(true); // ✅ Resolve with `true`
           return;
