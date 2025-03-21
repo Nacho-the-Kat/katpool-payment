@@ -18,12 +18,33 @@ POSTGRES_DB=<db-name>
 POSTGRES_HOSTNAME='katpool-db' # Configure the hostname.
 DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOSTNAME}:5432/${POSTGRES_DB}"
 DEBUG=1
+TELEGRAM_BOT_TOKEN=''
 ```
 
 ## Config file
 
 Please refer to [Crontab.guru](https://crontab.guru/) to set the cron expression.
+# Configuration Parameters
 
-* **payoutCronSchedule**: cron schedule expression for payout. If not set or invalid, it will be defaulted to Twice a day (0 */12 * * *).
+- **payoutCronSchedule**  
+  Cron schedule expression for payouts. If not set or invalid, it defaults to **twice a day** (`0 */12 * * *`).
 
-* **thresholdAmount**: Miner rewards will be paid above this minimum amount in sompi.
+- **payoutAlertCronSchedule**
+  Cron schedule expression for payout alerts. If not set or invalid, it defaults to **four times a day** (`0 */6 * * *`).
+
+- **thresholdAmount**
+  Minimum miner rewards (in **sompi**) required for a payout.  
+  *1 KAS = 100,000,000 sompi*.
+
+- **nachoThresholdAmount**
+  Minimum miner rewards (in **NACHO units**, including decimals) required for a payout.  
+  *1 NACHO = 100,000,000 (including decimals).*  
+  Example: `100000000` represents `1 NACHO`.
+
+- **kasAlertThreshold**
+  Threshold for KAS balance (in **sompi**) to trigger a Telegram alert.  
+  *Alert is triggered when the balance is less than or equal to this value*.
+
+- **nachoAlertThreshold**  
+  Threshold for NACHO balance (in **NACHO units**, including decimals) to trigger a Telegram alert.  
+  *Alert is triggered when the balance is less than or equal to this value*.

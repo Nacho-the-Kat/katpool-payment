@@ -6,7 +6,6 @@ import { krc20Token, nftAPI } from "./krc20Api";
 import { parseUnits } from "ethers";
 import trxManager from "..";
 import Monitoring from "../../monitoring";
-import { PoolClient } from "pg";
 
 const fullRebateTokenThreshold = parseUnits("100", 14); // Minimum 100M (NACHO)
 const fullRebateNFTThreshold = 1; // Minimum 1 NFT
