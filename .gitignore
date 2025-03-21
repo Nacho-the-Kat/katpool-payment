@@ -7,3 +7,4 @@ bun*
 .env
 postgres*
 examples
+chatIds.json

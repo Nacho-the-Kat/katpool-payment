@@ -18,6 +18,8 @@ import swapToKrc20 from "./trxs/krc20/swapToKrc20";
 import { transferKRC20Tokens } from "./trxs/krc20/transferKrc20Tokens";
 import { krc20Token } from "./trxs/krc20/krc20Api";
 import { fetchKASBalance, sompiToKAS } from "./utils";
+import { TelegramBotAlert } from "./alerting/telegramBot";
+import bot from "./alerting/bot";
 
 // Debug mode setting
 export let DEBUG = 0;
@@ -52,10 +54,17 @@ if (DEBUG) monitoring.debug(`Main: Database URL obtained`);
 const paymentCronSchedule = cronValidation(config.payoutCronSchedule); // Defaults to twice a day if not set
 if (DEBUG) monitoring.debug(`Main: Payment cron is set to ${paymentCronSchedule}`);
 
+const paymentAlertCronSchedule = cronValidation(config.payoutAlertCronSchedule); // Defaults to four times a day if not set
+if (DEBUG) monitoring.debug(`Main: Payment cron is set to ${paymentAlertCronSchedule}`);
+
 if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
 
 if (DEBUG) {
   monitoring.debug(`Main: Resolver Options:${config.node}`);
+}
+
+if (bot) {
+  monitoring.debug(`Main: Telegram bot is active.`);
 }
 
 const interval = cronParser.parseExpression(paymentCronSchedule);
@@ -114,10 +123,10 @@ cron.schedule(paymentCronSchedule, async () => {
       try {
         // Fetch treasury wallet address balance before Payout
         const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
-        monitoring.debug(`Main: KAS balance before transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`);
+        monitoring.debug(`Main: KAS balance before transfer: ${sompiToKAS(Number(treasuryKASBalance))} KAS`);
 
         treasuryNACHOBalance = await krc20Token(transactionManager!.address, config.defaultTicker);
-        monitoring.debug(`Main: ${config.defaultTicker} balance before transfer  : ${sompiToKAS(Number(treasuryNACHOBalance))} ${config.defaultTicker}`);
+        monitoring.debug(`Main: ${config.defaultTicker} balance before transfer: ${sompiToKAS(Number(treasuryNACHOBalance))} ${config.defaultTicker}`);
       } catch (error) {
         monitoring.error(`Main: Balance fetch before payout: ${error}`);  
       }
@@ -169,7 +178,7 @@ cron.schedule(paymentCronSchedule, async () => {
         monitoring.log(`Main: KAS balance after transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`);
   
         const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, config.defaultTicker);
-        monitoring.log(`Main: ${config.defaultTicker} balance after transfer  : ${sompiToKAS(Number(treasuryNACHOBalance))} ${config.defaultTicker}`);
+        monitoring.log(`Main: ${config.defaultTicker} balance after transfer: ${sompiToKAS(Number(treasuryNACHOBalance))} ${config.defaultTicker}`);
       } catch (error) {
         monitoring.error(`Main: Balance fetch after payout: ${error}`);  
       }
@@ -185,3 +194,14 @@ cron.schedule(paymentCronSchedule, async () => {
 setInterval(() => {
   if (DEBUG) monitoring.debug(`Main: Waiting for next payment cycle ...`);
 }, 10 * 60 * 1000); // 10 minutes in milliseconds
+
+cron.schedule(paymentAlertCronSchedule, async () => {
+  if (rpcConnected) {
+    try {
+      const tgBotObj = new TelegramBotAlert();
+      tgBotObj.checkTreasuryWalletForAlert(transactionManager!);
+    } catch (error) {
+      monitoring.error(`Main: payment alert: ${error}`);
+    }
+  }
+});
