@@ -8,13 +8,12 @@ dotenv.config();
 
 const monitoring = new Monitoring();
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
-const token = TELEGRAM_BOT_TOKEN
+const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
     monitoring.error("bot: telegram token is undefined");
 }
   
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(token, { polling: true });
 const chatIdsFilePath = path.join('/app/data', 'chatIds.json');  // Use volume path
 const chatIds = new Set<string>(); // Store unique chat IDs
 
