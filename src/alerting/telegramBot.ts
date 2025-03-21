@@ -18,7 +18,7 @@ export class TelegramBotAlert {
 
         const msg = await this.checkAllBalForAlert(transactionManager, url);
         monitoring.debug(`TelegramBotAlert: Msg: ${msg}`);
-        if (msg.search('Balance')) {
+        if (msg.search('Balance') !== -1) {
             monitoring.debug(`TelegramBotAlert: Sending alert ...`);
             sendTelegramAlert(msg);
         }

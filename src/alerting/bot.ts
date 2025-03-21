@@ -2,6 +2,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import Monitoring from '../monitoring';
+import path from 'path';
 
 dotenv.config();
 
@@ -14,7 +15,7 @@ if (!token) {
 }
   
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
-const chatIdsFilePath = './chatIds.json';
+const chatIdsFilePath = path.join('/app/data', 'chatIds.json');  // Use volume path
 const chatIds = new Set<string>(); // Store unique chat IDs
 
 // Function to load chat IDs from JSON file
@@ -61,9 +62,9 @@ bot.on('message', (msg) => {
     
     if ((msg.chat.type === 'supergroup' || msg.chat.type === 'group') && !chatIds.has(chatId)) {
         monitoring.log(`bot: Detected in group: ${chatId}`);
-        sendWelcomeMsg(chatId);
         chatIds.add(chatId);
         saveChatIds();
+        sendWelcomeMsg(chatId);
     }
 });
 
