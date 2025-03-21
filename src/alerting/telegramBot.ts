@@ -11,6 +11,9 @@ const explorerUrl = `https://kas.fyi/address/{address}`;
 
 const monitoring = new Monitoring();
 
+const kasAlertThreshold = Number(config.kasAlertThreshold) || 25000000000; // 250 KAS if not set
+const nachoAlertThreshold = Number(config.nachoAlertThreshold) || 100000000000; // 1000 KAS if not set
+
 export class TelegramBotAlert {
     async checkTreasuryWalletForAlert(transactionManager: trxManager) {
         const url = explorerUrl
@@ -78,10 +81,10 @@ export class TelegramBotAlert {
         }
   
         let msg = `<b>Wallet Address:</b> <a href="${url}">View pool treasury</a>\n`;
-        if (treasuryKASBalance <= Number(config.kasAlertThreshold)) {
+        if (treasuryKASBalance <= kasAlertThreshold) {
             msg += `\n<b>KAS Balance</b>\n--------------------------\n`
             msg += `<b>Current:</b> <code>${sompiToKAS(treasuryKASBalance)} KAS</code>.\n`;
-            msg += `<b>Threshold:</b> <code>${sompiToKAS(Number(config.kasAlertThreshold))} KAS</code>.\n`;
+            msg += `<b>Threshold:</b> <code>${sompiToKAS(kasAlertThreshold)} KAS</code>.\n`;
         }
         if (treasuryKASBalance <= totalEligibleAmount) {
             if (msg.search('KAS Balance') === -1) {
@@ -91,11 +94,11 @@ export class TelegramBotAlert {
             msg += `<b>Total eligible:</b> <code>${sompiToKAS(Number(totalEligibleAmount))} KAS</code>.\n`;
         }
   
-        if (treasuryNACHOBalance <= Number(config.nachoAlertThreshold)) {
+        if (treasuryNACHOBalance <= nachoAlertThreshold) {
             msg += `\n<b>NACHO Balance</b>\n--------------------------`
             if (msg != '') msg += `\n`;
             msg += `<b>Current:</b> <code>${sompiToKAS(treasuryNACHOBalance)} NACHO</code>.\n`;
-            msg += `<b>Threshold:</b> <code>${sompiToKAS(Number(config.nachoAlertThreshold))} NACHO</code>.\n`;
+            msg += `<b>Threshold:</b> <code>${sompiToKAS(nachoAlertThreshold)} NACHO</code>.\n`;
         }
         if (treasuryNACHOBalance <= totalKASWorthNACHO) {
             if (msg.search('NACHO Balance') === -1) {
