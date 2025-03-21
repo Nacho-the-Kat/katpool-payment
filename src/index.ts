@@ -55,7 +55,7 @@ const paymentCronSchedule = cronValidation(config.payoutCronSchedule); // Defaul
 if (DEBUG) monitoring.debug(`Main: Payment cron is set to ${paymentCronSchedule}`);
 
 const paymentAlertCronSchedule = cronValidation(config.payoutAlertCronSchedule, true); // Defaults to four times a day if not set
-if (DEBUG) monitoring.debug(`Main: Payment cron is set to ${paymentAlertCronSchedule}`);
+if (DEBUG) monitoring.debug(`Main: Payment alert cron is set to ${paymentAlertCronSchedule}`);
 
 if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
 
