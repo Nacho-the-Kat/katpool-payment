@@ -91,7 +91,7 @@ const startRpcConnection = async () => {
   try {
     await rpc.connect();
   } catch (rpcError) {
-    throw Error('RPC connection error');
+    throw Error(`RPC connection error: ${rpcError}`);
   }
   const serverInfo = await rpc.getServerInfo();
   if (!serverInfo.isSynced || !serverInfo.hasUtxoIndex) {
@@ -109,6 +109,15 @@ if (!rpcConnected) {
 }
 
 cron.schedule(paymentCronSchedule, async () => {
+  try {
+    await rpc.disconnect(); 
+    monitoring.log("Main: RPC connection closed");
+  } catch (rpcError) {
+    monitoring.error(`Main: RPC connecion was not closed: ${rpcError}`);
+  }
+  
+  await startRpcConnection();
+
   if (rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
