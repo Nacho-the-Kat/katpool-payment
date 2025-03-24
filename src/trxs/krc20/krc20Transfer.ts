@@ -55,7 +55,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   try {
     await rpc.subscribeUtxosChanged([address.toString()]);
   } catch (error) {
-    return { error: 'KRC20Transfer: Failed to subscribe to UTXO changes: ${error}', revealHash: '', P2SHAddress: '' };
+    return { error: `KRC20Transfer: Failed to subscribe to UTXO changes: ${error}`, revealHash: '', P2SHAddress: '' };
   }
   
   rpc.addEventListener('utxos-changed', async (event: any) => {

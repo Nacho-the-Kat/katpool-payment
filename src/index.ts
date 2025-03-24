@@ -90,8 +90,9 @@ const startRpcConnection = async () => {
   if (DEBUG) monitoring.debug(`Main: Starting RPC connection`);
   try {
     await rpc.connect();
+    monitoring.log(`Main RPC connected.`);
   } catch (rpcError) {
-    throw Error('RPC connection error');
+    throw Error(`RPC connection error: ${rpcError}`);
   }
   const serverInfo = await rpc.getServerInfo();
   if (!serverInfo.isSynced || !serverInfo.hasUtxoIndex) {
@@ -109,6 +110,15 @@ if (!rpcConnected) {
 }
 
 cron.schedule(paymentCronSchedule, async () => {
+  try {
+    await rpc.disconnect(); 
+    monitoring.log("Main: RPC connection closed");
+  } catch (rpcError) {
+    monitoring.error(`Main: RPC connecion was not closed: ${rpcError}`);
+  }
+  
+  await startRpcConnection();
+
   if (rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
@@ -196,6 +206,7 @@ setInterval(() => {
 }, 10 * 60 * 1000); // 10 minutes in milliseconds
 
 cron.schedule(paymentAlertCronSchedule, async () => {
+  monitoring.log(`Main: Alerting cron is triggered.`);
   if (rpcConnected) {
     try {
       const tgBotObj = new TelegramBotAlert();
@@ -203,5 +214,7 @@ cron.schedule(paymentAlertCronSchedule, async () => {
     } catch (error) {
       monitoring.error(`Main: payment alert: ${error}`);
     }
+  } else {
+    monitoring.error('Main: RPC connection is not established before alerting cron');    
   }
 });
