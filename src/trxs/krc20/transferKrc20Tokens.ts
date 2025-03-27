@@ -32,7 +32,8 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
     if (krc20Amount > NACHORebateBuffer) {
         krc20Amount = krc20Amount - NACHORebateBuffer;
     }
-        
+      
+    let eligibleNACHOTransfer = 0;
     // amount is the actual value paid accounting the full rebate status.
     for (let [address, amount] of Object.entries(payments)) {
         // Check if the user is eligible for full fee rebate
@@ -45,10 +46,10 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         
         // Set NACHO rebate amount in ratios.
         if (!krc20Amount || isNaN(Number(krc20Amount))) {
-            throw new Error("Invalid krc20Amount value");
+            throw new Error("transferKRC20Tokens: Invalid krc20Amount value");
         }
         if (!poolBalance || isNaN(Number(poolBalance))) {
-            throw new Error("Invalid poolBalance value");
+            throw new Error("transferKRC20Tokens: Invalid poolBalance value");
         }
         
         const numerator = BigInt(amount) * krc20Amount;
@@ -69,6 +70,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         }
 
         try {            
+            eligibleNACHOTransfer++;
             monitoring.debug(`transferKRC20Tokens: Transfering ${nachoAmount.toString()} ${pTicker} to ${address}`);
             monitoring.debug(`transferKRC20Tokens: Transfering NACHO equivalent to ${amount} KAS in current cycle to ${address}.`);
             await transferKRC20(pRPC, pTicker, address, nachoAmount.toString(), kasAmount, transactionManager!, fullRebate);
@@ -79,6 +81,8 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         // ⏳ Add a small delay before sending the next transaction
         await new Promise(resolve => setTimeout(resolve, 3000)); // 3s delay
     }
+
+    monitoring.debug(`transferKRC20Tokens: Total eligible NACHO transfers: ${eligibleNACHOTransfer}`);    
 }
 
 async function checkFullFeeRebate(address: string, ticker: string) {    
@@ -124,6 +128,7 @@ export async function recordPayment(address: string, amount: bigint, transaction
 
 export async function resetBalancesByWallet(db: Database, address : string, balance: bigint, column: string, fullRebate: boolean) {
     try {        
+        this.monitoring.log(`TrxManager: Reset ${column} for wallet ${address}`);
         const client = await db.getClient(); 
         // Fetch balance and entry count
         const res = await client.query(`SELECT SUM(${column}) as balance, COUNT(*) AS entry_count FROM miners_balance WHERE wallet = $1 GROUP BY wallet`, [address]);
