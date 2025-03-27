@@ -1,24 +1,24 @@
 import axios, { AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import Monitoring from '../../monitoring';
-import config from "../../../config/config.json";
+import { CONFIG } from "../../constants";
 
 export let KASPLEX_URL = 'https://api.kasplex.org'
-if( config.network === "testnet-10" ) {
+if( CONFIG.network === "testnet-10" ) {
     KASPLEX_URL = "https://tn10api.kasplex.org"
-} else if( config.network === "testnet-11" ) {
+} else if( CONFIG.network === "testnet-11" ) {
     KASPLEX_URL = "https://tn11api.kasplex.org"
 }
 
 let krc20TokenAPI = `${KASPLEX_URL}/v1/krc20/address/{address}/token/{ticker}`;
 
 let KRC721_STREAM_URL = 'https://mainnet.krc721.stream'
-if( config.network === "testnet-10" ) {
+if( CONFIG.network === "testnet-10" ) {
     KRC721_STREAM_URL = "https://testnet-10.krc721.stream"
-} else if( config.network === "testnet-11" ) {
+} else if( CONFIG.network === "testnet-11" ) {
     KRC721_STREAM_URL = "https://testnet-11.krc721.stream"
 }
-let NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${config.network}/address/{address}/{ticker}`;
+let NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${CONFIG.network}/address/{address}/{ticker}`;
 
 const monitoring = new Monitoring();
 
@@ -39,7 +39,7 @@ axiosRetry(axios, {
     }
 });
  
-export async function krc20Token(address: string, ticker = config.defaultTicker) {
+export async function krc20Token(address: string, ticker = CONFIG.defaultTicker) {
     try {
         const url = krc20TokenAPI
         .replace("{address}", encodeURIComponent(address))
@@ -47,16 +47,18 @@ export async function krc20Token(address: string, ticker = config.defaultTicker)
     
         const response = await axios.get(url);
         if (response.data.message === 'successful') {
-            return response.data.result[0].balance;
+            return {error: '', amount: response.data.result[0].balance};            
         } else {
-            return 0;
+            // API responded but with an error message (controlled failure)
+            const msg = `Fetching ${ticker} tokens failed for ${address}. API Response: ${JSON.stringify(response)}`;
+            return {error: msg, amount: null}; // API failure, return null as safe fallback
         }
     } catch (error) {
-        monitoring.error(`Fetching ${ticker} tokens for address: ${address} : ${error}`);
+        return {error, amount: -1};; // Indicate network/system failure
     }  
 }
 
-export async function nftAPI(address: string, ticker = config.defaultTicker) {
+export async function nftAPI(address: string, ticker = CONFIG.defaultTicker) {
     try {
         const url = NFTAPI
         .replace("{address}", encodeURIComponent(address))
@@ -65,11 +67,13 @@ export async function nftAPI(address: string, ticker = config.defaultTicker) {
         const response = await axios.get(url);
 
         if (response.data.message === 'successful') {
-            return response.data.result.length;
+            return {error: '', count: response.data.result.length};
         } else {
-            return 0;
+            // API responded but with an error message (controlled failure)
+            const msg = `API Response: ${JSON.stringify(response)}`;
+            return {error: msg, count: null}; // API failure, return null as safe fallback
         }
     } catch (error) {
-        monitoring.error(`Fetching NFT holding for address: ${address} : ${error}`);
+        return {error, count: -1}; // Indicate network/system failure
     }  
 }

@@ -9,10 +9,10 @@ export function cronValidation(expr: string, alert = false) {
         return expr;
     } else {
         if (!alert) {
-            monitoring.error('Invalid cron expression for payout. Defaulting to Twice a day.');
+            monitoring.error('cron-schedule: Invalid cron expression for payout. Defaulting to Twice a day.');
             return "0 */12 * * *";
         } else {
-            monitoring.error('Invalid cron expression for alerting. Defaulting to Four time a day.');
+            monitoring.error('cron-schedule: Invalid cron expression for alerting. Defaulting to Four times a day.');
             return "0 */6 * * *";
         }
     }    

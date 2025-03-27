@@ -2,8 +2,9 @@ import Database from '../database';
 import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient,  maximumStandardTransactionMass, addressFromScriptPublicKey, calculateTransactionFee } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { DEBUG } from "../index";
-import config from "../../config/config.json";
+import { CONFIG } from "../constants";
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
+import { sompiToKAS } from '../utils';
 
 export default class trxManager {
   public networkId: string;
@@ -67,7 +68,7 @@ export default class trxManager {
       };
     });
 
-    const thresholdAmount = config.thresholdAmount;
+    const thresholdAmount = CONFIG.thresholdAmount;
     const thresholdEligiblePayments = paymentOutputs.filter( data => data.amount >= BigInt(thresholdAmount));
 
     if (thresholdEligiblePayments.length === 0) {
@@ -76,11 +77,11 @@ export default class trxManager {
 
     // All pending balance to be transferred in current payment cycle
     const totalEligibleAmount = await this.db.getAllPendingBalanceAboveThreshold(Number(thresholdAmount));
-    this.monitoring.debug(`TrxManager: Total eligible KAS to be transferred in current payment cycle: ${totalEligibleAmount}`);
+    this.monitoring.debug(`TrxManager: Total eligible KAS to be transferred in current payment cycle: ${sompiToKAS(Number(totalEligibleAmount))} KAS.`);
 
     // All pending balance
     const totalAmount = await this.db.getAllPendingBalanceAboveThreshold(0);
-    this.monitoring.debug(`TrxManager: Total pending KAS to be transferred: ${totalAmount}`);
+    this.monitoring.debug(`TrxManager: Total pending KAS to be transferred: ${sompiToKAS(Number(totalAmount))} KAS.`);
 
     // Enqueue transactions for processing
     await this.enqueueTransactions(thresholdEligiblePayments);

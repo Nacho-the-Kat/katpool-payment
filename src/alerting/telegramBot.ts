@@ -49,7 +49,8 @@ export class TelegramBotAlert {
   
         try {
             // Fetch NACHO balance
-            treasuryNACHOBalance = await krc20Token(transactionManager!.address, config.defaultTicker);
+            const result = await krc20Token(transactionManager!.address, config.defaultTicker);
+            treasuryNACHOBalance = Number(result?.amount ?? 0);
             monitoring.debug(`TelegramBotAlert: ${config.defaultTicker} balance at alert schedule: ${sompiToKAS(Number(treasuryNACHOBalance))} ${config.defaultTicker}`);
         } catch (error) {
             monitoring.error(`TelegramBotAlert: Can not fetch treasury NACHO balance: ${error}.`);
