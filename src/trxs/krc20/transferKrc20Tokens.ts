@@ -1,7 +1,7 @@
 import { RpcClient } from "../../../wasm/kaspa/kaspa";
 import { transferKRC20 } from "./krc20Transfer";
 import Database, { pendingKRC20TransferField, status } from '../../database';
-import config from "../../../config/config.json";
+import { CONFIG } from "../../constants";
 import { krc20Token, nftAPI } from "./krc20Api";
 import { parseUnits } from "ethers";
 import trxManager from "..";
@@ -23,9 +23,9 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
         }
     }
 
-    const nachoThresholdAmount = BigInt(config.nachoThresholdAmount) || BigInt("100000000000");
+    const nachoThresholdAmount = BigInt(CONFIG.nachoThresholdAmount);
         
-    const NACHORebateBuffer = BigInt(config.nachoRebateBuffer);
+    const NACHORebateBuffer = BigInt(CONFIG.nachoRebateBuffer);
 
     let poolBalance = poolBal;
     
@@ -37,7 +37,7 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
     // amount is the actual value paid accounting the full rebate status.
     for (let [address, amount] of Object.entries(payments)) {
         // Check if the user is eligible for full fee rebate
-        const fullRebate = await checkFullFeeRebate(address, config.defaultTicker);
+        const fullRebate = await checkFullFeeRebate(address, CONFIG.defaultTicker);
         let kasAmount = amount;
         if (fullRebate) {
             monitoring.debug(`transferKRC20Tokens: Full rebate to address: ${address}`);
@@ -86,11 +86,21 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
 }
 
 async function checkFullFeeRebate(address: string, ticker: string) {    
-    const amount = await krc20Token(address, ticker);
+    const res = await krc20Token(address, ticker);
+    const amount = res.amount;
+    if (res.error != '') {
+        monitoring.error(`transferKRC20Tokens: Error fetching ${ticker} balance for address - ${address} : ${res.error}`);
+    } 
+    
     if (amount >= fullRebateTokenThreshold) {
         return true;
     } 
-    const nftCount = await nftAPI(address, ticker);
+    const result = await nftAPI(address, ticker);
+    const nftCount = result.count;
+    if (result.error != '') {
+        monitoring.error(`transferKRC20Tokens: Error fetching ${ticker} NFT holdings for address - ${address} : ${result.error}`);
+    } 
+
     if (nftCount >= fullRebateNFTThreshold) {
         return true;
     }

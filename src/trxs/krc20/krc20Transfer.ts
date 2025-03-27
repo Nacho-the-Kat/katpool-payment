@@ -1,5 +1,5 @@
 import { RpcClient, ScriptBuilder, Opcodes, addressFromScriptPublicKey, createTransactions, kaspaToSompi } from "../../../wasm/kaspa";
-import config from "../../../config/config.json";
+import { CONFIG } from "../../constants";
 import Monitoring from "../../monitoring";
 import { DEBUG } from "../../index.ts";
 import trxManager from "../index.ts";
@@ -7,12 +7,12 @@ import { fetchAccountTransactionCount, fetchKASBalance } from "../../utils.ts";
 import { pendingKRC20TransferField, status } from "../../database/index.ts";
 import { recordPayment, resetBalancesByWallet } from "./transferKrc20Tokens.ts";
 
-let ticker = config.defaultTicker;
+let ticker = CONFIG.defaultTicker;
 let dest = '';
 let amount = '1';
 let rpc: RpcClient;
 
-const network = config.network || 'mainnet';
+const network = CONFIG.network || 'mainnet';
 const FIXED_FEE = '0.0001'; // Fixed minimal fee
 const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 const timeout = 180000; // 3 minutes timeout
