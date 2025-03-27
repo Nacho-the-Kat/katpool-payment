@@ -54,9 +54,7 @@ export async function krc20Token(address: string, ticker = CONFIG.defaultTicker)
             return {error: msg, amount: null}; // API failure, return null as safe fallback
         }
     } catch (error) {
-        const msg = error;
-
-        return {error: msg, amount: -1};; // Indicate network/system failure
+        return {error, amount: -1};; // Indicate network/system failure
     }  
 }
 
@@ -76,8 +74,6 @@ export async function nftAPI(address: string, ticker = CONFIG.defaultTicker) {
             return {error: msg, count: null}; // API failure, return null as safe fallback
         }
     } catch (error) {
-        const msg = error;
-        
-        return {error: msg, count: -1}; // Indicate network/system failure
+        return {error, count: -1}; // Indicate network/system failure
     }  
 }
