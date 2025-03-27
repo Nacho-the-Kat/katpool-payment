@@ -143,8 +143,9 @@ cron.schedule(paymentCronSchedule, async () => {
           monitoring.debug(`Main: KAS balance before transfer: ${sompiToKAS(Number(treasuryKASBalance))} KAS`);
         }
 
-        const treasuryNACHOBalance = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
-        monitoring.debug(`Main: ${CONFIG.defaultTicker} balance before transfer: ${sompiToKAS(Number(treasuryNACHOBalance.amount))} ${CONFIG.defaultTicker}`);
+        const result = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
+        treasuryNACHOBalance = BigInt(result?.amount ?? 0);
+        monitoring.debug(`Main: ${CONFIG.defaultTicker} balance before transfer: ${sompiToKAS(Number(treasuryNACHOBalance))} ${CONFIG.defaultTicker}`);
       } catch (error) {
         monitoring.error(`Main: Balance fetch before payout: ${error}`);  
       }
@@ -187,7 +188,7 @@ cron.schedule(paymentCronSchedule, async () => {
           monitoring.error(`Main: Error during KRC20 transfer: ${error}`);
         }
       } else {
-        monitoring.debug(`Main: Current amount of KASPA is to low to distribute NACHO rebate.`);
+        monitoring.debug(`Main: Current amount of KASPA is too low to distribute NACHO rebate.`);
       }
 
       try {

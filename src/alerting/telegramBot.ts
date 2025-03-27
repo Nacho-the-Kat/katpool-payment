@@ -1,17 +1,17 @@
-import config from "../../config/config.json";
 import Monitoring from '../monitoring';
 import trxManager from '../trxs';
 import { fetchKASBalance, sompiToKAS } from '../utils';
 import { krc20Token } from '../trxs/krc20/krc20Api';
 import swapToKrc20 from '../trxs/krc20/swapToKrc20';
 import { sendTelegramAlert } from './bot';
+import { CONFIG } from "../constants";
 
 const explorerUrl = `https://kas.fyi/address/{address}`;
 
 const monitoring = new Monitoring();
 
-const kasAlertThreshold = Number(config.kasAlertThreshold) || 25000000000; // 250 KAS if not set
-const nachoAlertThreshold = Number(config.nachoAlertThreshold) || 100000000000; // 1000 NACHO if not set
+const kasAlertThreshold = Number(CONFIG.kasAlertThreshold); // 250 KAS if not set
+const nachoAlertThreshold = Number(CONFIG.nachoAlertThreshold); // 1000 NACHO if not set
 
 export class TelegramBotAlert {
     async checkTreasuryWalletForAlert(transactionManager: trxManager) {
@@ -49,16 +49,16 @@ export class TelegramBotAlert {
   
         try {
             // Fetch NACHO balance
-            const result = await krc20Token(transactionManager!.address, config.defaultTicker);
+            const result = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
             treasuryNACHOBalance = Number(result?.amount ?? 0);
-            monitoring.debug(`TelegramBotAlert: ${config.defaultTicker} balance at alert schedule: ${sompiToKAS(Number(treasuryNACHOBalance))} ${config.defaultTicker}`);
+            monitoring.debug(`TelegramBotAlert: ${CONFIG.defaultTicker} balance at alert schedule: ${sompiToKAS(Number(treasuryNACHOBalance))} ${CONFIG.defaultTicker}`);
         } catch (error) {
             monitoring.error(`TelegramBotAlert: Can not fetch treasury NACHO balance: ${error}.`);
         }
   
         try {
             // Fetch outstanding KAS
-            totalOutstandingAmount = await transactionManager!.db.getAllPendingBalanceAboveThreshold(Number(config.thresholdAmount));
+            totalOutstandingAmount = await transactionManager!.db.getAllPendingBalanceAboveThreshold(Number(CONFIG.thresholdAmount));
         } catch (error) {
             monitoring.error(`TelegramBotAlert: Can not fetch total outstanding KAS value: ${error}.`);
         }
@@ -75,7 +75,7 @@ export class TelegramBotAlert {
             // Fetch outstanding NACHO
             const swapToKrc20Obj = new swapToKrc20();
             totalKASWorthNACHO = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance);
-            monitoring.debug(`TelegramBotAlert: Amount of ${config.defaultTicker} tokens to be used for NACHO rebate: ${sompiToKAS(Number(totalKASWorthNACHO))} ${config.defaultTicker}`); 
+            monitoring.debug(`TelegramBotAlert: Amount of ${CONFIG.defaultTicker} tokens to be used for NACHO rebate: ${sompiToKAS(Number(totalKASWorthNACHO))} ${CONFIG.defaultTicker}`); 
         } catch (error) {
             monitoring.error(`TelegramBotAlert: Can not determine tokens to be used for NACHO rebate: ${error}.`);
         }

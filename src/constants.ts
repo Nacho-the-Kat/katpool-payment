@@ -15,7 +15,9 @@ const DEFAULT_CONFIG = {
     nachoThresholdAmount: kaspaToSompi('500')!,    
     nachoRebateBuffer: kaspaToSompi('5')!,
     nachoSwap: 95,
-    defaultTicker: "NACHO"
+    defaultTicker: "NACHO",
+    nachoAlertThreshold: kaspaToSompi('1000')!,
+    kasAlertThreshold: kaspaToSompi('250')!
 };
 
 // Function to validate config fields
