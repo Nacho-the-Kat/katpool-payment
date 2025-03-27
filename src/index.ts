@@ -196,7 +196,7 @@ cron.schedule(paymentCronSchedule, async () => {
         monitoring.log(`Main: KAS balance after transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`);
   
         const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
-        monitoring.log(`Main: ${CONFIG.defaultTicker} balance after transfer: ${sompiToKAS(Number(treasuryNACHOBalance))} ${CONFIG.defaultTicker}`);
+        monitoring.log(`Main: ${CONFIG.defaultTicker} balance after transfer: ${sompiToKAS(Number(treasuryNACHOBalance?.amount ?? 0))} ${CONFIG.defaultTicker}`);
       } catch (error) {
         monitoring.error(`Main: Balance fetch after payout: ${error}`);  
       }
