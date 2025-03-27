@@ -6,7 +6,7 @@
  * every 10 minutes.
  */
 
-import { RpcClient, Encoding, Resolver, kaspaToSompi } from "../wasm/kaspa";
+import { RpcClient, Encoding, Resolver, kaspaToSompi, IGetBalanceByAddressRequest } from "../wasm/kaspa";
 import config from "../config/config.json";
 import dotenv from 'dotenv';
 import Monitoring from './monitoring';
@@ -110,15 +110,6 @@ if (!rpcConnected) {
 }
 
 cron.schedule(paymentCronSchedule, async () => {
-  try {
-    await rpc.disconnect(); 
-    monitoring.log("Main: RPC connection closed");
-  } catch (rpcError) {
-    monitoring.error(`Main: RPC connecion was not closed: ${rpcError}`);
-  }
-  
-  await startRpcConnection();
-
   if (rpcConnected) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
@@ -200,8 +191,26 @@ cron.schedule(paymentCronSchedule, async () => {
   }
 });
 
+// Keep-alive function to prevent idle disconnections
+const keepAlive = async () => {
+  try {
+    const balanceRequest: IGetBalanceByAddressRequest = {
+      address: transactionManager!.address, 
+    };
+    await rpc.getBalanceByAddress(balanceRequest);
+    monitoring.log(`Main: Keep-alive successful`);
+  } catch (error) {
+    rpcConnected = false;
+    monitoring.log(`Main:  Keep-alive failed: ${error}`);
+    monitoring.log(`Main: 🔄 Reconnecting RPC...`);
+    await rpc.disconnect();
+    await startRpcConnection();
+  }
+};
+
 // Progress indicator logging every 10 minutes
 setInterval(() => {
+  keepAlive();
   if (DEBUG) monitoring.debug(`Main: Waiting for next payment cycle ...`);
 }, 10 * 60 * 1000); // 10 minutes in milliseconds
 
