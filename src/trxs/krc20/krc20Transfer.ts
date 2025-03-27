@@ -46,33 +46,33 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   let addedEventTrxId : any;
   let SubmittedtrxId: any;
   
-  const address = transactionManager.address;
+  const treasuryAddr = transactionManager.address;
   const privateKey = transactionManager.privateKey;
   
   // New UTXO subscription setup (ADD this):
-  monitoring.debug(`KRC20Transfer: Subscribing to UTXO changes for address: ${address.toString()}`);
+  monitoring.debug(`KRC20Transfer: Subscribing to UTXO changes for address: ${treasuryAddr.toString()}`);
   
   try {
-    await rpc.subscribeUtxosChanged([address.toString()]);
+    await rpc.subscribeUtxosChanged([treasuryAddr.toString()]);
   } catch (error) {
     return { error: `KRC20Transfer: Failed to subscribe to UTXO changes: ${error}`, revealHash: '', P2SHAddress: '' };
   }
   
   rpc.addEventListener('utxos-changed', async (event: any) => {
-    monitoring.debug(`KRC20Transfer: UTXO changes detected for address: ${address.toString()}`);
+    monitoring.debug(`KRC20Transfer: UTXO changes detected for address: ${treasuryAddr.toString()}`);
     
     // Check for UTXOs removed for the specific address
     const removedEntry = event.data.removed.find((entry: any) => 
-      entry.address.payload === address.toString().split(':')[1]
+      entry.address.payload === treasuryAddr.toString().split(':')[1]
     );
     const addedEntry = event.data.added.find((entry: any) => 
-      entry.address.payload === address.toString().split(':')[1]
+      entry.address.payload === treasuryAddr.toString().split(':')[1]
     );    
     if (removedEntry && addedEntry) {
       // Use custom replacer function in JSON.stringify to handle BigInt
-      monitoring.debug(`KRC20Transfer: Added UTXO found for address: ${address.toString()} with UTXO: ${JSON.stringify(addedEntry, (key, value) =>
+      monitoring.debug(`KRC20Transfer: Added UTXO found for address: ${treasuryAddr.toString()} with UTXO: ${JSON.stringify(addedEntry, (key, value) =>
         typeof value === 'bigint' ? value.toString() + 'n' : value)}`);        
-      monitoring.debug(`KRC20Transfer: Removed UTXO found for address: ${address.toString()} with UTXO: ${JSON.stringify(removedEntry, (key, value) =>
+      monitoring.debug(`KRC20Transfer: Removed UTXO found for address: ${treasuryAddr.toString()} with UTXO: ${JSON.stringify(removedEntry, (key, value) =>
         typeof value === 'bigint' ? value.toString() + 'n' : value)}`);
         addedEventTrxId = addedEntry.outpoint.transactionId;
       monitoring.debug(`KRC20Transfer: Added UTXO TransactionId: ${addedEventTrxId}`);
@@ -81,7 +81,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
         control.stopPolling = true; // 🛑 Stop polling here
       }
     } else {
-      monitoring.debug(`KRC20Transfer: No removed UTXO found for address: ${address.toString()} in this UTXO change event`);
+      monitoring.debug(`KRC20Transfer: No removed UTXO found for address: ${treasuryAddr.toString()} in this UTXO change event`);
     }
   });
 
@@ -108,7 +108,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   }
 
   try {
-    const { entries } = await rpc.getUtxosByAddresses({ addresses: [address.toString()] });
+    const { entries } = await rpc.getUtxosByAddresses({ addresses: [treasuryAddr.toString()] });
     
     // Find a suitable UTXO
     const selectedUtxo = findSuitableUtxo(entries);
@@ -129,7 +129,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
         address: P2SHAddress.toString(),
         amount: PREFERRED_MIN_UTXO // Send PREFERRED_MIN_UTXO
       }],
-      changeAddress: address.toString(),
+      changeAddress: treasuryAddr.toString(),
       priorityFee: feeInSompi,
       networkId: network
     });
@@ -144,7 +144,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       try {
         let actualKASAmount = kasAmount;
         if (fullRebate) {
-          monitoring.debug(`KRC20Transfer: Full rebate to address: ${address}`);
+          monitoring.debug(`KRC20Transfer: Full rebate to address: ${pDest}`);
           actualKASAmount = actualKASAmount * 3n;
         }
         await transactionManager!.db.recordPendingKRC20Transfer(hash, actualKASAmount, BigInt(amount), pDest, P2SHAddress.toString(), status.PENDING, status.PENDING);
@@ -153,7 +153,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       }
       
       try {
-        await resetBalancesByWallet(transactionManager!.db, address, kasAmount, 'nacho_rebate_kas', fullRebate);
+        await resetBalancesByWallet(transactionManager!.db, pDest, kasAmount, 'nacho_rebate_kas', fullRebate);
       } catch (error) {
         monitoring.error(`KRC20Transfer: Failed to reset balances for nacho_rebate_kas of ${amount} sompi for ${pDest}: ${error}`);
       }
@@ -196,8 +196,8 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
 
   if (eventReceived) {
     eventReceived = false;
-    monitoring.debug(`KRC20Transfer: creating UTXO entries from ${address.toString()}`);
-    const { entries } = await rpc.getUtxosByAddresses({ addresses: [address.toString()] });
+    monitoring.debug(`KRC20Transfer: creating UTXO entries from ${treasuryAddr.toString()}`);
+    const { entries } = await rpc.getUtxosByAddresses({ addresses: [treasuryAddr.toString()] });
     monitoring.debug(`KRC20Transfer: creating revealUTXOs from P2SHAddress`);
     const revealUTXOs = await rpc.getUtxosByAddresses({ addresses: [P2SHAddress.toString()] });
     monitoring.debug(`KRC20Transfer: Creating Transaction with revealUTX0s entries: ${revealUTXOs.entries[0]}`);
@@ -209,10 +209,10 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       priorityEntries: [revealUTXOs.entries[0]],
       entries: entries,
       outputs: [{
-        address: address.toString(), // Return to sender
+        address: treasuryAddr.toString(), // Return to sender
         amount: revealUtxoAmount // Return everything
       }],
-      changeAddress: address.toString(),
+      changeAddress: treasuryAddr.toString(),
       priorityFee: feeInSompi,
       networkId: network
     });
@@ -264,7 +264,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     
     try {
       // Fetch the updated UTXOs
-      const updatedUTXOs = await rpc.getUtxosByAddresses({ addresses: [address.toString()] });
+      const updatedUTXOs = await rpc.getUtxosByAddresses({ addresses: [treasuryAddr.toString()] });
   
       // Check if the reveal transaction is accepted
       const revealAccepted = updatedUTXOs.entries.some(entry => {
