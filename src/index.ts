@@ -20,6 +20,7 @@ import { krc20Token } from "./trxs/krc20/krc20Api";
 import { fetchKASBalance, sompiToKAS } from "./utils";
 import { TelegramBotAlert } from "./alerting/telegramBot";
 import bot from "./alerting/bot";
+import { sleep } from "bun";
 
 // Debug mode setting
 export let DEBUG = 0;
@@ -99,7 +100,6 @@ const startRpcConnection = async () => {
     throw Error('Provided node is either not synchronized or lacks the UTXO index.');
   }
   rpcConnected = true;
-
 };
 
 if (!rpcConnected) {
