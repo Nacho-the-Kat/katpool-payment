@@ -1,6 +1,7 @@
 import fs from "fs";
 import Monitoring from "./monitoring";
 import path from "path";
+import { kaspaToSompi } from "../wasm/kaspa/kaspa";
 
 const monitoring = new Monitoring();
 
@@ -10,9 +11,9 @@ const DEFAULT_CONFIG = {
     network : "mainnet",
     payoutCronSchedule: "0 */12 * * *",
     payoutAlertCronSchedule: "0 */6 * * *",
-    thresholdAmount: "500000000",
-    nachoThresholdAmount: "100000000000",    
-    nachoRebateBuffer: "500000000",
+    thresholdAmount: kaspaToSompi('5')!,
+    nachoThresholdAmount: kaspaToSompi('500')!,    
+    nachoRebateBuffer: kaspaToSompi('5')!,
     nachoSwap: 95,
     defaultTicker: "NACHO"
 };

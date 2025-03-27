@@ -214,8 +214,8 @@ const keepAlive = async () => {
     const balanceRequest: IGetBalanceByAddressRequest = {
       address: transactionManager!.address, 
     };
-    await rpc.getBalanceByAddress(balanceRequest);
-    monitoring.log(`Main: Keep-alive successful`);
+    const bal = await rpc.getBalanceByAddress(balanceRequest);
+    monitoring.log(`Main: Keep-alive successful: ${sompiToKAS(Number(bal.balance))} KAS`);
   } catch (error) {
     rpcConnected = false;
     monitoring.log(`Main:  Keep-alive failed: ${error}`);
