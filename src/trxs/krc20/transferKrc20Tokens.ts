@@ -119,11 +119,11 @@ export async function recordPayment(address: string, amount: bigint, transaction
     try {
       await client.query('BEGIN'); // Start transaction
 
-      this.monitoring.log(`transferKRC20Tokens: Recording NACHO payment for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
+      monitoring.log(`transferKRC20Tokens: Recording NACHO payment for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
       await client.query(query, queryParams);
 
       if (!p2shAddr || p2shAddr != '') {
-        this.monitoring.log(`transferKRC20Tokens: Updating pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
+        monitoring.log(`transferKRC20Tokens: Updating pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
         await db.updatePendingKRC20TransferStatus(p2shAddr, pendingKRC20TransferField.dbEntryStatus, status.COMPLETED);
       }
 

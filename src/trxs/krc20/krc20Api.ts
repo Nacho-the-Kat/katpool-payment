@@ -46,7 +46,7 @@ export async function krc20Token(address: string, ticker = CONFIG.defaultTicker)
         .replace("{ticker}", ticker);
     
         const response = await axios.get(url);
-        if (response.data.message === 'successful') {
+        if (response.data.message.toLowerCase().includes('success')) {
             return {error: '', amount: response.data.result[0].balance};            
         } else {
             // API responded but with an error message (controlled failure)
@@ -66,7 +66,7 @@ export async function nftAPI(address: string, ticker = CONFIG.defaultTicker) {
     
         const response = await axios.get(url);
 
-        if (response.data.message === 'successful') {
+        if (response.data.message.toLowerCase().includes('success')) {
             return {error: '', count: response.data.result.length};
         } else {
             // API responded but with an error message (controlled failure)
