@@ -138,7 +138,7 @@ export async function recordPayment(address: string, amount: bigint, transaction
 
 export async function resetBalancesByWallet(db: Database, address : string, balance: bigint, column: string, fullRebate: boolean) {
     try {        
-        this.monitoring.log(`TrxManager: Reset ${column} for wallet ${address}`);
+        this.monitoring.log(`transferKRC20Tokens: Reset ${column} for wallet ${address}`);
         const client = await db.getClient(); 
         // Fetch balance and entry count
         const res = await client.query(`SELECT SUM(${column}) as balance, COUNT(*) AS entry_count FROM miners_balance WHERE wallet = $1 GROUP BY wallet`, [address]);
@@ -168,6 +168,7 @@ export async function resetBalancesByWallet(db: Database, address : string, bala
         // Update balance for all matching entries
         await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = $2`, [newBalance, address]);
 
+        monitoring.debug(`transferKRC20Tokens: Updated for Address: ${address}, Column: ${column}, Initial Balance: ${minerBalance}, Entries: ${count}`);        
     } catch (error) {
         monitoring.error(`transferKRC20Tokens: Error updating miner balance for ${address} - ${error}`);
     } 
