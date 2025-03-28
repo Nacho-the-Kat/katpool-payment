@@ -138,7 +138,7 @@ export async function recordPayment(address: string, amount: bigint, transaction
 
 export async function resetBalancesByWallet(db: Database, address : string, balance: bigint, column: string, fullRebate: boolean) {
     try {        
-        this.monitoring.log(`transferKRC20Tokens: Reset ${column} for wallet ${address}`);
+        monitoring.log(`transferKRC20Tokens: Reset ${column} for wallet ${address}`);
         const client = await db.getClient(); 
         // Fetch balance and entry count
         const res = await client.query(`SELECT SUM(${column}) as balance, COUNT(*) AS entry_count FROM miners_balance WHERE wallet = $1 GROUP BY wallet`, [address]);
