@@ -73,7 +73,7 @@ const nextScedule = new Date(interval.next().getTime()).toISOString();
 if (DEBUG) monitoring.debug(`Main: Next payment is scheduled at ${nextScedule}`);
 
 const alertInterval = cronParser.parseExpression(paymentAlertCronSchedule);
-const nextAlertScedule = new Date(interval.next().getTime()).toISOString();
+const nextAlertScedule = new Date(alertInterval.next().getTime()).toISOString();
 if (DEBUG) monitoring.debug(`Main: Next alert is scheduled at ${nextAlertScedule}`);
 
 const rpc = new RpcClient({  
