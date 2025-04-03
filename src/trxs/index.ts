@@ -169,7 +169,9 @@ export default class trxManager {
   }
 
   async unregisterProcessor() {
+    if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - this.context.clear()`);
     await this.context.clear();
+    if (DEBUG) this.monitoring.debug(`TrxManager: removeEventListener(*)`);
     this.processor.removeEventListener('*', async () => {});
     await this.processor.stop();    
   }
