@@ -8,3 +8,7 @@ bun*
 postgres*
 examples
 chatIds.json
+logs/
+*.log.*
+*.log
+.*.json
