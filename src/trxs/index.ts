@@ -167,4 +167,10 @@ export default class trxManager {
     });
     this.processor.start();
   }
+
+  async unregisterProcessor() {
+    await this.context.clear();
+    this.processor.removeEventListener('*', async () => {});
+    await this.processor.stop();    
+  }
 }
