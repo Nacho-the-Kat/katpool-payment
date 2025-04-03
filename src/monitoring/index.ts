@@ -19,7 +19,7 @@ export default class Monitoring {
   private logger: winston.Logger;
 
   private fileNameFormat = `katpool-payment-%DATE%.log`;
-  constructor(logFilePath: string = (process.env.LOG_FILE_PATH ? process.env.LOG_FILE_PATH : 'logs')) {
+  constructor(logFilePath: string = ('katpool-payment-logs')) {
     if (!fs.existsSync(logFilePath)) {
       fs.mkdirSync(logFilePath, { recursive: true }); // Create directory if missing
     }
