@@ -3,6 +3,8 @@ import PQueue from 'p-queue';
 import winston from 'winston';
 import 'winston-daily-rotate-file';
 import chalk from 'chalk';
+import fs from 'fs';
+import path from 'path';
 
 interface LogJobData {
   level: 'DEBUG' | 'ERROR' | 'INFO';
@@ -16,8 +18,11 @@ export default class Monitoring {
   private debugEnabled: boolean;
   private logger: winston.Logger;
 
-  private fileNameFormat = `app-%DATE%.log`;
-  constructor(logFilePath: string = process.env.LOG_FILE_PATH+this.fileNameFormat || `logs/${this.fileNameFormat}`) {
+  private fileNameFormat = `katpool-payment-%DATE%.log`;
+  constructor(logFilePath: string = (process.env.LOG_FILE_PATH ? process.env.LOG_FILE_PATH : 'logs')) {
+    if (!fs.existsSync(logFilePath)) {
+      fs.mkdirSync(logFilePath, { recursive: true }); // Create directory if missing
+    }
 
     const logFormat = winston.format.printf((info) => {
       const levelColor = {
@@ -33,18 +38,16 @@ export default class Monitoring {
     this.logQueue = new PQueue({ concurrency: 1 });
     this.debugEnabled = process.env.DEBUG?.trim() === '1';
 
-    let logLevel = 'info';
-    if (this.debugEnabled) logLevel = 'debug' 
     this.logger = winston.createLogger({
-      level: logLevel,  
+      level: this.debugEnabled ? 'debug' : 'info',
       format: combine(logFormat),
       transports: [
         new winston.transports.DailyRotateFile({
-          filename: logFilePath,
+          filename: path.join(logFilePath, this.fileNameFormat),
           datePattern: 'YYYY-MM-DD',
           zippedArchive: true,
-          maxSize: '1k',      
-          maxFiles: '14d',    
+          maxSize: '1g',
+          maxFiles: '14d',
         }),
         new winston.transports.Console({
           format: combine(logFormat),
