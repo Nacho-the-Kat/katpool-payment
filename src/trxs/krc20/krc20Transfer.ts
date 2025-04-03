@@ -53,6 +53,8 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
   monitoring.debug(`KRC20Transfer: Subscribing to UTXO changes for address: ${treasuryAddr.toString()}`);
   
   try {
+    await this.rpc.unsubscribeUtxosChanged([treasuryAddr.toString()]);
+    await this.context.clear();
     await rpc.subscribeUtxosChanged([treasuryAddr.toString()]);
   } catch (error) {
     monitoring.error(`KRC20Transfer: Failed to subscribe to UTXO changes: ${error}`);

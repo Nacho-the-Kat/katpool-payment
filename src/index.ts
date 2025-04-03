@@ -217,6 +217,8 @@ cron.schedule(paymentCronSchedule, async () => {
   } else {
     monitoring.error('Main: RPC connection is not established before balance transfer');
   }
+
+  await transactionManager?.unregisterProcessor();
 });
 
 cron.schedule(paymentAlertCronSchedule, async () => {
@@ -236,4 +238,6 @@ cron.schedule(paymentAlertCronSchedule, async () => {
   } else {
     monitoring.error('Main: RPC connection is not established before alerting cron');    
   }
+
+  await transactionManager?.unregisterProcessor();
 });
