@@ -20,7 +20,6 @@ import { krc20Token } from "./trxs/krc20/krc20Api";
 import { fetchKASBalance, sompiToKAS } from "./utils";
 import { TelegramBotAlert } from "./alerting/telegramBot";
 import bot from "./alerting/bot";
-import { sleep } from "bun";
 
 // Debug mode setting
 export let DEBUG = 0;
@@ -38,18 +37,13 @@ const treasuryPrivateKey = process.env.TREASURY_PRIVATE_KEY;
 if (!treasuryPrivateKey) {
   throw new Error('Environment variable TREASURY_PRIVATE_KEY is not set.');
 }
-if (DEBUG) monitoring.debug(`Main: Obtained treasury private key`);
-
 if (!CONFIG.network) {
   throw new Error('No network has been set in config.json');
 }
-if (DEBUG) monitoring.debug(`Main: Network Id: ${CONFIG.network}`);
-
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
   throw new Error('Environment variable DATABASE_URL is not set.');
 }
-if (DEBUG) monitoring.debug(`Main: Database URL obtained`);
 
 // Configuration parameters
 const paymentCronSchedule = cronValidation(CONFIG.payoutCronSchedule); // Defaults to twice a day if not set
@@ -57,12 +51,6 @@ if (DEBUG) monitoring.debug(`Main: Payment cron is set to ${paymentCronSchedule}
 
 const paymentAlertCronSchedule = cronValidation(CONFIG.payoutAlertCronSchedule, true); // Defaults to four times a day if not set
 if (DEBUG) monitoring.debug(`Main: Payment alert cron is set to ${paymentAlertCronSchedule}`);
-
-if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
-
-if (DEBUG) {
-  monitoring.debug(`Main: Resolver Options:${CONFIG.node}`);
-}
 
 if (bot) {
   monitoring.debug(`Main: Telegram bot is active.`);
@@ -84,7 +72,6 @@ const rpc = new RpcClient({
 const swapToKrc20Obj = new swapToKrc20();
 
 let transactionManager: trxManager | null = null;
-let rpcConnected = false;
 
 const setupTransactionManager = () => {
   if (DEBUG) monitoring.debug(`Main: Starting transaction manager`);
@@ -103,18 +90,37 @@ const startRpcConnection = async () => {
   if (!serverInfo.isSynced || !serverInfo.hasUtxoIndex) {
     throw Error('Provided node is either not synchronized or lacks the UTXO index.');
   }
-  rpcConnected = true;
 };
 
-if (!rpcConnected) {
+const rpcConnectionTrxManagerSetup = async () => {
   await startRpcConnection();
   if (DEBUG) monitoring.debug('Main: RPC connection started');
   if (DEBUG) monitoring.debug(`Main: RPC connection established`);
   setupTransactionManager();
 }
 
+const getRpcStatus = () => {
+  if (rpc && rpc.isConnected == true) {
+    return true;
+  }
+  return false;
+};
+
 cron.schedule(paymentCronSchedule, async () => {
-  if (rpcConnected) {
+  if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
+  rpcConnectionTrxManagerSetup();
+
+  if (DEBUG) {
+    monitoring.debug(`Main: Obtained treasury private key`);
+    monitoring.debug(`Main: Network Id: ${CONFIG.network}`);
+    monitoring.debug(`Main: Database URL obtained`);
+    monitoring.debug(`Main: Resolver Options:${CONFIG.node}`);
+  }
+
+  // Wait for one minute before invoking balance transfer.
+  await Bun.sleep(60000);
+
+  if (getRpcStatus()) {
     monitoring.log('Main: Running scheduled balance transfer');
     try {
       if (!transactionManager) {
@@ -213,32 +219,14 @@ cron.schedule(paymentCronSchedule, async () => {
   }
 });
 
-// Keep-alive function to prevent idle disconnections
-const keepAlive = async () => {
-  try {
-    const balanceRequest: IGetBalanceByAddressRequest = {
-      address: transactionManager!.address, 
-    };
-    const bal = await rpc.getBalanceByAddress(balanceRequest);
-    monitoring.log(`Main: Keep-alive successful: ${sompiToKAS(Number(bal.balance))} KAS`);
-  } catch (error) {
-    rpcConnected = false;
-    monitoring.log(`Main:  Keep-alive failed: ${error}`);
-    monitoring.log(`Main: 🔄 Reconnecting RPC...`);
-    await rpc.disconnect();
-    await startRpcConnection();
-  }
-};
-
-// Progress indicator logging every 10 minutes
-setInterval(() => {
-  keepAlive();
-  if (DEBUG) monitoring.debug(`Main: Waiting for next payment cycle ...`);
-}, 10 * 60 * 1000); // 10 minutes in milliseconds
-
 cron.schedule(paymentAlertCronSchedule, async () => {
-  monitoring.log(`Main: Alerting cron is triggered.`);
-  if (rpcConnected) {
+  if (DEBUG) monitoring.debug(`Main: Setting up RPC client after Alerting cron is triggered`);
+  rpcConnectionTrxManagerSetup();
+
+  // Wait for one minute before invoking balance transfer.
+  await Bun.sleep(60000);
+
+  if (getRpcStatus()) {
     try {
       const tgBotObj = new TelegramBotAlert();
       tgBotObj.checkTreasuryWalletForAlert(transactionManager!);
