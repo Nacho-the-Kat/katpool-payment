@@ -1,6 +1,8 @@
 import { Pool } from 'pg';
 import Monitoring from '../monitoring';
 
+const monitoring = new Monitoring();
+
 type Miner = {
   balance: bigint;
 };
@@ -113,6 +115,7 @@ export default class Database {
     p2shAddress: string, 
     nachoTransferStatus: status, 
     dbEntryStatus: status) {
+    monitoring.debug(`database: recordPendingKRC20Transfer - first txn id - ${firstTxnID}`);
     const client = await this.pool.connect();
     
     const query = `INSERT INTO pending_krc20_transfers (first_txn_id, sompi_to_miner, nacho_amount, address, p2sh_address, nacho_transfer_status, db_entry_status, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW());`;
@@ -130,13 +133,14 @@ export default class Database {
     try {
       await client.query(query, values);
     } catch (error) {
-      new Monitoring().error(`database: recording pending KRC20 transfer: ${error}`);      
+      monitoring.error(`database: recording pending KRC20 transfer: ${error}`);      
     } finally {
       client.release();
     }
   }
 
   async updatePendingKRC20TransferStatus(p2shAddr: string, fieldToBeUpdated: string, updatedStatus: status) {
+    monitoring.debug(`database: updatePendingKRC20TransferStatus - p2sh: ${p2shAddr}`);
     const client = await this.pool.connect();
 
     const query = `UPDATE pending_krc20_transfers 
@@ -146,7 +150,7 @@ export default class Database {
     try {
       await client.query(query, [updatedStatus, p2shAddr]);
     } catch (error) {
-      new Monitoring().error(`database: updating pending KRC20 transfer: ${error}`);      
+      monitoring.error(`database: updating pending KRC20 transfer: ${error}`);      
     } finally {
       client.release();
     }
