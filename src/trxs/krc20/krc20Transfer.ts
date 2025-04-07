@@ -285,8 +285,16 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       // If reveal transaction is accepted
       if (revealAccepted) {
         monitoring.log(`KRC20Transfer: Reveal transaction has been accepted: ${revealHash}`);
-        transactionManager!.db.updatePendingKRC20TransferStatus(P2SHAddress.toString(), pendingKRC20TransferField.nachoTransferStatus, status.COMPLETED);
-        await recordPayment(pDest, BigInt(pAmount), revealHash, P2SHAddress.toString(), transactionManager?.db!);
+        try {
+          await transactionManager!.db.updatePendingKRC20TransferStatus(P2SHAddress.toString(), pendingKRC20TransferField.nachoTransferStatus, status.COMPLETED);
+        } catch(error) {
+          monitoring.error(`KRC20Transfer: Updating Pending KRC20 transfer status for ${P2SHAddress.toString()} for reveal hash: ${revealHash}.`);
+        }
+        try {
+          await recordPayment(pDest, BigInt(pAmount), revealHash, P2SHAddress.toString(), transactionManager?.db!);
+        } catch(error) {
+          monitoring.error(`KRC20Transfer: Recording payment for ${pDest} of ${pAmount} NACHO with P2SH - ${P2SHAddress.toString()} for reveal hash: ${revealHash}.`);
+        }
       } else if (!eventReceived) { // Check eventReceived here
         monitoring.log('KRC20Transfer: Reveal transaction has not been accepted yet.');
       }
