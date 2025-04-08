@@ -1,7 +1,7 @@
 import { RpcClient, ScriptBuilder, Opcodes, addressFromScriptPublicKey, createTransactions, kaspaToSompi } from "../../../wasm/kaspa";
 import { CONFIG } from "../../constants";
 import Monitoring from "../../monitoring";
-import { DEBUG } from "../../index.ts";
+import { DEBUG, db } from "../../index.ts";
 import trxManager from "../index.ts";
 import { fetchAccountTransactionCount, fetchKASBalance } from "../../utils.ts";
 import { pendingKRC20TransferField, status } from "../../database/index.ts";
@@ -158,20 +158,20 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
           monitoring.debug(`KRC20Transfer: Full rebate to address: ${pDest}`);
           actualKASAmount = actualKASAmount * 3n;
         }
-        await transactionManager!.db.recordPendingKRC20Transfer(hash, actualKASAmount, BigInt(amount), pDest, P2SHAddress.toString(), status.PENDING, status.PENDING);
+        await db.recordPendingKRC20Transfer(hash, actualKASAmount, BigInt(amount), pDest, P2SHAddress.toString(), status.PENDING, status.PENDING);
       } catch (error) {
         monitoring.error(`KRC20Transfer: Failed to record pending KRC20 transfer: ${error}`);
       }
       
       try {
-        await resetBalancesByWallet(transactionManager!.db, pDest, kasAmount, 'nacho_rebate_kas', fullRebate);
+        await resetBalancesByWallet(db, pDest, kasAmount, 'nacho_rebate_kas', fullRebate);
       } catch (error) {
         monitoring.error(`KRC20Transfer: Failed to reset balances for nacho_rebate_kas of ${amount} sompi for ${pDest}: ${error}`);
       }
       
       try {
         // Deduct full amount from POOL balance entry, despite non-eligibility for full rebate.
-        await resetBalancesByWallet(transactionManager!.db, transactionManager!.address, kasAmount * 3n, 'balance', false);
+        await resetBalancesByWallet(db, treasuryAddr, kasAmount * 3n, 'balance', false);
       } catch (error) {
         monitoring.error(`KRC20Transfer: Failed to reset balances for pool balance with needed reduction of ${kasAmount * 3n} sompi for ${pDest} : ${error}`);
       }
@@ -286,12 +286,16 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       if (revealAccepted) {
         monitoring.log(`KRC20Transfer: Reveal transaction has been accepted: ${revealHash}`);
         try {
-          await transactionManager!.db.updatePendingKRC20TransferStatus(P2SHAddress.toString(), pendingKRC20TransferField.nachoTransferStatus, status.COMPLETED);
+          monitoring.log(`KRC20Transfer: Entering updatePendingKRC20TransferStatus - ${revealHash}`);
+          await db.updatePendingKRC20TransferStatus(P2SHAddress.toString(), pendingKRC20TransferField.nachoTransferStatus, status.COMPLETED);
+          monitoring.log(`KRC20Transfer: Completed updatePendingKRC20TransferStatus - ${revealHash}`);
         } catch(error) {
           monitoring.error(`KRC20Transfer: Updating Pending KRC20 transfer status for ${P2SHAddress.toString()} for reveal hash: ${revealHash}.`);
         }
         try {
-          await recordPayment(pDest, BigInt(pAmount), revealHash, P2SHAddress.toString(), transactionManager?.db!);
+          monitoring.log(`KRC20Transfer: Entering recordPayment - ${revealHash}`);
+          await recordPayment(pDest, BigInt(pAmount), revealHash, P2SHAddress.toString(), db);
+          monitoring.log(`KRC20Transfer: Completed recordPayment - ${revealHash}`);
         } catch(error) {
           monitoring.error(`KRC20Transfer: Recording payment for ${pDest} of ${pAmount} NACHO with P2SH - ${P2SHAddress.toString()} for reveal hash: ${revealHash}.`);
         }
