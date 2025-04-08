@@ -108,7 +108,7 @@ const getRpcStatus = () => {
 
 cron.schedule(paymentCronSchedule, async () => {
   if (DEBUG) monitoring.debug(`Main: Setting up RPC client`);
-  rpcConnectionTrxManagerSetup();
+  await rpcConnectionTrxManagerSetup();
 
   if (DEBUG) {
     monitoring.debug(`Main: Obtained treasury private key`);
@@ -223,7 +223,7 @@ cron.schedule(paymentCronSchedule, async () => {
 
 cron.schedule(paymentAlertCronSchedule, async () => {
   if (DEBUG) monitoring.debug(`Main: Setting up RPC client after Alerting cron is triggered`);
-  rpcConnectionTrxManagerSetup();
+  await rpcConnectionTrxManagerSetup();
 
   // Wait for one minute before invoking balance transfer.
   await Bun.sleep(60000);
@@ -231,7 +231,7 @@ cron.schedule(paymentAlertCronSchedule, async () => {
   if (getRpcStatus()) {
     try {
       const tgBotObj = new TelegramBotAlert();
-      tgBotObj.checkTreasuryWalletForAlert(transactionManager!);
+      await tgBotObj.checkTreasuryWalletForAlert(transactionManager!);
     } catch (error) {
       monitoring.error(`Main: payment alert: ${error}`);
     }
