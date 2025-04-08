@@ -171,7 +171,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       
       try {
         // Deduct full amount from POOL balance entry, despite non-eligibility for full rebate.
-        await resetBalancesByWallet(db, transactionManager!.address, kasAmount * 3n, 'balance', false);
+        await resetBalancesByWallet(db, treasuryAddr, kasAmount * 3n, 'balance', false);
       } catch (error) {
         monitoring.error(`KRC20Transfer: Failed to reset balances for pool balance with needed reduction of ${kasAmount * 3n} sompi for ${pDest} : ${error}`);
       }
