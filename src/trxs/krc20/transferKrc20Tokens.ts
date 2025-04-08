@@ -110,6 +110,11 @@ async function checkFullFeeRebate(address: string, ticker: string) {
 export async function recordPayment(address: string, amount: bigint, transactionHash: string, p2shAddr: string, db: Database) {
     const client = await db.getClient();
 
+    if (!client) {
+        monitoring.error(`transferKRC20Tokens: Error getting DB client for record payment - address: ${address}, transaction hash: ${transactionHash}`);
+        return;
+    }
+
     const query = `INSERT INTO nacho_payments (wallet_address, nacho_amount, timestamp, transaction_hash) VALUES ($1, $2, NOW(), $3);`;
     try {
       await client.query('BEGIN'); // Start transaction
@@ -117,15 +122,18 @@ export async function recordPayment(address: string, amount: bigint, transaction
       monitoring.log(`transferKRC20Tokens: Recording NACHO payment for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
       await client.query(query, [[address], amount.toString(), transactionHash]);
       monitoring.log(`transferKRC20Tokens: Recorded NACHO payment for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
-
-      if (p2shAddr && p2shAddr !== '') {
-        monitoring.log(`transferKRC20Tokens: recordPayment - Updating pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
-        await db.updatePendingKRC20TransferStatus(p2shAddr, pendingKRC20TransferField.dbEntryStatus, status.COMPLETED);
-        monitoring.log(`transferKRC20Tokens: recordPayment - Updated pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
-      }
-
-      await client.query("COMMIT"); // Commit everything together
+      await client.query("COMMIT");
       monitoring.log(`transferKRC20Tokens: recordPayment committed for ${address} - amount: ${amount} - tx: ${transactionHash}`);
+
+      try {
+        if (p2shAddr && p2shAddr !== '') {
+          monitoring.log(`transferKRC20Tokens: recordPayment - Updating pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
+          await db.updatePendingKRC20TransferStatus(p2shAddr, pendingKRC20TransferField.dbEntryStatus, status.COMPLETED);
+          monitoring.log(`transferKRC20Tokens: recordPayment - Updated pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
+        }
+      } catch(error) {
+        monitoring.debug(`transferKRC20Tokens: recordPayment - Updated pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr} - ${error}`);
+      }
     } catch (error) {
       await client.query("ROLLBACK"); // Rollback everything if any step fails
       monitoring.error(`transferKRC20Tokens: DB Rollback performed due to error: ${error}`);
@@ -138,6 +146,10 @@ export async function resetBalancesByWallet(db: Database, address : string, bala
     try {        
         monitoring.log(`transferKRC20Tokens: Reset ${column} for wallet ${address}`);
         const client = await db.getClient(); 
+        if (!client) {
+            monitoring.error(`transferKRC20Tokens: Error getting DB client for reset balances by wallet - address: ${address} ${balance} - column ${column}`);
+            return;
+        }
         // Fetch balance and entry count
         const res = await client.query(`SELECT SUM(${column}) as balance, COUNT(*) AS entry_count FROM miners_balance WHERE wallet = $1 GROUP BY wallet`, [address]);
         

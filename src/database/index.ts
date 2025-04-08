@@ -34,11 +34,20 @@ export default class Database {
   }
 
   public async getClient() {
-    return this.pool.connect();
-}
+    try {
+      return await this.pool.connect();
+    } catch (err) {
+      monitoring.error(`database: Error getting DB client: ${err}`);
+      return undefined;
+    }
+  }
 
   async getAllBalancesExcludingPool() {
-    const client = await this.pool.connect();
+    const client = await this.pool.connect().catch(err => {
+      monitoring.error(`database: Error connecting to DB for fetching All balances excluding pool: ${err}`);
+    });
+    if (!client) return;
+    
     try {
       const res = await client.query(
         `SELECT wallet, SUM(balance) as total_balance, SUM(nacho_rebate_kas) as nacho_total_balance
@@ -60,7 +69,11 @@ export default class Database {
   }
 
   async getAllPendingBalanceAboveThreshold(threshold: number) {
-    const client = await this.pool.connect();
+    const client = await this.pool.connect().catch(err => {
+      monitoring.error(`database: Error connecting to fetching All pending balance above threshold: ${err}`);
+    });
+    if (!client) return;
+
     try {
       const res = await client.query(
         `SELECT SUM(total_balance) 
@@ -82,7 +95,11 @@ export default class Database {
 
   // Get Nacho Rebate KAS saved in pool entry
   async getPoolBalance() {
-    const client = await this.pool.connect();
+    const client = await this.pool.connect().catch(err => {
+      monitoring.error(`database: Error connecting to DB for fetching pool balance: ${err}`);
+    });
+    if (!client) return;
+
     try {
       const res = await client.query(
         `SELECT balance
@@ -100,9 +117,14 @@ export default class Database {
   }
 
   async resetBalancesByWallet(wallets: string[]) {
-    const client = await this.pool.connect();
+    const client = await this.pool.connect().catch(err => {
+      monitoring.error(`database: Error connecting to DB for reset balance by wallet: ${err}`);
+    });
+    if (!client) return;
+
     try {
       await client.query('UPDATE miners_balance SET balance = $1 WHERE wallet = ANY($2)', [0n, wallets]);
+      monitoring.debug(`database: reset for wallet balance - query executed for wallets: ${wallets}`);
     } finally {
       client.release();
     }
@@ -116,7 +138,10 @@ export default class Database {
     nachoTransferStatus: status, 
     dbEntryStatus: status) {
     monitoring.debug(`database: recordPendingKRC20Transfer - first txn id - ${firstTxnID}`);
-    const client = await this.pool.connect();
+    const client = await this.pool.connect().catch(err => {
+      monitoring.error(`database: Error connecting to DB for recording pending KRC20 transfer: ${err}`);
+    });
+    if (!client) return;
     
     const query = `INSERT INTO pending_krc20_transfers (first_txn_id, sompi_to_miner, nacho_amount, address, p2sh_address, nacho_transfer_status, db_entry_status, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW());`;
 
@@ -132,6 +157,7 @@ export default class Database {
   
     try {
       await client.query(query, values);
+      monitoring.debug(`database: recording pending KRC20 transfer - query executed for P2SH address: ${p2shAddress} - first txn hash ${firstTxnID}`);
     } catch (error) {
       monitoring.error(`database: recording pending KRC20 transfer: ${error}`);      
     } finally {
@@ -141,13 +167,17 @@ export default class Database {
 
   async updatePendingKRC20TransferStatus(p2shAddr: string, fieldToBeUpdated: string, updatedStatus: status) {
     monitoring.debug(`database: updatePendingKRC20TransferStatus - p2sh: ${p2shAddr}`);
-    const client = await this.pool.connect();
+    const client = await this.pool.connect().catch(err => {
+      monitoring.error(`database: Error connecting to DB for updating pending KRC20 transfer: ${err}`);
+    });
+    if (!client) return;
 
     const query = `UPDATE pending_krc20_transfers 
                    SET ${fieldToBeUpdated} = $1 
                    WHERE p2sh_address = $2`;
     
     try {
+      monitoring.debug(`database: updatePendingKRC20TransferStatus - query will be invoked for ${p2shAddr}`);
       await client.query(query, [updatedStatus, p2shAddr]);
       monitoring.debug(`database: updatePendingKRC20TransferStatus - query executed for ${p2shAddr}`);
     } catch (error) {

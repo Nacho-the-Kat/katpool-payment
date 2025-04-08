@@ -188,7 +188,7 @@ cron.schedule(paymentCronSchedule, () => {
 
           let poolBalance = 0n;
           let amount = 0n;
-          if (poolBalances.length > 0) {
+          if (Array.isArray(poolBalances) && poolBalances?.length > 0) {
             poolBalance = BigInt(poolBalances[0].balance);
           } else {
             monitoring.error("Main: Could not fetch Pool balance from Database.")

@@ -81,10 +81,8 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     );    
     if (removedEntry && addedEntry) {
       // Use custom replacer function in JSON.stringify to handle BigInt
-      monitoring.debug(`KRC20Transfer: Added UTXO found for address: ${treasuryAddr.toString()} with UTXO: ${JSON.stringify(addedEntry, (key, value) =>
-        typeof value === 'bigint' ? value.toString() + 'n' : value)}`);        
-      monitoring.debug(`KRC20Transfer: Removed UTXO found for address: ${treasuryAddr.toString()} with UTXO: ${JSON.stringify(removedEntry, (key, value) =>
-        typeof value === 'bigint' ? value.toString() + 'n' : value)}`);
+      monitoring.debug(`KRC20Transfer: Added UTXO found for address: ${treasuryAddr.toString()}`);        
+      monitoring.debug(`KRC20Transfer: Removed UTXO found for address: ${treasuryAddr.toString()}`);
         addedEventTrxId = addedEntry.outpoint.transactionId;
       monitoring.debug(`KRC20Transfer: Added UTXO TransactionId: ${addedEventTrxId}`);
       if (addedEventTrxId == SubmittedtrxId) {
@@ -286,18 +284,18 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       if (revealAccepted) {
         monitoring.log(`KRC20Transfer: Reveal transaction has been accepted: ${revealHash}`);
         try {
-          monitoring.log(`KRC20Transfer: Entering updatePendingKRC20TransferStatus - ${revealHash}`);
-          await db.updatePendingKRC20TransferStatus(P2SHAddress.toString(), pendingKRC20TransferField.nachoTransferStatus, status.COMPLETED);
-          monitoring.log(`KRC20Transfer: Completed updatePendingKRC20TransferStatus - ${revealHash}`);
-        } catch(error) {
-          monitoring.error(`KRC20Transfer: Updating Pending KRC20 transfer status for ${P2SHAddress.toString()} for reveal hash: ${revealHash}.`);
-        }
-        try {
           monitoring.log(`KRC20Transfer: Entering recordPayment - ${revealHash}`);
           await recordPayment(pDest, BigInt(pAmount), revealHash, P2SHAddress.toString(), db);
           monitoring.log(`KRC20Transfer: Completed recordPayment - ${revealHash}`);
         } catch(error) {
           monitoring.error(`KRC20Transfer: Recording payment for ${pDest} of ${pAmount} NACHO with P2SH - ${P2SHAddress.toString()} for reveal hash: ${revealHash}.`);
+          try {
+            monitoring.log(`KRC20Transfer: Entering updatePendingKRC20TransferStatus - ${revealHash}`);
+            await db.updatePendingKRC20TransferStatus(P2SHAddress.toString(), pendingKRC20TransferField.nachoTransferStatus, status.COMPLETED);
+            monitoring.log(`KRC20Transfer: Completed updatePendingKRC20TransferStatus - ${revealHash}`);
+          } catch(error) {
+            monitoring.error(`KRC20Transfer: Updating Pending KRC20 transfer status for ${P2SHAddress.toString()} for reveal hash: ${revealHash}.`);
+          }
         }
       } else if (!eventReceived) { // Check eventReceived here
         monitoring.log('KRC20Transfer: Reveal transaction has not been accepted yet.');
