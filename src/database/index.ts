@@ -149,6 +149,7 @@ export default class Database {
     
     try {
       await client.query(query, [updatedStatus, p2shAddr]);
+      monitoring.debug(`database: updatePendingKRC20TransferStatus - query executed for ${p2shAddr}`);
     } catch (error) {
       monitoring.error(`database: updating pending KRC20 transfer: ${error}`);      
     } finally {

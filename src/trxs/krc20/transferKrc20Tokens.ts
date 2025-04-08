@@ -110,24 +110,22 @@ async function checkFullFeeRebate(address: string, ticker: string) {
 export async function recordPayment(address: string, amount: bigint, transactionHash: string, p2shAddr: string, db: Database) {
     const client = await db.getClient();
 
-    let values: string[] = [];
-    let queryParams: string[][] = []
-    values.push(`($${1}, ${amount}, NOW(), '${transactionHash}') `);
-    const valuesPlaceHolder = values.join(',');
-    const query = `INSERT INTO nacho_payments (wallet_address, nacho_amount, timestamp, transaction_hash) VALUES ${valuesPlaceHolder};`;
-    queryParams.push([address]);
+    const query = `INSERT INTO nacho_payments (wallet_address, nacho_amount, timestamp, transaction_hash) VALUES ($1, $2, NOW(), $3);`;
     try {
       await client.query('BEGIN'); // Start transaction
 
       monitoring.log(`transferKRC20Tokens: Recording NACHO payment for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
-      await client.query(query, queryParams);
+      await client.query(query, [[address], amount.toString(), transactionHash]);
+      monitoring.log(`transferKRC20Tokens: Recorded NACHO payment for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
 
-      if (!p2shAddr || p2shAddr != '') {
-        monitoring.log(`transferKRC20Tokens: Updating pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
+      if (p2shAddr && p2shAddr !== '') {
+        monitoring.log(`transferKRC20Tokens: recordPayment - Updating pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
         await db.updatePendingKRC20TransferStatus(p2shAddr, pendingKRC20TransferField.dbEntryStatus, status.COMPLETED);
+        monitoring.log(`transferKRC20Tokens: recordPayment - Updated pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
       }
 
       await client.query("COMMIT"); // Commit everything together
+      monitoring.log(`transferKRC20Tokens: recordPayment committed for ${address} - amount: ${amount} - tx: ${transactionHash}`);
     } catch (error) {
       await client.query("ROLLBACK"); // Rollback everything if any step fails
       monitoring.error(`transferKRC20Tokens: DB Rollback performed due to error: ${error}`);

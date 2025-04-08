@@ -5,6 +5,7 @@ import { krc20Token } from '../trxs/krc20/krc20Api';
 import swapToKrc20 from '../trxs/krc20/swapToKrc20';
 import { sendTelegramAlert } from './bot';
 import { CONFIG } from "../constants";
+import { db } from '..';
 
 const explorerUrl = `https://kas.fyi/address/{address}`;
 
@@ -31,12 +32,11 @@ export class TelegramBotAlert {
 
     private async checkAllBalForAlert(transactionManager: trxManager, url: string) {
         monitoring.debug(`Main: Running scheduled balance check for alerting.`);
-      
         let treasuryKASBalance = 0;
         let treasuryNACHOBalance = 0;
         let totalOutstandingAmount = 0n;
         let totalKASWorthNACHO = 0n;
-        let poolBalances = await transactionManager!.db.getPoolBalance();
+        let poolBalances = await db.getPoolBalance();
         let poolBalance = 0n;
   
         try {
@@ -58,7 +58,7 @@ export class TelegramBotAlert {
   
         try {
             // Fetch outstanding KAS
-            totalOutstandingAmount = await transactionManager!.db.getAllPendingBalanceAboveThreshold(Number(CONFIG.thresholdAmount));
+            totalOutstandingAmount = await db.getAllPendingBalanceAboveThreshold(Number(CONFIG.thresholdAmount));
         } catch (error) {
             monitoring.error(`TelegramBotAlert: Can not fetch total outstanding KAS value: ${error}.`);
         }
