@@ -1,7 +1,7 @@
 import Database from '../database';
 import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient,  maximumStandardTransactionMass, addressFromScriptPublicKey, calculateTransactionFee } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
-import { DEBUG } from "../index";
+import { db, DEBUG } from "../index";
 import { CONFIG } from "../constants";
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { sompiToKAS } from '../utils';
@@ -21,7 +21,7 @@ export default class trxManager {
     this.networkId = networkId;
     this.rpc = rpc;
     if (DEBUG) this.monitoring.debug(`TrxManager: Network ID is: ${this.networkId}`);
-    this.db = new Database(databaseUrl);
+    this.db = db;
     this.privateKey = new PrivateKey(privKey);
     this.address = this.privateKey.toAddress(networkId).toString();
     if (DEBUG) this.monitoring.debug(`TrxManager: Pool Treasury Address: ${this.address}`);
@@ -53,7 +53,10 @@ export default class trxManager {
     try {
       await client.query(query, queryParams);
     } finally {
-      client.release();
+      if (client) {
+        client.release();
+        this.monitoring.debug(`TrxManager: recordPayment - After client.release().`);
+      }
     }
   }
 

@@ -245,6 +245,13 @@ cron.schedule(paymentCronSchedule, () => {
       }
 
       await transactionManager?.unregisterProcessor();
+      try {      
+        rpc.removeEventListener('utxos-changed', () => {
+          monitoring.debug(`Main: Removed event listener for 'utxos-changed'`);
+        });
+      } catch(error) {
+        monitoring.error(`Main: Removing event listener for 'utxos-changed': ${error}`);
+      }
 
       await Bun.sleep(1000); // Just before unregisterProcessor
       monitoring.log("Main: ✅ Payment Cron final sleep done — safe to exit.");

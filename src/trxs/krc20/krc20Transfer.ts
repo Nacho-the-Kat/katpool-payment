@@ -69,6 +69,14 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     return ;
   }
   
+  try {      
+    rpc.removeEventListener('utxos-changed', () => {
+      monitoring.debug(`KRC20Transfer: Removed event listener for 'utxos-changed'`);
+    });
+  } catch(error) {
+    monitoring.error(`KRC20Transfer: Removing event listener for 'utxos-changed': ${error}`);
+  }
+
   rpc.addEventListener('utxos-changed', async (event: any) => {
     monitoring.debug(`KRC20Transfer: UTXO changes detected for address: ${treasuryAddr.toString()}`);
     
@@ -83,7 +91,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
       // Use custom replacer function in JSON.stringify to handle BigInt
       monitoring.debug(`KRC20Transfer: Added UTXO found for address: ${treasuryAddr.toString()}`);        
       monitoring.debug(`KRC20Transfer: Removed UTXO found for address: ${treasuryAddr.toString()}`);
-        addedEventTrxId = addedEntry.outpoint.transactionId;
+      addedEventTrxId = addedEntry.outpoint.transactionId;
       monitoring.debug(`KRC20Transfer: Added UTXO TransactionId: ${addedEventTrxId}`);
       if (addedEventTrxId == SubmittedtrxId) {
         eventReceived = true;

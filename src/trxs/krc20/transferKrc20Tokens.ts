@@ -130,7 +130,7 @@ export async function recordPayment(address: string, amount: bigint, transaction
       try {
         if (p2shAddr && p2shAddr !== '') {
           monitoring.log(`transferKRC20Tokens: recordPayment - Updating pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
-          await db.updatePendingKRC20TransferStatus(p2shAddr, pendingKRC20TransferField.dbEntryStatus, status.COMPLETED);
+          await db.updatePendingKRC20TransferStatus(p2shAddr, pendingKRC20TransferField.dbEntryStatus, status.COMPLETED, client);
           monitoring.log(`transferKRC20Tokens: recordPayment - Updated pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
         }
       } catch(error) {
@@ -142,7 +142,10 @@ export async function recordPayment(address: string, amount: bigint, transaction
       await client.query("ROLLBACK"); // Rollback everything if any step fails
       monitoring.error(`transferKRC20Tokens: DB Rollback performed due to error: ${error}`);
     } finally {
-      client.release();
+      if (client) {
+        client.release();
+        this.monitoring.debug(`transferKRC20Tokens: recordPayment - After client.release().`);
+      }
     }
 }
 
