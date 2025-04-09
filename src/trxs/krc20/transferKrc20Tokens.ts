@@ -108,11 +108,13 @@ async function checkFullFeeRebate(address: string, ticker: string) {
 }
 
 export async function recordPayment(address: string, amount: bigint, transactionHash: string, p2shAddr: string, db: Database) {
+    monitoring.debug("transferKRC20Tokens: BEFORE - db.getClient()");
     const client = await db.getClient();
+    monitoring.debug("transferKRC20Tokens: AFTER - db.getClient()");
 
     if (!client) {
         monitoring.error(`transferKRC20Tokens: Error getting DB client for record payment - address: ${address}, transaction hash: ${transactionHash}`);
-        return;
+        return {record: false, pending: false};
     }
 
     const query = `INSERT INTO nacho_payments (wallet_address, nacho_amount, timestamp, transaction_hash) VALUES ($1, $2, NOW(), $3);`;
@@ -132,8 +134,10 @@ export async function recordPayment(address: string, amount: bigint, transaction
           monitoring.log(`transferKRC20Tokens: recordPayment - Updated pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
         }
       } catch(error) {
-        monitoring.debug(`transferKRC20Tokens: recordPayment - Updated pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr} - ${error}`);
+          monitoring.debug(`transferKRC20Tokens: recordPayment - Updated pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr} - ${error}`);
+          return {record: true, pending: false};
       }
+      return {record: true, pending: true};
     } catch (error) {
       await client.query("ROLLBACK"); // Rollback everything if any step fails
       monitoring.error(`transferKRC20Tokens: DB Rollback performed due to error: ${error}`);

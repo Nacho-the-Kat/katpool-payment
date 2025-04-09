@@ -30,11 +30,13 @@ export default class Database {
   constructor(connectionString: string) {
     this.pool = new Pool({
       connectionString: connectionString,
+      max: 25,
     });
   }
 
   public async getClient() {
     try {
+      monitoring.debug(`database: getClient() ~ DB Pool - total: ${this.pool.totalCount}, idle: ${this.pool.idleCount}, waiting: ${this.pool.waitingCount}`);
       return await this.pool.connect();
     } catch (err) {
       monitoring.error(`database: Error getting DB client: ${err}`);
@@ -43,9 +45,10 @@ export default class Database {
   }
 
   async getAllBalancesExcludingPool() {
-    const client = await this.pool.connect().catch(err => {
-      monitoring.error(`database: Error connecting to DB for fetching All balances excluding pool: ${err}`);
-    });
+    monitoring.debug(`database: getAllBalancesExcludingPool BEFORE - db.getClient()`);
+    const client = await this.getClient();
+    monitoring.debug(`database: getAllBalancesExcludingPool AFTER - db.getClient()`);
+
     if (!client) return;
     
     try {
@@ -69,9 +72,10 @@ export default class Database {
   }
 
   async getAllPendingBalanceAboveThreshold(threshold: number) {
-    const client = await this.pool.connect().catch(err => {
-      monitoring.error(`database: Error connecting to fetching All pending balance above threshold: ${err}`);
-    });
+    monitoring.debug(`database: getAllPendingBalanceAboveThreshold BEFORE - db.getClient()`);
+    const client = await this.getClient();
+    monitoring.debug(`database: getAllPendingBalanceAboveThreshold AFTER - db.getClient()`);
+
     if (!client) return;
 
     try {
@@ -95,9 +99,10 @@ export default class Database {
 
   // Get Nacho Rebate KAS saved in pool entry
   async getPoolBalance() {
-    const client = await this.pool.connect().catch(err => {
-      monitoring.error(`database: Error connecting to DB for fetching pool balance: ${err}`);
-    });
+    monitoring.debug(`database: getPoolBalance BEFORE - db.getClient()`);
+    const client = await this.getClient();
+    monitoring.debug(`database: getPoolBalance AFTER - db.getClient()`);
+
     if (!client) return;
 
     try {
@@ -117,9 +122,10 @@ export default class Database {
   }
 
   async resetBalancesByWallet(wallets: string[]) {
-    const client = await this.pool.connect().catch(err => {
-      monitoring.error(`database: Error connecting to DB for reset balance by wallet: ${err}`);
-    });
+    monitoring.debug(`database: resetBalancesByWallet BEFORE - db.getClient()`);
+    const client = await this.getClient();
+    monitoring.debug(`database: resetBalancesByWallet AFTER - db.getClient()`);
+
     if (!client) return;
 
     try {
@@ -138,9 +144,10 @@ export default class Database {
     nachoTransferStatus: status, 
     dbEntryStatus: status) {
     monitoring.debug(`database: recordPendingKRC20Transfer - first txn id - ${firstTxnID}`);
-    const client = await this.pool.connect().catch(err => {
-      monitoring.error(`database: Error connecting to DB for recording pending KRC20 transfer: ${err}`);
-    });
+    monitoring.debug(`database: recordPendingKRC20Transfer BEFORE - db.getClient()`);
+    const client = await this.getClient();
+    monitoring.debug(`database: recordPendingKRC20Transfer AFTER - db.getClient()`);
+
     if (!client) return;
     
     const query = `INSERT INTO pending_krc20_transfers (first_txn_id, sompi_to_miner, nacho_amount, address, p2sh_address, nacho_transfer_status, db_entry_status, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW());`;
@@ -166,10 +173,12 @@ export default class Database {
   }
 
   async updatePendingKRC20TransferStatus(p2shAddr: string, fieldToBeUpdated: string, updatedStatus: status) {
-    monitoring.debug(`database: updatePendingKRC20TransferStatus - p2sh: ${p2shAddr}`);
-    const client = await this.pool.connect().catch(err => {
-      monitoring.error(`database: Error connecting to DB for updating pending KRC20 transfer: ${err}`);
-    });
+    monitoring.debug(`database: updatePendingKRC20TransferStatus - p2sh: ${p2shAddr}, fieldToBeUpdated: ${fieldToBeUpdated} and updatedStatus: ${updatedStatus}`);
+  
+    monitoring.debug(`database: updatePendingKRC20TransferStatus BEFORE - db.getClient()`);
+    const client = await this.getClient();
+    monitoring.debug(`database: updatePendingKRC20TransferStatus AFTER - db.getClient()`);
+
     if (!client) return;
 
     const query = `UPDATE pending_krc20_transfers 
