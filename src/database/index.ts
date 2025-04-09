@@ -28,9 +28,10 @@ export default class Database {
   private pool: Pool;
 
   constructor(connectionString: string) {
+    monitoring.debug(`database: New pool created.`);
     this.pool = new Pool({
       connectionString: connectionString,
-      max: 25,
+      max: 50,
     });
   }
 
