@@ -3,7 +3,7 @@ import { CONFIG } from "../../constants";
 import Monitoring from "../../monitoring";
 import { DEBUG, db } from "../../index.ts";
 import trxManager from "../index.ts";
-import { fetchAccountTransactionCount, fetchKASBalance } from "../../utils.ts";
+import { fetchAccountTransactionCount, fetchKASBalance, withWatchdog } from "../../utils.ts";
 import { pendingKRC20TransferField, status } from "../../database/index.ts";
 import { recordPayment, resetBalancesByWallet } from "./transferKrc20Tokens.ts";
 
@@ -209,7 +209,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     const { entries } = await rpc.getUtxosByAddresses({ addresses: [treasuryAddr.toString()] });
     monitoring.debug(`KRC20Transfer: creating revealUTXOs from P2SHAddress`);
     const revealUTXOs = await rpc.getUtxosByAddresses({ addresses: [P2SHAddress.toString()] });
-    monitoring.debug(`KRC20Transfer: Creating Transaction with revealUTX0s entries: ${revealUTXOs.entries[0]}`);
+    monitoring.debug(`KRC20Transfer: Creating Transaction with revealUTX0s entries.`);
 
     // Second transaction: Return everything except the fixed fee
     const revealUtxoAmount = BigInt(revealUTXOs.entries[0].entry.amount);
@@ -285,8 +285,18 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
         monitoring.log(`KRC20Transfer: Reveal transaction has been accepted: ${revealHash}`);
         try {
           monitoring.log(`KRC20Transfer: Entering recordPayment - ${revealHash}`);
-          await recordPayment(pDest, BigInt(pAmount), revealHash, P2SHAddress.toString(), db);
-          monitoring.log(`KRC20Transfer: Completed recordPayment - ${revealHash}`);
+          const result = await withWatchdog(
+            () => recordPayment(pDest, BigInt(pAmount), revealHash, P2SHAddress.toString(), db),
+            5000
+          );
+          
+          if (result?.record === true) {
+            monitoring.log(`KRC20Transfer: Completed recordPayment - ${revealHash}`);
+          } else if (result?.pending === true) {
+            monitoring.log(`KRC20Transfer: Completed update pending krc20 transfer - ${revealHash}`);
+          } else {
+            monitoring.error(`KRC20Transfer: Record payment - ${result.record}, Update Pending KRC20 transfer: ${result.pending}`);
+          }
         } catch(error) {
           monitoring.error(`KRC20Transfer: Recording payment for ${pDest} of ${pAmount} NACHO with P2SH - ${P2SHAddress.toString()} for reveal hash: ${revealHash}.`);
           try {

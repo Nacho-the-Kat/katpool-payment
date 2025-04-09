@@ -31,7 +31,14 @@ export default class trxManager {
   }
 
   private async recordPayment(walletAddresses: string[], amount: bigint, transactionHash: string, entries: {address: string, amount: bigint}[]) {
+    this.monitoring.debug(`TrxManager: recordPayment ~ BEFORE - db.getClient()`);
     const client = await this.db.getClient();
+    this.monitoring.debug(`TrxManager: recordPayment ~ AFTER - db.getClient()`);
+
+    if (!client) {
+        this.monitoring.error(`TrxManager: Error getting DB client for record payment transaction hash: ${transactionHash}`);
+        return;
+    }
 
     let values: string[] = [];
     let queryParams: string[][] = []
