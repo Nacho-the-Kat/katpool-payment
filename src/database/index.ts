@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import Monitoring from '../monitoring';
 
 const monitoring = new Monitoring();
@@ -68,7 +68,10 @@ export default class Database {
         nachoBalance: BigInt(row.nacho_total_balance)
       }));
     } finally {
-      client.release();
+      if (client) {
+        client.release();
+        monitoring.debug(`database: getAllBalancesExcludingPool - After client.release().`);
+      }
     }
   }
 
@@ -94,7 +97,10 @@ export default class Database {
 
       return res.rows[0]?.sum ? BigInt(res.rows[0].sum) : BigInt(0);
     } finally {
-      client.release();
+      if (client) {
+        client.release();
+        monitoring.debug(`database: getAllPendingBalanceAboveThreshold - After client.release().`);
+      }
     }
   }
 
@@ -118,7 +124,10 @@ export default class Database {
         balance: row.balance
       }));
     } finally {
-      client.release();
+      if (client) {
+        client.release();
+        monitoring.debug(`database: getPoolBalance - After client.release().`);
+      }
     }
   }
 
@@ -133,7 +142,10 @@ export default class Database {
       await client.query('UPDATE miners_balance SET balance = $1 WHERE wallet = ANY($2)', [0n, wallets]);
       monitoring.debug(`database: reset for wallet balance - query executed for wallets: ${wallets}`);
     } finally {
-      client.release();
+      if (client) {
+        client.release();
+        monitoring.debug(`database: resetBalancesByWallet - After client.release().`);
+      }
     }
   }
 
@@ -169,16 +181,23 @@ export default class Database {
     } catch (error) {
       monitoring.error(`database: recording pending KRC20 transfer: ${error}`);      
     } finally {
-      client.release();
+      if (client) {
+        client.release();
+        monitoring.debug(`database: recordPendingKRC20Transfer - After client.release().`);
+      }
     }
   }
 
-  async updatePendingKRC20TransferStatus(p2shAddr: string, fieldToBeUpdated: string, updatedStatus: status) {
+  async updatePendingKRC20TransferStatus(p2shAddr: string, fieldToBeUpdated: string, updatedStatus: status, client?: PoolClient) {
     monitoring.debug(`database: updatePendingKRC20TransferStatus - p2sh: ${p2shAddr}, fieldToBeUpdated: ${fieldToBeUpdated} and updatedStatus: ${updatedStatus}`);
   
-    monitoring.debug(`database: updatePendingKRC20TransferStatus BEFORE - db.getClient()`);
-    const client = await this.getClient();
-    monitoring.debug(`database: updatePendingKRC20TransferStatus AFTER - db.getClient()`);
+    let localClient: PoolClient | undefined;
+    if (!client) {
+      monitoring.debug(`database: updatePendingKRC20TransferStatus BEFORE - db.getClient()`);
+      localClient = await this.getClient();
+      monitoring.debug(`database: updatePendingKRC20TransferStatus AFTER - db.getClient()`);
+      client = localClient;
+    }
 
     if (!client) return;
 
@@ -193,7 +212,10 @@ export default class Database {
     } catch (error) {
       monitoring.error(`database: updating pending KRC20 transfer: ${error}`);      
     } finally {
-      client.release();
+      if (localClient) {
+        localClient.release();
+        monitoring.debug(`database: updatePendingKRC20TransferStatus - After localClient.release().`);
+      }
     }
   }
 }

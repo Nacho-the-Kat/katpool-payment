@@ -53,7 +53,10 @@ export default class trxManager {
     try {
       await client.query(query, queryParams);
     } finally {
-      client.release();
+      if (client) {
+        client.release();
+        this.monitoring.debug(`TrxManager: recordPayment - After client.release().`);
+      }
     }
   }
 
