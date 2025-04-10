@@ -130,22 +130,6 @@ const getRpcStatus = () => {
   return false;
 };
 
-const exitStepsPaymentCron = async () => {
-  await Bun.sleep(60000);
-
-  await transactionManager?.unregisterProcessor();
-  try {      
-    rpc.removeEventListener('utxos-changed', () => {
-      monitoring.debug(`Main: Removed event listener for 'utxos-changed'`);
-    });
-  } catch(error) {
-    monitoring.error(`Main: Removing event listener for 'utxos-changed': ${error}`);
-  }
-
-  monitoring.log(`Main: Invoking DB Pool stats after every operation completion...`);
-  db.getDBPoolStats();  
-}
-
 cron.schedule(paymentCronSchedule, () => {
   (async () => {
     try {
@@ -182,13 +166,6 @@ cron.schedule(paymentCronSchedule, () => {
           const balances = await db.getAllBalancesExcludingPool();
           let poolBalances = await db.getPoolBalance();
 
-          if (balances[0].balance === -1n) {
-            monitoring.error("Main: Could not fetch balances for payout from Database.");
-            exitStepsPaymentCron();      
-            monitoring.error(`Main: Payment Cron skipped for this cycle - ${new Date().toISOString()}.`);      
-            return;
-          } 
-          
           monitoring.log(`Main: KAS payout threshold: ${sompiToKAS(Number(CONFIG.thresholdAmount))} KAS`)
           monitoring.log(`Main: NACHO payout threshold: ${sompiToKAS(Number(CONFIG.nachoThresholdAmount))} ${CONFIG.defaultTicker}`)
 
@@ -267,8 +244,16 @@ cron.schedule(paymentCronSchedule, () => {
         monitoring.error('Main: RPC connection is not established before balance transfer');
       }
 
-      exitStepsPaymentCron();
+      await transactionManager?.unregisterProcessor();
+      try {      
+        rpc.removeEventListener('utxos-changed', () => {
+          monitoring.debug(`Main: Removed event listener for 'utxos-changed'`);
+        });
+      } catch(error) {
+        monitoring.error(`Main: Removing event listener for 'utxos-changed': ${error}`);
+      }
 
+      await Bun.sleep(1000); // Just before unregisterProcessor
       monitoring.log("Main: ✅ Payment Cron final sleep done — safe to exit.");
     } catch (error) {
       monitoring.error(`Main: Unhandled error in paymentCronSchedule: ${error}`);
