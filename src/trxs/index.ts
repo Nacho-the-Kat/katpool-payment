@@ -30,33 +30,21 @@ export default class trxManager {
     this.registerProcessor();
   }
 
-  private async recordPayment(walletAddresses: string[], amount: bigint, transactionHash: string, entries: {address: string, amount: bigint}[]) {
-    this.monitoring.debug(`TrxManager: recordPayment ~ BEFORE - db.getClient()`);
-    const client = await this.db.getClient();
-    this.monitoring.debug(`TrxManager: recordPayment ~ AFTER - db.getClient()`);
-
-    if (!client) {
-        this.monitoring.error(`TrxManager: Error getting DB client for record payment transaction hash: ${transactionHash}`);
-        return;
-    }
-
-    let values: string[] = [];
-    let queryParams: string[][] = []
-    for (let i = 0; i < entries.length; i++) {
-      const address = [entries[i].address]
-      const amount = entries[i].amount
-      values.push(`($${i+1}, ${amount}, NOW(), '${transactionHash}') `)
-      queryParams.push(address)
-    }
-    const valuesPlaceHolder = values.join(',')
-    const query = `INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash) VALUES ${valuesPlaceHolder};`
+  private async recordPayment(transactionHash: string, entries: {address: string, amount: bigint}[]) {
     try {
-      await client.query(query, queryParams);
-    } finally {
-      if (client) {
-        client.release();
-        this.monitoring.debug(`TrxManager: recordPayment - After client.release().`);
+      let values: string[] = [];
+      let queryParams: string[][] = []
+      for (let i = 0; i < entries.length; i++) {
+        const address = [entries[i].address]
+        const amount = entries[i].amount
+        values.push(`($${i+1}, ${amount}, NOW(), '${transactionHash}') `)
+        queryParams.push(address)
       }
+      const valuesPlaceHolder = values.join(',')
+      const query = `INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash) VALUES ${valuesPlaceHolder};`
+      await db.runQuery(query, queryParams);
+    } catch(error) {
+      this.monitoring.error(`TrxManager: recording payment for ${transactionHash}: ${error}`);
     }
   }
 
@@ -145,7 +133,7 @@ export default class trxManager {
     }
 
     if(toAddresses.length > 0) {
-      await this.recordPayment(toAddresses, transaction.paymentAmount, transactionHash, entries);
+      await this.recordPayment(transactionHash, entries);
     }
     // Reset the balance for the wallet after the transaction has matured
     await this.db.resetBalancesByWallet(toAddresses);
@@ -179,7 +167,7 @@ export default class trxManager {
   }
 
   async unregisterProcessor() {
-    if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - this.context.clear()`);
+    if (DEBUG) this.monitoring.debug(`TrxManager: unregisterProcessor - this.context.clear()`);
     await this.context.clear();
     if (DEBUG) this.monitoring.debug(`TrxManager: removeEventListener(*)`);
     this.processor.removeEventListener('*', async () => {});
