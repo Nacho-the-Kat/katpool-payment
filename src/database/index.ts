@@ -8,10 +8,18 @@ type Miner = {
 };
 
 type MinerBalanceRow = {
-  miner_id: string;
-  wallet: string;
-  balance: string;
+  minerId: string;
+  address: string;
+  balance: bigint;
+  nachoBalance: bigint;
 };
+
+const fallback: MinerBalanceRow[] = [{
+  minerId: '',
+  address: '',
+  balance: -1n,
+  nachoBalance: -1n
+}];
 
 export enum status {
   PENDING = "PENDING",
