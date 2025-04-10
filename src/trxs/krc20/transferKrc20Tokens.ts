@@ -18,6 +18,11 @@ export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc2
     
     // Aggregate balances by wallet address
     for (const { address, nachoBalance } of balances) {
+        if (!address) {
+            monitoring.error(`transferKRC20Tokens: Invalid address found: ${address}`);
+            continue;
+        }
+
         if (nachoBalance > 0) {
             payments[address] = (payments[address] || 0n) + nachoBalance;
         }

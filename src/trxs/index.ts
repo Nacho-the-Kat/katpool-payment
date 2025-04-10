@@ -53,6 +53,11 @@ export default class trxManager {
 
     // Aggregate balances by wallet address
     for (const { address, balance } of balances) {
+      if (!address) {
+        this.monitoring.error(`TrxManager: transferBalances ~ Invalid address found: ${address}`);
+        continue;
+      }
+
       if (balance > 0) {
         payments[address] = (payments[address] || 0n) + balance;
       }
