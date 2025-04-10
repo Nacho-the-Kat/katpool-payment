@@ -66,7 +66,7 @@ export class TelegramBotAlert {
         try {
             // Fetch pool balance
             poolBalance = 0n;
-            if (poolBalances.length > 0) {
+            if (poolBalances.length > 0 && BigInt(poolBalances[0].balance) != -1n) {
                 poolBalance = BigInt(poolBalances[0].balance);
             } else {
                 monitoring.error("TelegramBotAlert: Could not fetch Pool balance from Database.");

@@ -166,6 +166,20 @@ cron.schedule(paymentCronSchedule, () => {
           const balances = await db.getAllBalancesExcludingPool();
           let poolBalances = await db.getPoolBalance();
 
+          if (balances[0].balance === -1n) {
+            monitoring.error("Main: Could not fetch balances for payout from Database.");
+            await transactionManager?.unregisterProcessor();
+            try {      
+              rpc.removeEventListener('utxos-changed', () => {
+                monitoring.debug(`Main: Removed event listener for 'utxos-changed'`);
+              });
+            } catch(error) {
+              monitoring.error(`Main: Removing event listener for 'utxos-changed': ${error}`);
+            }      
+            monitoring.error(`Main: Payment Cron skipped for this cycle - ${new Date().toISOString()}.`);      
+            return;
+          } 
+          
           monitoring.log(`Main: KAS payout threshold: ${sompiToKAS(Number(CONFIG.thresholdAmount))} KAS`)
           monitoring.log(`Main: NACHO payout threshold: ${sompiToKAS(Number(CONFIG.nachoThresholdAmount))} ${CONFIG.defaultTicker}`)
 
@@ -254,6 +268,9 @@ cron.schedule(paymentCronSchedule, () => {
       }
 
       await Bun.sleep(1000); // Just before unregisterProcessor
+      monitoring.log(`Main: Invoking DB Pool stats after every operation completion...`);
+      db.getDBPoolStats();
+
       monitoring.log("Main: ✅ Payment Cron final sleep done — safe to exit.");
     } catch (error) {
       monitoring.error(`Main: Unhandled error in paymentCronSchedule: ${error}`);
