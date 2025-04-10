@@ -131,6 +131,8 @@ const getRpcStatus = () => {
 };
 
 const exitStepsPaymentCron = async () => {
+  await Bun.sleep(60000);
+
   await transactionManager?.unregisterProcessor();
   try {      
     rpc.removeEventListener('utxos-changed', () => {
@@ -140,7 +142,6 @@ const exitStepsPaymentCron = async () => {
     monitoring.error(`Main: Removing event listener for 'utxos-changed': ${error}`);
   }
 
-  await Bun.sleep(1000); // Just before unregisterProcessor
   monitoring.log(`Main: Invoking DB Pool stats after every operation completion...`);
   db.getDBPoolStats();  
 }
