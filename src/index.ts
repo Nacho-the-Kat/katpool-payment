@@ -130,6 +130,21 @@ const getRpcStatus = () => {
   return false;
 };
 
+const exitStepsPaymentCron = async () => {
+  await transactionManager?.unregisterProcessor();
+  try {      
+    rpc.removeEventListener('utxos-changed', () => {
+      monitoring.debug(`Main: Removed event listener for 'utxos-changed'`);
+    });
+  } catch(error) {
+    monitoring.error(`Main: Removing event listener for 'utxos-changed': ${error}`);
+  }
+
+  await Bun.sleep(1000); // Just before unregisterProcessor
+  monitoring.log(`Main: Invoking DB Pool stats after every operation completion...`);
+  db.getDBPoolStats();  
+}
+
 cron.schedule(paymentCronSchedule, () => {
   (async () => {
     try {
@@ -168,14 +183,7 @@ cron.schedule(paymentCronSchedule, () => {
 
           if (balances[0].balance === -1n) {
             monitoring.error("Main: Could not fetch balances for payout from Database.");
-            await transactionManager?.unregisterProcessor();
-            try {      
-              rpc.removeEventListener('utxos-changed', () => {
-                monitoring.debug(`Main: Removed event listener for 'utxos-changed'`);
-              });
-            } catch(error) {
-              monitoring.error(`Main: Removing event listener for 'utxos-changed': ${error}`);
-            }      
+            exitStepsPaymentCron();      
             monitoring.error(`Main: Payment Cron skipped for this cycle - ${new Date().toISOString()}.`);      
             return;
           } 
@@ -258,18 +266,7 @@ cron.schedule(paymentCronSchedule, () => {
         monitoring.error('Main: RPC connection is not established before balance transfer');
       }
 
-      await transactionManager?.unregisterProcessor();
-      try {      
-        rpc.removeEventListener('utxos-changed', () => {
-          monitoring.debug(`Main: Removed event listener for 'utxos-changed'`);
-        });
-      } catch(error) {
-        monitoring.error(`Main: Removing event listener for 'utxos-changed': ${error}`);
-      }
-
-      await Bun.sleep(1000); // Just before unregisterProcessor
-      monitoring.log(`Main: Invoking DB Pool stats after every operation completion...`);
-      db.getDBPoolStats();
+      exitStepsPaymentCron();
 
       monitoring.log("Main: ✅ Payment Cron final sleep done — safe to exit.");
     } catch (error) {
