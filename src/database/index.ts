@@ -176,12 +176,12 @@ export default class Database {
     monitoring.debug(`database: updatePendingKRC20TransferStatus - p2sh: ${p2shAddr}, fieldToBeUpdated: ${fieldToBeUpdated} and updatedStatus: ${updatedStatus}`);  
     if (!isValidpendingKRC20TransferField(fieldToBeUpdated)) {
       monitoring.error(`database: updatePendingKRC20TransferStatus ~ Invalid fieldToBeUpdated provided: ${fieldToBeUpdated}`);
-      return;
+      throw new Error(`Invalid fieldToBeUpdated provided: ${fieldToBeUpdated}`);
     }
 
     if (!isValidStatus(updatedStatus)) {
       monitoring.error(`database: updatePendingKRC20TransferStatus ~ Invalid status provided: ${updatedStatus}`);
-      return;
+      throw new Error(`Invalid status provided: ${updatedStatus}`);
     }
 
     try {
@@ -191,9 +191,10 @@ export default class Database {
     
       monitoring.debug(`database: updatePendingKRC20TransferStatus - query will be invoked for ${p2shAddr}`);
       await this.pool.query(query, [updatedStatus, p2shAddr]);
-      monitoring.debug(`database: updatePendingKRC20TransferStatus - query executed for ${p2shAddr}`);
+      monitoring.debug(`database: updatePendingKRC20TransferStatus - query executed for ${p2shAddr}`);      
     } catch (error) {
       monitoring.error(`database: updating pending KRC20 transfer: ${error}`);      
+      throw error;
     }
   }
 }

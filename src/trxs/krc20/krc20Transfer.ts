@@ -302,7 +302,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
             await db.updatePendingKRC20TransferStatus(P2SHAddress.toString(), pendingKRC20TransferField.nachoTransferStatus, status.COMPLETED);
             monitoring.log(`KRC20Transfer: Completed updatePendingKRC20TransferStatus - ${revealHash}`);
           } catch(error) {
-            monitoring.error(`KRC20Transfer: Updating Pending KRC20 transfer status for ${P2SHAddress.toString()} for reveal hash: ${revealHash}.`);
+            monitoring.error(`KRC20Transfer: Updating Pending KRC20 transfer status for ${P2SHAddress.toString()} for reveal hash: ${revealHash} - error: ${error}`);
           }
         }
       } else if (!eventReceived) { // Check eventReceived here
