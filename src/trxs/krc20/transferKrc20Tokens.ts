@@ -1,6 +1,6 @@
 import { RpcClient } from "../../../wasm/kaspa/kaspa";
 import { transferKRC20 } from "./krc20Transfer";
-import Database, { pendingKRC20TransferField, status } from '../../database';
+import Database, { MinerBalanceRow, pendingKRC20TransferField, status } from '../../database';
 import { CONFIG } from "../../constants";
 import { krc20Token, nftAPI } from "./krc20Api";
 import { parseUnits } from "ethers";
@@ -13,11 +13,16 @@ const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 const monitoring = new Monitoring();
 
 // Currently used to transfer NACHO tokens.
-export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: bigint, balances: any, poolBal: bigint, transactionManager: trxManager) {
+export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: bigint, balances: MinerBalanceRow[], poolBal: bigint, transactionManager: trxManager) {
     let payments: { [address: string]: bigint } = {};
     
     // Aggregate balances by wallet address
     for (const { address, nachoBalance } of balances) {
+        if (!address) {
+            monitoring.error(`transferKRC20Tokens: Invalid address found: ${address}`);
+            continue;
+        }
+
         if (nachoBalance > 0) {
             payments[address] = (payments[address] || 0n) + nachoBalance;
         }
@@ -108,29 +113,16 @@ async function checkFullFeeRebate(address: string, ticker: string) {
 }
 
 export async function recordPayment(address: string, amount: bigint, transactionHash: string, p2shAddr: string, db: Database) {
-    monitoring.debug("transferKRC20Tokens: BEFORE - db.getClient()");
-    const client = await db.getClient();
-    monitoring.debug("transferKRC20Tokens: AFTER - db.getClient()");
-
-    if (!client) {
-        monitoring.error(`transferKRC20Tokens: Error getting DB client for record payment - address: ${address}, transaction hash: ${transactionHash}`);
-        return {record: false, pending: false};
-    }
-
-    const query = `INSERT INTO nacho_payments (wallet_address, nacho_amount, timestamp, transaction_hash) VALUES ($1, $2, NOW(), $3);`;
     try {
-      await client.query('BEGIN'); // Start transaction
-
+      const query = `INSERT INTO nacho_payments (wallet_address, nacho_amount, timestamp, transaction_hash) VALUES ($1, $2, NOW(), $3);`;
       monitoring.log(`transferKRC20Tokens: Recording NACHO payment for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
-      await client.query(query, [[address], amount.toString(), transactionHash]);
+      await db.runQuery(query, [[address], amount.toString(), transactionHash]);
       monitoring.log(`transferKRC20Tokens: Recorded NACHO payment for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
-      await client.query("COMMIT");
-      monitoring.log(`transferKRC20Tokens: recordPayment committed for ${address} - amount: ${amount} - tx: ${transactionHash}`);
 
       try {
         if (p2shAddr && p2shAddr !== '') {
           monitoring.log(`transferKRC20Tokens: recordPayment - Updating pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
-          await db.updatePendingKRC20TransferStatus(p2shAddr, pendingKRC20TransferField.dbEntryStatus, status.COMPLETED, client);
+          await db.updatePendingKRC20TransferStatus(p2shAddr, pendingKRC20TransferField.dbEntryStatus, status.COMPLETED);
           monitoring.log(`transferKRC20Tokens: recordPayment - Updated pending krc20 table for - address: ${address} of ${amount} NACHO (with decimals) with hash: ${transactionHash} for P2SH address: ${p2shAddr}`);
         }
       } catch(error) {
@@ -139,26 +131,14 @@ export async function recordPayment(address: string, amount: bigint, transaction
       }
       return {record: true, pending: true};
     } catch (error) {
-      await client.query("ROLLBACK"); // Rollback everything if any step fails
       monitoring.error(`transferKRC20Tokens: DB Rollback performed due to error: ${error}`);
-    } finally {
-      if (client) {
-        client.release();
-        this.monitoring.debug(`transferKRC20Tokens: recordPayment - After client.release().`);
-      }
     }
 }
 
 export async function resetBalancesByWallet(db: Database, address : string, balance: bigint, column: string, fullRebate: boolean) {
     try {        
-        monitoring.log(`transferKRC20Tokens: Reset ${column} for wallet ${address}`);
-        const client = await db.getClient(); 
-        if (!client) {
-            monitoring.error(`transferKRC20Tokens: Error getting DB client for reset balances by wallet - address: ${address} ${balance} - column ${column}`);
-            return;
-        }
         // Fetch balance and entry count
-        const res = await client.query(`SELECT SUM(${column}) as balance, COUNT(*) AS entry_count FROM miners_balance WHERE wallet = $1 GROUP BY wallet`, [address]);
+        const res = await db.runQuery(`SELECT SUM(${column}) as balance, COUNT(*) AS entry_count FROM miners_balance WHERE wallet = $1 GROUP BY wallet`, [address]);
         
         if (res.rows.length === 0) {
             monitoring.error(`transferKRC20Tokens: resetBalancesByWallet - No record found for Address: ${address}, Column: ${column}. Skipping update.`);
@@ -183,7 +163,7 @@ export async function resetBalancesByWallet(db: Database, address : string, bala
         const newBalance = count > 0 ? minerBalance / count : 0n; // ✅ Prevent division by zero 
 
         // Update balance for all matching entries
-        await client.query(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = $2`, [newBalance, address]);
+        await db.runQuery(`UPDATE miners_balance SET ${column} = $1 WHERE wallet = $2`, [newBalance, address]);
 
         monitoring.debug(`transferKRC20Tokens: Updated for Address: ${address}, Column: ${column}, Initial Balance: ${minerBalance}, Entries: ${count}`);        
     } catch (error) {

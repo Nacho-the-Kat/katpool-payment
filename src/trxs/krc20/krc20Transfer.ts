@@ -293,26 +293,16 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
         monitoring.log(`KRC20Transfer: Reveal transaction has been accepted: ${revealHash}`);
         try {
           monitoring.log(`KRC20Transfer: Entering recordPayment - ${revealHash}`);
-          const result = await withWatchdog(
-            () => recordPayment(pDest, BigInt(pAmount), revealHash, P2SHAddress.toString(), db),
-            5000
-          );
-          
-          if (result?.record === true) {
-            monitoring.log(`KRC20Transfer: Completed recordPayment - ${revealHash}`);
-          } else if (result?.pending === true) {
-            monitoring.log(`KRC20Transfer: Completed update pending krc20 transfer - ${revealHash}`);
-          } else {
-            monitoring.error(`KRC20Transfer: Record payment - ${result.record}, Update Pending KRC20 transfer: ${result.pending}`);
-          }
+          await recordPayment(pDest, BigInt(pAmount), revealHash, P2SHAddress.toString(), db);
+          monitoring.log(`KRC20Transfer: Recorded payment - ${revealHash}`);
         } catch(error) {
-          monitoring.error(`KRC20Transfer: Recording payment for ${pDest} of ${pAmount} NACHO with P2SH - ${P2SHAddress.toString()} for reveal hash: ${revealHash}.`);
+          monitoring.error(`KRC20Transfer: Recording payment for ${pDest} of ${pAmount} NACHO with P2SH - ${P2SHAddress.toString()} for reveal hash: ${revealHash} - ${error}`);
           try {
             monitoring.log(`KRC20Transfer: Entering updatePendingKRC20TransferStatus - ${revealHash}`);
             await db.updatePendingKRC20TransferStatus(P2SHAddress.toString(), pendingKRC20TransferField.nachoTransferStatus, status.COMPLETED);
             monitoring.log(`KRC20Transfer: Completed updatePendingKRC20TransferStatus - ${revealHash}`);
           } catch(error) {
-            monitoring.error(`KRC20Transfer: Updating Pending KRC20 transfer status for ${P2SHAddress.toString()} for reveal hash: ${revealHash}.`);
+            monitoring.error(`KRC20Transfer: Updating Pending KRC20 transfer status for ${P2SHAddress.toString()} for reveal hash: ${revealHash} - error: ${error}`);
           }
         }
       } else if (!eventReceived) { // Check eventReceived here
