@@ -1,0 +1,32 @@
+# Version control
+.git
+.gitignore
+
+# Node & Bun stuff
+node_modules/
+bun*
+bun.lockb
+
+# Build/output artifacts
+wasm/
+wasm.nacho/
+storage/
+
+# Environment and secrets
+.env
+.env.local
+.secrets
+
+# Local databases, postgres
+postgres*
+
+# Runtime logs & temp data
+logs/
+katpool-payment-logs/
+*.log
+*.log.*
+chatIds.json
+.*.json
+
+# Examples and local dev-only folders
+examples
