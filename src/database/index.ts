@@ -172,6 +172,13 @@ export default class Database {
     }
   }
 
+  /**
+   * Updates the status of a pending KRC20 transfer in the database.
+   *
+   * @param updateField - The field to be updated in the transfer record.
+   * @param newValue - The new value to set for the field.
+   * @throws {Error} If the provided update field is not allowed or if a database error occurs.
+   */
   async updatePendingKRC20TransferStatus(p2shAddr: string, fieldToBeUpdated: string, updatedStatus: status) {
     monitoring.debug(`database: updatePendingKRC20TransferStatus - p2sh: ${p2shAddr}, fieldToBeUpdated: ${fieldToBeUpdated} and updatedStatus: ${updatedStatus}`);  
     if (!isValidpendingKRC20TransferField(fieldToBeUpdated)) {
