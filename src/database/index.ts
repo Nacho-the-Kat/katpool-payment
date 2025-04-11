@@ -198,7 +198,7 @@ export default class Database {
     
       monitoring.debug(`database: updatePendingKRC20TransferStatus - query will be invoked for ${p2shAddr}`);
       await this.pool.query(query, [updatedStatus, p2shAddr]);
-      monitoring.debug(`database: updatePendingKRC20TransferStatus - query executed for ${p2shAddr}`);      
+      monitoring.debug(`database: updatePendingKRC20TransferStatus - query executed for ${p2shAddr}`);
     } catch (error) {
       monitoring.error(`database: updating pending KRC20 transfer: ${error}`);      
       throw error;
