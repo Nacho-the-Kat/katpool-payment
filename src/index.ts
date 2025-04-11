@@ -240,6 +240,8 @@ cron.schedule(paymentCronSchedule, () => {
           // Transfer NACHO
           if (amount != 0n && treasuryNACHOBalance > amount) {
             try {
+              // Wait for one minute before invoking KRC20 transfers.
+              await Bun.sleep(60000);
               monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
               await transferKRC20Tokens(rpc, CONFIG.defaultTicker, amount!, balances, poolBalance, transactionManager!);          
               monitoring.log(`Main: Scheduled KRC20 balance transfer completed`);
@@ -251,6 +253,7 @@ cron.schedule(paymentCronSchedule, () => {
           }
 
           try {
+            await Bun.sleep(1000);
             // Fetch treasury wallet address balance after Payout
             const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
             monitoring.log(`Main: KAS balance after transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`);
