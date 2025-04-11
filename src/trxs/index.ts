@@ -1,4 +1,4 @@
-import Database from '../database';
+import Database, { MinerBalanceRow } from '../database';
 import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient,  maximumStandardTransactionMass, addressFromScriptPublicKey, calculateTransactionFee } from "../../wasm/kaspa";
 import Monitoring from '../monitoring';
 import { db, DEBUG } from "../index";
@@ -48,7 +48,7 @@ export default class trxManager {
     }
   }
 
-  async transferBalances(balances: any) {
+  async transferBalances(balances: MinerBalanceRow[]) {
     let payments: { [address: string]: bigint } = {};
 
     // Aggregate balances by wallet address

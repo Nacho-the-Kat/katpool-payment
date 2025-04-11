@@ -1,6 +1,6 @@
 import { RpcClient } from "../../../wasm/kaspa/kaspa";
 import { transferKRC20 } from "./krc20Transfer";
-import Database, { pendingKRC20TransferField, status } from '../../database';
+import Database, { MinerBalanceRow, pendingKRC20TransferField, status } from '../../database';
 import { CONFIG } from "../../constants";
 import { krc20Token, nftAPI } from "./krc20Api";
 import { parseUnits } from "ethers";
@@ -13,7 +13,7 @@ const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 const monitoring = new Monitoring();
 
 // Currently used to transfer NACHO tokens.
-export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: bigint, balances: any, poolBal: bigint, transactionManager: trxManager) {
+export async function transferKRC20Tokens(pRPC: RpcClient, pTicker: string, krc20Amount: bigint, balances: MinerBalanceRow[], poolBal: bigint, transactionManager: trxManager) {
     let payments: { [address: string]: bigint } = {};
     
     // Aggregate balances by wallet address

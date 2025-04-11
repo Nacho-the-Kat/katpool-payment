@@ -11,7 +11,7 @@ const balFallBack: Miner[] = [{
   balance: -1n
 }];
 
-type MinerBalanceRow = {
+export type MinerBalanceRow = {
   minerId: string;
   address: string;
   balance: bigint;
@@ -83,7 +83,7 @@ export default class Database {
         ['pool']
       );
 
-      return res.rows.map((row: { wallet: string, total_balance: string, nacho_total_balance: string }) => ({
+      return res.rows.map((row: { wallet: string, total_balance: string, nacho_total_balance: string }): MinerBalanceRow => ({
         minerId: 'aggregate', // Placeholder ID for aggregated balance, since we're grouping by wallet.
         address: row.wallet,
         balance: BigInt(row.total_balance),
