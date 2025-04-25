@@ -12,9 +12,27 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
     monitoring.error("bot: telegram token is undefined");
 }
+
+export function isRunningInDocker(): boolean {
+    if (process.env.IS_DOCKER === 'true') return true;
+  
+    try {
+      if (fs.existsSync('/.dockerenv')) return true;
+      const cgroup = fs.readFileSync('/proc/1/cgroup', 'utf8');
+      return cgroup.includes('docker') || cgroup.includes('kubepods');
+    } catch {
+      return false;
+    }
+}
   
 const bot = new TelegramBot(token, { polling: true });
-const chatIdsFilePath = path.join('/app/data', 'chatIds.json');  // Use volume path
+
+let firstPath = '';
+if (isRunningInDocker()) {
+    firstPath = '/app/data';
+}
+
+const chatIdsFilePath = path.join(firstPath, 'chatIds.json');  // Use volume path
 const chatIds = new Set<string>(); // Store unique chat IDs
 
 // Function to load chat IDs from JSON file
