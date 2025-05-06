@@ -92,8 +92,10 @@ export default class trxManager {
   }
 
   private async enqueueTransactions(outputs: IPaymentOutput[]) {
+    const matureEntries = await this.fetchMatureUTXOs();
+    
     const { transactions } = await createTransactions({
-      entries: this.context.getMatureRange(0, this.context.matureLength),
+      entries: matureEntries,
       outputs,
       changeAddress: this.address,
       priorityFee: 0n,
@@ -177,5 +179,48 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: removeEventListener(*)`);
     this.processor.removeEventListener('*', async () => {});
     await this.processor.stop();    
+  }
+
+  private async fetchMatureUTXOs() {
+    const coinbaseMaturity = 1000; 
+    // Fetch current DAA score
+    const { virtualDaaScore } = await this.rpc.getBlockDagInfo();
+    
+    // Check if `virtualDaaScore` is undefined before proceeding
+    if (virtualDaaScore === undefined) {
+      throw new Error("Unable to fetch DAA score.");
+    }
+    
+    // 1. Fetch and sort UTXOs by amount
+    let utxoEntries = await this.rpc.getUtxosByAddresses([this.address]);
+    
+    // Ensure that `utxoEntries.entries` is not undefined
+    if (!utxoEntries?.entries || !Array.isArray(utxoEntries.entries)) {
+      throw new Error("Invalid or empty UTXO entries.");
+    }
+    
+    const sortedEntries = utxoEntries.entries
+      .slice() // Create a copy to avoid mutating the original array
+      .sort((a, b) => Number(b.amount - a.amount)); // Sort by amount descending
+    
+    // 2. Filter based on Coinbase maturity (coinbase UTXOs only mature after a certain DAA score)
+    let matureEntries = sortedEntries.filter((entry) => {
+      // Ensure that `entry` and required properties exist before proceeding
+      if (!entry || typeof entry.isCoinbase === "undefined" || typeof entry.blockDaaScore === "undefined") {
+        return false; // Skip invalid or incomplete entries
+      }
+    
+      return (
+        !entry.isCoinbase || // Allow non-coinbase UTXOs
+        (virtualDaaScore - entry.blockDaaScore >= coinbaseMaturity) // Check if coinbase UTXOs are mature
+      );
+    });
+
+    // If `matureEntries` is empty or undefined, use the fallback `entries` from `getMatureRange`
+    if (!matureEntries || matureEntries.length === 0) {
+      matureEntries = this.context.getMatureRange(0, this.context.matureLength);
+    }
+
+    return matureEntries;
   }
 }
