@@ -93,7 +93,7 @@ export default class trxManager {
 
   private async enqueueTransactions(outputs: IPaymentOutput[]) {
     const { transactions } = await createTransactions({
-      entries: this.context,
+      entries: this.context.getMatureRange(0, this.context.matureLength),
       outputs,
       changeAddress: this.address,
       priorityFee: 0n,
