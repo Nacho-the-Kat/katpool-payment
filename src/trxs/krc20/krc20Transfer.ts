@@ -69,15 +69,7 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     return ;
   }
   
-  try {      
-    rpc.removeEventListener('utxos-changed', () => {
-      monitoring.debug(`KRC20Transfer: Removed event listener for 'utxos-changed'`);
-    });
-  } catch(error) {
-    monitoring.error(`KRC20Transfer: Removing event listener for 'utxos-changed': ${error}`);
-  }
-
-  rpc.addEventListener('utxos-changed', async (event: any) => {
+  const utxosChangedStartHandler = async (event: any) => {
     monitoring.debug(`KRC20Transfer: UTXO changes detected for address: ${treasuryAddr.toString()}`);
     
     // Check for UTXOs removed for the specific address
@@ -100,7 +92,15 @@ export async function transferKRC20(pRPC: RpcClient, pTicker: string, pDest: str
     } else {
       monitoring.debug(`KRC20Transfer: No removed UTXO found for address: ${treasuryAddr.toString()} in this UTXO change event`);
     }
-  });
+  };
+
+  try {      
+    rpc.removeEventListener('utxos-changed', utxosChangedStartHandler);
+  } catch(error) {
+    monitoring.error(`KRC20Transfer: Removing event listener for 'utxos-changed': ${error}`);
+  }
+
+  rpc.addEventListener('utxos-changed', utxosChangedStartHandler);
 
   const data = { "p": "krc-20", "op": "transfer", "tick": ticker, "amt": amount.toString(), "to": dest  };
   
