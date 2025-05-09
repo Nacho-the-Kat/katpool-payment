@@ -163,21 +163,23 @@ export default class trxManager {
     throw new Error(`Timeout waiting for transaction ID ${transactionId} to mature.`);
   }
 
+  utxoProcStartHandler = async () => {
+    if (DEBUG) this.monitoring.debug(`TrxManager: this.context.clear()`);
+    await this.context.clear();
+    if (DEBUG) this.monitoring.debug(`TrxManager: tracking pool address`);
+    await this.context.trackAddresses([this.address]);
+  };
+
   private registerProcessor() {
-    this.processor.addEventListener("utxo-proc-start", async () => {
-      if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - this.context.clear()`);
-      await this.context.clear();
-      if (DEBUG) this.monitoring.debug(`TrxManager: registerProcessor - tracking pool address`);
-      await this.context.trackAddresses([this.address]);
-    });
+    this.processor.addEventListener("utxo-proc-start", this.utxoProcStartHandler);
     this.processor.start();
   }
 
   async unregisterProcessor() {
     if (DEBUG) this.monitoring.debug(`TrxManager: unregisterProcessor - this.context.clear()`);
     await this.context.clear();
-    if (DEBUG) this.monitoring.debug(`TrxManager: removeEventListener(*)`);
-    this.processor.removeEventListener('*', async () => {});
+    if (DEBUG) this.monitoring.debug(`TrxManager: removeEventListener("utxo-proc-start")`);
+    this.processor.removeEventListener("utxo-proc-start", this.utxoProcStartHandler);
     await this.processor.stop();    
   }
 
