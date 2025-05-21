@@ -39,6 +39,9 @@ RUN apt-get update && apt-get install -y \
 # Step 3: Install rustup (for installing Rust)
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 
+# Step 3b: Install a specific version of Rust (e.g., 1.82.0)
+RUN . "$HOME/.cargo/env" && rustup install 1.82.0 && rustup default 1.82.0
+
 # Step 4: Add Rust's cargo to the PATH using ENV
 ENV PATH="/root/.cargo/bin:${PATH}"
 
