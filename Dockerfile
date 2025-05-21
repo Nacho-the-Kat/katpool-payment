@@ -43,8 +43,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
 RUN . "$HOME/.cargo/env" && rustup install 1.82.0 && rustup default 1.82.0
 
 # Step 4: Add Rust's cargo to the PATH using ENV
-ENV PATH="/root/.cargo/bin:${PATH}" \
-    RUSTFLAGS=-Ctarget-cpu=mvp
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Step 5: Install wasm-pack (tool for building WASM)
 RUN cargo install wasm-pack
