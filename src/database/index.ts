@@ -18,6 +18,7 @@ export type MinerBalanceRow = {
   address: string;
   balance: bigint;
   nachoBalance: bigint;
+  upholdBalance: bigint;
 };
 
 const fallback: MinerBalanceRow[] = [
@@ -26,6 +27,7 @@ const fallback: MinerBalanceRow[] = [
     address: '',
     balance: -1n,
     nachoBalance: -1n,
+    upholdBalance: -1n,
   },
 ];
 
@@ -82,10 +84,12 @@ export default class Database {
   async getAllBalancesExcludingPool() {
     try {
       const res = await this.pool.query(
-        `SELECT wallet, SUM(balance) as total_balance, SUM(nacho_rebate_kas) as nacho_total_balance
-         FROM miners_balance 
-         WHERE miner_id != $1 
-         GROUP BY wallet`,
+        `SELECT 
+           SUM(balance) FILTER (WHERE wallet LIKE 'kaspa:%') AS total_balance,
+           SUM(nacho_rebate_kas) AS nacho_total_balance,
+           SUM(balance) FILTER (WHERE wallet NOT LIKE 'kaspa:%') AS uphold_balance
+         FROM miners_balance
+         WHERE miner_id != $1;`,
         ['pool']
       );
 
@@ -94,11 +98,13 @@ export default class Database {
           wallet: string;
           total_balance: string;
           nacho_total_balance: string;
+          uphold_balance: string;
         }): MinerBalanceRow => ({
           minerId: 'aggregate', // Placeholder ID for aggregated balance, since we're grouping by wallet.
           address: row.wallet,
           balance: BigInt(row.total_balance),
           nachoBalance: BigInt(row.nacho_total_balance),
+          upholdBalance: BigInt(row.uphold_balance),
         })
       );
     } catch (error) {
@@ -239,6 +245,109 @@ export default class Database {
     } catch (error) {
       monitoring.error(`database: updating pending KRC20 transfer: ${error}`);
       throw error;
+    }
+  }
+
+  async getPayoutPreferenceFromUpholdId(uphold_id: string) {
+    try {
+      // Fetch user id from Uphold id
+      const idRes = await this.pool.query(
+        `SELECT id FROM uphold_connections WHERE uphold_id = $1`,
+        [uphold_id]
+      );
+
+      if (idRes.rows.length === 0) {
+        monitoring.error(
+          `database: getPayoutPreferenceFromUpholdId - no user found for uphold_id: ${uphold_id}`
+        );
+        return null;
+      }
+
+      const user_id = idRes.rows[0].id;
+
+      // Fetch uphold payout preference
+      const res = await this.pool.query(
+        `SELECT asset_code, network FROM uphold_payout_preferences WHERE user_id = $1`,
+        [user_id]
+      );
+
+      if (res.rows.length === 0) {
+        monitoring.error(
+          `database: getPayoutPreferenceFromUpholdId - no payout preference found for user_id: ${user_id}`
+        );
+        return null;
+      }
+
+      return {
+        asset_code: res.rows[0].asset_code,
+        network: res.rows[0].network,
+      };
+    } catch (error) {
+      monitoring.error(
+        `database: getPayoutPreferenceFromUpholdId - database query error: ${error instanceof Error ? error.stack : error}`
+      );
+      return null;
+    }
+  }
+
+  async recordUpholdPayment(
+    address: string,
+    amount: bigint,
+    kas_amount: bigint,
+    upholdTransactionId: string,
+    asset_code: string,
+    network: string
+  ) {
+    try {
+      // Fetch user id from Uphold id
+      const idRes = await this.pool.query(
+        `SELECT id FROM uphold_connections WHERE uphold_id = $1`,
+        [address]
+      );
+
+      if (idRes.rows.length === 0) {
+        monitoring.error(
+          `database: getPayoutPreferenceFromUpholdId - no user found for uphold_id: ${address}`
+        );
+        return null;
+      }
+
+      const user_id = idRes.rows[0].id;
+
+      // Insert into uphold payments
+      const query = `INSERT INTO uphold_payments (user_id, amount, kas_amount, asset_code, network, uphold_transaction_id) VALUES ($1, $2, $3, $4, $5, $6);`;
+      const values = [user_id, amount, kas_amount, asset_code, network, upholdTransactionId];
+      const res = await this.pool.query(query, values);
+
+      if (res.rowCount !== 1) {
+        monitoring.error(`database: recordUpholdPayment - insert failed for address: ${address}`);
+        return false;
+      }
+
+      monitoring.log(`database: recordUpholdPayment - insert successful for address: ${address}`);
+      return true;
+    } catch (error) {
+      monitoring.error(`database: recordUpholdPayment - query error: ${error}`);
+      return false;
+    }
+  }
+
+  async getUserDetails(uphold_id: string) {
+    const client = await this.pool.connect();
+    try {
+      const res = await client.query(`SELECT * FROM uphold_connections WHERE uphold_id = $1`, [
+        uphold_id,
+      ]);
+
+      if (res.rows.length === 0) {
+        return null; // Indicates user not found. Caller handles logic based on null return.
+      }
+      return res.rows[0];
+    } catch (error) {
+      monitoring.error(`database: getUserDetails: ${error}`);
+      return null;
+    } finally {
+      client.release();
     }
   }
 }
