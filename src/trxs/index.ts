@@ -42,10 +42,7 @@ export default class trxManager {
     this.registerProcessor();
   }
 
-  private async recordPayment(
-    transactionHash: string,
-    entries: { address: string; amount: bigint }[]
-  ) {
+  async recordPayment(transactionHash: string, entries: { address: string; amount: bigint }[]) {
     try {
       let values: string[] = [];
       let queryParams: string[][] = [];
@@ -139,6 +136,10 @@ export default class trxManager {
 
   private async processTransaction(transaction: PendingTransaction) {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
+    if (!this.privateKey) {
+      this.monitoring.error(`TrxManager: Private key is missing or invalid.`);
+      return;
+    }
     transaction.sign([this.privateKey]);
 
     //const txFee = calculateTransactionFee(this.networkId, transaction.transaction, 1)!;
@@ -179,7 +180,7 @@ export default class trxManager {
     this.monitoring.log(`TrxManager: Reset balances for wallet ${toAddresses}`);
   }
 
-  private async waitForMatureUtxo(transactionId: string): Promise<void> {
+  async waitForMatureUtxo(transactionId: string): Promise<void> {
     const pollingInterval = 5000; // 5 seconds
     const maxAttempts = 60; // 5 minutes
 
@@ -215,7 +216,7 @@ export default class trxManager {
     await this.processor.stop();
   }
 
-  private async fetchMatureUTXOs() {
+  async fetchMatureUTXOs() {
     const coinbaseMaturity = 1000;
     // Fetch current DAA score
     const { virtualDaaScore } = await this.rpc.getBlockDagInfo();
