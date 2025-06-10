@@ -52,3 +52,10 @@ Please refer to [Crontab.guru](https://crontab.guru/) to set the cron expression
 - **nachoAlertThreshold**  
   Threshold for NACHO balance (in **NACHO units**, including decimals) to trigger a Telegram alert.  
   _Alert is triggered when the balance is less than or equal to this value_.
+
+## Developer Tips
+
+> 💡 **Tip:** To avoid seeing formatting commits (such as Prettier changes) in `git blame`, run:
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
