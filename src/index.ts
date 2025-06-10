@@ -1,43 +1,43 @@
 /**
  * Made by the Nacho the Kat Team
- * 
+ *
  * This script initializes the katpool Payment App, sets up the necessary environment variables,
- * and schedules a balance transfer task based on configuration. It also provides progress logging 
+ * and schedules a balance transfer task based on configuration. It also provides progress logging
  * every 10 minutes.
  */
 
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { RpcClient, Encoding, Resolver } from "../wasm/kaspa";
-import { CONFIG } from "./constants";
+import { RpcClient, Encoding, Resolver } from '../wasm/kaspa';
+import { CONFIG } from './constants';
 import Monitoring from './monitoring';
 import trxManager from './trxs';
 import cron from 'node-cron';
 import * as cronParser from 'cron-parser';
-import { cronValidation } from "./cron-schedule";
-import swapToKrc20 from "./trxs/krc20/swapToKrc20";
-import { transferKRC20Tokens } from "./trxs/krc20/transferKrc20Tokens";
-import { krc20Token } from "./trxs/krc20/krc20Api";
-import { fetchKASBalance, sompiToKAS } from "./utils";
-import { TelegramBotAlert } from "./alerting/telegramBot";
-import bot from "./alerting/bot";
-import Database from "./database";
+import { cronValidation } from './cron-schedule';
+import swapToKrc20 from './trxs/krc20/swapToKrc20';
+import { transferKRC20Tokens } from './trxs/krc20/transferKrc20Tokens';
+import { krc20Token } from './trxs/krc20/krc20Api';
+import { fetchKASBalance, sompiToKAS } from './utils';
+import { TelegramBotAlert } from './alerting/telegramBot';
+import bot from './alerting/bot';
+import Database from './database';
 
 // Debug mode setting
 export let DEBUG = 0;
-if (process.env.DEBUG === "1") {
+if (process.env.DEBUG === '1') {
   DEBUG = 1;
 }
 
 const monitoring = new Monitoring();
 monitoring.log(`Main: Starting katpool Payment App`);
 
-process.on('exit', (code) => {
+process.on('exit', code => {
   monitoring.log(`Main: 🛑 Process is exiting with code: ${code}`);
 });
 
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', err => {
   monitoring.error(`Main: Uncaught Exception: ${err}`);
 });
 
@@ -46,12 +46,12 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 process.on('SIGINT', () => {
-  monitoring.log("Main: SIGINT received. Exiting gracefully...");
+  monitoring.log('Main: SIGINT received. Exiting gracefully...');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  monitoring.log("Main: SIGTERM received. Exiting gracefully...");
+  monitoring.log('Main: SIGTERM received. Exiting gracefully...');
   process.exit(0);
 });
 
@@ -88,7 +88,7 @@ const alertInterval = cronParser.parseExpression(paymentAlertCronSchedule);
 const nextAlertScedule = new Date(alertInterval.next().getTime()).toISOString();
 if (DEBUG) monitoring.debug(`Main: Next alert is scheduled at ${nextAlertScedule}`);
 
-const rpc = new RpcClient({  
+const rpc = new RpcClient({
   resolver: new Resolver(),
   encoding: Encoding.Borsh,
   networkId: CONFIG.network,
@@ -99,7 +99,7 @@ let transactionManager: trxManager | null = null;
 
 const setupTransactionManager = () => {
   if (DEBUG) monitoring.debug(`Main: Starting transaction manager`);
-  transactionManager = new trxManager(CONFIG.network, treasuryPrivateKey, databaseUrl, rpc!);  
+  transactionManager = new trxManager(CONFIG.network, treasuryPrivateKey, databaseUrl, rpc!);
 };
 
 const startRpcConnection = async () => {
@@ -121,7 +121,7 @@ const rpcConnectionTrxManagerSetup = async () => {
   if (DEBUG) monitoring.debug('Main: RPC connection started');
   if (DEBUG) monitoring.debug(`Main: RPC connection established`);
   setupTransactionManager();
-}
+};
 
 const getRpcStatus = () => {
   if (rpc?.isConnected) {
@@ -134,17 +134,17 @@ const exitStepsPaymentCron = async () => {
   await Bun.sleep(60000);
 
   await transactionManager?.unregisterProcessor();
-  try {      
+  try {
     rpc.removeEventListener('utxos-changed', () => {
       monitoring.debug(`Main: Removed event listener for 'utxos-changed'`);
     });
-  } catch(error) {
+  } catch (error) {
     monitoring.error(`Main: Removing event listener for 'utxos-changed': ${error}`);
   }
 
   monitoring.log(`Main: Invoking DB Pool stats after every operation completion...`);
-  db.getDBPoolStats();  
-}
+  db.getDBPoolStats();
+};
 
 cron.schedule(paymentCronSchedule, () => {
   (async () => {
@@ -166,47 +166,59 @@ cron.schedule(paymentCronSchedule, () => {
         monitoring.log('Main: Running scheduled balance transfer');
         try {
           if (!transactionManager) {
-            monitoring.error("Main: transactionManager is undefined.");
+            monitoring.error('Main: transactionManager is undefined.');
           }
-          
+
           if (!swapToKrc20Obj) {
-            monitoring.error("Main: swapToKrc20Obj is undefined. Swap will be skipped.");
+            monitoring.error('Main: swapToKrc20Obj is undefined. Swap will be skipped.');
           }
-          
+
           if (!CONFIG.defaultTicker) {
-            monitoring.error("Main: CONFIG.defaultTicker is undefined. Using fallback.");
-            CONFIG.defaultTicker = "NACHO";
-          }      
+            monitoring.error('Main: CONFIG.defaultTicker is undefined. Using fallback.');
+            CONFIG.defaultTicker = 'NACHO';
+          }
 
           // Fetch and save balances map before performing payout
           const balances = await db.getAllBalancesExcludingPool();
           let poolBalances = await db.getPoolBalance();
 
           if (balances[0].balance === -1n) {
-            monitoring.error("Main: Could not fetch balances for payout from Database.");
-            exitStepsPaymentCron();      
-            monitoring.error(`Main: Payment Cron skipped for this cycle - ${new Date().toISOString()}.`);      
+            monitoring.error('Main: Could not fetch balances for payout from Database.');
+            exitStepsPaymentCron();
+            monitoring.error(
+              `Main: Payment Cron skipped for this cycle - ${new Date().toISOString()}.`
+            );
             return;
-          } 
-          
-          monitoring.log(`Main: KAS payout threshold: ${sompiToKAS(Number(CONFIG.thresholdAmount))} KAS`)
-          monitoring.log(`Main: NACHO payout threshold: ${sompiToKAS(Number(CONFIG.nachoThresholdAmount))} ${CONFIG.defaultTicker}`)
+          }
+
+          monitoring.log(
+            `Main: KAS payout threshold: ${sompiToKAS(Number(CONFIG.thresholdAmount))} KAS`
+          );
+          monitoring.log(
+            `Main: NACHO payout threshold: ${sompiToKAS(Number(CONFIG.nachoThresholdAmount))} ${CONFIG.defaultTicker}`
+          );
 
           let treasuryNACHOBalance = 0n;
           try {
             // Fetch treasury wallet address balance before Payout
-            const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
+            const treasuryKASBalance = await fetchKASBalance(transactionManager!.address);
             if (treasuryKASBalance == -1 || treasuryKASBalance == null) {
-              monitoring.error(`Main: Fetching KAS balance for address - ${transactionManager!.address}`);
+              monitoring.error(
+                `Main: Fetching KAS balance for address - ${transactionManager!.address}`
+              );
             } else {
-              monitoring.debug(`Main: KAS balance before transfer: ${sompiToKAS(Number(treasuryKASBalance))} KAS`);
+              monitoring.debug(
+                `Main: KAS balance before transfer: ${sompiToKAS(Number(treasuryKASBalance))} KAS`
+              );
             }
 
             const result = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
             treasuryNACHOBalance = BigInt(result?.amount ?? 0);
-            monitoring.debug(`Main: ${CONFIG.defaultTicker} balance before transfer: ${sompiToKAS(Number(treasuryNACHOBalance))} ${CONFIG.defaultTicker}`);
+            monitoring.debug(
+              `Main: ${CONFIG.defaultTicker} balance before transfer: ${sompiToKAS(Number(treasuryNACHOBalance))} ${CONFIG.defaultTicker}`
+            );
           } catch (error) {
-            monitoring.error(`Main: Balance fetch before payout: ${error}`);  
+            monitoring.error(`Main: Balance fetch before payout: ${error}`);
           }
 
           let poolBalance = 0n;
@@ -214,54 +226,74 @@ cron.schedule(paymentCronSchedule, () => {
           if (Array.isArray(poolBalances) && poolBalances?.length > 0) {
             poolBalance = BigInt(poolBalances[0].balance);
           } else {
-            monitoring.error("Main: Could not fetch Pool balance from Database.")
+            monitoring.error('Main: Could not fetch Pool balance from Database.');
           }
 
           // KAS Payout
           try {
             await transactionManager!.transferBalances(balances);
-          } catch(error) {
+          } catch (error) {
             monitoring.error(`Main: Error during KAS payout: ${error}`);
           }
 
           // Get quote for KASPA to NACHO for rebate
-          if (poolBalance == 0n){
-            monitoring.error("Main: Pool treasury balance is 0. Could not perform any KRC20 payout.");
-          } else {        
+          if (poolBalance == 0n) {
+            monitoring.error(
+              'Main: Pool treasury balance is 0. Could not perform any KRC20 payout.'
+            );
+          } else {
             try {
-              poolBalance = ((BigInt(poolBalance) * BigInt(CONFIG.nachoSwap * 100)) / 10000n);
+              poolBalance = (BigInt(poolBalance) * BigInt(CONFIG.nachoSwap * 100)) / 10000n;
               amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance);
-              monitoring.debug(`Main: Amount of ${CONFIG.defaultTicker} tokens to be used for NACHO rebate: ${sompiToKAS(Number(amount))} ${CONFIG.defaultTicker}`); 
+              monitoring.debug(
+                `Main: Amount of ${CONFIG.defaultTicker} tokens to be used for NACHO rebate: ${sompiToKAS(Number(amount))} ${CONFIG.defaultTicker}`
+              );
             } catch (error) {
               monitoring.error(`Main: Fetching KAS to NACHO quote: ${error}`);
             }
           }
-          
+
           // Transfer NACHO
           if (amount != 0n && treasuryNACHOBalance > amount) {
             try {
               // Wait for one minute before invoking KRC20 transfers.
               await Bun.sleep(60000);
               monitoring.log(`Main: Running scheduled KRC20 balance transfer`);
-              await transferKRC20Tokens(rpc, CONFIG.defaultTicker, amount!, balances, poolBalance, transactionManager!);          
+              await transferKRC20Tokens(
+                rpc,
+                CONFIG.defaultTicker,
+                amount!,
+                balances,
+                poolBalance,
+                transactionManager!
+              );
               monitoring.log(`Main: Scheduled KRC20 balance transfer completed`);
             } catch (error) {
               monitoring.error(`Main: Error during KRC20 transfer: ${error}`);
             }
           } else {
-            monitoring.debug(`Main: Current amount of KASPA is too low to distribute NACHO rebate.`);
+            monitoring.debug(
+              `Main: Current amount of KASPA is too low to distribute NACHO rebate.`
+            );
           }
 
           try {
             await Bun.sleep(1000);
             // Fetch treasury wallet address balance after Payout
-            const treasuryKASBalance  = await fetchKASBalance(transactionManager!.address);
-            monitoring.log(`Main: KAS balance after transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`);
-      
-            const treasuryNACHOBalance  = await krc20Token(transactionManager!.address, CONFIG.defaultTicker);
-            monitoring.log(`Main: ${CONFIG.defaultTicker} balance after transfer: ${sompiToKAS(Number(treasuryNACHOBalance?.amount ?? 0))} ${CONFIG.defaultTicker}`);
+            const treasuryKASBalance = await fetchKASBalance(transactionManager!.address);
+            monitoring.log(
+              `Main: KAS balance after transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`
+            );
+
+            const treasuryNACHOBalance = await krc20Token(
+              transactionManager!.address,
+              CONFIG.defaultTicker
+            );
+            monitoring.log(
+              `Main: ${CONFIG.defaultTicker} balance after transfer: ${sompiToKAS(Number(treasuryNACHOBalance?.amount ?? 0))} ${CONFIG.defaultTicker}`
+            );
           } catch (error) {
-            monitoring.error(`Main: Balance fetch after payout: ${error}`);  
+            monitoring.error(`Main: Balance fetch after payout: ${error}`);
           }
         } catch (transactionError) {
           monitoring.error(`Main: Transaction manager error: ${transactionError}`);
@@ -272,7 +304,7 @@ cron.schedule(paymentCronSchedule, () => {
 
       exitStepsPaymentCron();
 
-      monitoring.log("Main: ✅ Payment Cron final sleep done — safe to exit.");
+      monitoring.log('Main: ✅ Payment Cron final sleep done — safe to exit.');
     } catch (error) {
       monitoring.error(`Main: Unhandled error in paymentCronSchedule: ${error}`);
     }
@@ -280,7 +312,7 @@ cron.schedule(paymentCronSchedule, () => {
 });
 
 cron.schedule(paymentAlertCronSchedule, () => {
-  (async () => {
+  async () => {
     try {
       if (DEBUG) monitoring.debug(`Main: Setting up RPC client after Alerting cron is triggered`);
       await rpcConnectionTrxManagerSetup();
@@ -296,15 +328,15 @@ cron.schedule(paymentAlertCronSchedule, () => {
           monitoring.error(`Main: payment alert: ${error}`);
         }
       } else {
-        monitoring.error('Main: RPC connection is not established before alerting cron');    
+        monitoring.error('Main: RPC connection is not established before alerting cron');
       }
 
       await transactionManager?.unregisterProcessor();
 
       await Bun.sleep(1000); // Just before unregisterProcessor
-      monitoring.log("Main: ✅ Alert Cron final sleep done — safe to exit.");
+      monitoring.log('Main: ✅ Alert Cron final sleep done — safe to exit.');
     } catch (error) {
       monitoring.error(`Main: Unhandled error in alertCronSchedule: ${error}`);
     }
-  });
+  };
 });

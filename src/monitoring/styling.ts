@@ -1,5 +1,5 @@
-const stylePrefix = '\u001b['
-const resetCode = '\u001b[0m'
+const stylePrefix = '\u001b[';
+const resetCode = '\u001b[0m';
 
 export const codes = {
   white: 1,
@@ -31,19 +31,22 @@ export const codes = {
   bgGrayLight: 47,
   bgWhite: 107,
   underline: 4,
-  inverse: 7
+  inverse: 7,
+};
+
+export function stylize(code: number, text: string) {
+  if (!Object.values(codes).includes(code)) throw Error('Invalid style code.');
+
+  return `${stylePrefix}${code}m${text}${resetCode}`;
 }
 
-export function stylize (code: number, text: string) {
-  if (!Object.values(codes).includes(code)) throw Error('Invalid style code.')
-
-  return `${stylePrefix}${code}m${text}${resetCode}`
+export function getReadableDate() {
+  return new Date()
+    .toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    .split(' ')
+    .join('-');
 }
 
-export function getReadableDate () {
-  return (new Date()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).split(' ').join('-')
-}
-
-export function getReadableTime () {
-  return (new Date()).toTimeString().replace(/.*(\d{2}:\d{2}:\d{2}).*/, '$1')
+export function getReadableTime() {
+  return new Date().toTimeString().replace(/.*(\d{2}:\d{2}:\d{2}).*/, '$1');
 }

@@ -19,19 +19,20 @@ export default class Monitoring {
   private logger: winston.Logger;
 
   private fileNameFormat = `katpool-payment-%DATE%.log`;
-  constructor(logFilePath: string = ('katpool-payment-logs')) {
+  constructor(logFilePath: string = 'katpool-payment-logs') {
     if (!fs.existsSync(logFilePath)) {
       fs.mkdirSync(logFilePath, { recursive: true }); // Create directory if missing
     }
 
-    const logFormat = winston.format.printf((info) => {
-      const levelColor = {
-        info: chalk.bgYellowBright.whiteBright,
-        error: chalk.bgYellowBright.whiteBright,
-        debug: chalk.bgYellowBright.whiteBright,
-        warn: chalk.bgYellowBright.whiteBright
-      }[info.level] || chalk.whiteBright; 
-    
+    const logFormat = winston.format.printf(info => {
+      const levelColor =
+        {
+          info: chalk.bgYellowBright.whiteBright,
+          error: chalk.bgYellowBright.whiteBright,
+          debug: chalk.bgYellowBright.whiteBright,
+          warn: chalk.bgYellowBright.whiteBright,
+        }[info.level] || chalk.whiteBright;
+
       return `${chalk.green(getReadableDate())} ${chalk.cyan(getReadableTime())} ${levelColor(info.level.toUpperCase())}: ${chalk.whiteBright(info.message)}`;
     });
 

@@ -1,8 +1,20 @@
 import Database, { MinerBalanceRow } from '../database';
-import { PendingTransaction, sompiToKaspaStringWithSuffix, type IPaymentOutput, createTransactions, PrivateKey, UtxoProcessor, UtxoContext, type RpcClient,  maximumStandardTransactionMass, addressFromScriptPublicKey, calculateTransactionFee } from "../../wasm/kaspa";
+import {
+  PendingTransaction,
+  sompiToKaspaStringWithSuffix,
+  type IPaymentOutput,
+  createTransactions,
+  PrivateKey,
+  UtxoProcessor,
+  UtxoContext,
+  type RpcClient,
+  maximumStandardTransactionMass,
+  addressFromScriptPublicKey,
+  calculateTransactionFee,
+} from '../../wasm/kaspa';
 import Monitoring from '../monitoring';
-import { db, DEBUG } from "../index";
-import { CONFIG } from "../constants";
+import { db, DEBUG } from '../index';
+import { CONFIG } from '../constants';
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { sompiToKAS } from '../utils';
 
@@ -30,20 +42,23 @@ export default class trxManager {
     this.registerProcessor();
   }
 
-  private async recordPayment(transactionHash: string, entries: {address: string, amount: bigint}[]) {
+  private async recordPayment(
+    transactionHash: string,
+    entries: { address: string; amount: bigint }[]
+  ) {
     try {
       let values: string[] = [];
-      let queryParams: string[][] = []
+      let queryParams: string[][] = [];
       for (let i = 0; i < entries.length; i++) {
-        const address = [entries[i].address]
-        const amount = entries[i].amount
-        values.push(`($${i+1}, ${amount}, NOW(), '${transactionHash}') `)
-        queryParams.push(address)
+        const address = [entries[i].address];
+        const amount = entries[i].amount;
+        values.push(`($${i + 1}, ${amount}, NOW(), '${transactionHash}') `);
+        queryParams.push(address);
       }
-      const valuesPlaceHolder = values.join(',')
-      const query = `INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash) VALUES ${valuesPlaceHolder};`
+      const valuesPlaceHolder = values.join(',');
+      const query = `INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash) VALUES ${valuesPlaceHolder};`;
       await db.runQuery(query, queryParams);
-    } catch(error) {
+    } catch (error) {
       this.monitoring.error(`TrxManager: recording payment for ${transactionHash}: ${error}`);
     }
   }
@@ -72,19 +87,27 @@ export default class trxManager {
     });
 
     const thresholdAmount = CONFIG.thresholdAmount;
-    const thresholdEligiblePayments = paymentOutputs.filter( data => data.amount >= BigInt(thresholdAmount));
+    const thresholdEligiblePayments = paymentOutputs.filter(
+      data => data.amount >= BigInt(thresholdAmount)
+    );
 
     if (thresholdEligiblePayments.length === 0) {
       return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
     }
 
     // All pending balance to be transferred in current payment cycle
-    const totalEligibleAmount = await this.db.getAllPendingBalanceAboveThreshold(Number(thresholdAmount));
-    this.monitoring.debug(`TrxManager: Total eligible KAS to be transferred in current payment cycle: ${sompiToKAS(Number(totalEligibleAmount))} KAS.`);
+    const totalEligibleAmount = await this.db.getAllPendingBalanceAboveThreshold(
+      Number(thresholdAmount)
+    );
+    this.monitoring.debug(
+      `TrxManager: Total eligible KAS to be transferred in current payment cycle: ${sompiToKAS(Number(totalEligibleAmount))} KAS.`
+    );
 
     // All pending balance
     const totalAmount = await this.db.getAllPendingBalanceAboveThreshold(0);
-    this.monitoring.debug(`TrxManager: Total pending KAS to be transferred: ${sompiToKAS(Number(totalAmount))} KAS.`);
+    this.monitoring.debug(
+      `TrxManager: Total pending KAS to be transferred: ${sompiToKAS(Number(totalAmount))} KAS.`
+    );
 
     // Enqueue transactions for processing
     await this.enqueueTransactions(thresholdEligiblePayments);
@@ -93,7 +116,7 @@ export default class trxManager {
 
   private async enqueueTransactions(outputs: IPaymentOutput[]) {
     const matureEntries = await this.fetchMatureUTXOs();
-    
+
     const { transactions } = await createTransactions({
       entries: matureEntries,
       outputs,
@@ -103,7 +126,9 @@ export default class trxManager {
     });
 
     // Log the lengths to debug any potential mismatch
-    this.monitoring.log(`TrxManager: Created ${transactions.length} transactions for ${outputs.length} outputs.`);
+    this.monitoring.log(
+      `TrxManager: Created ${transactions.length} transactions for ${outputs.length} outputs.`
+    );
 
     // Process each transaction sequentially with its associated address
     for (let i = 0; i < transactions.length; i++) {
@@ -122,24 +147,31 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
     const transactionHash = await transaction.submit(this.processor.rpc);
 
-    if (DEBUG) this.monitoring.debug(`TrxManager: Waiting for transaction ID: ${transaction.id} to mature`);
+    if (DEBUG)
+      this.monitoring.debug(`TrxManager: Waiting for transaction ID: ${transaction.id} to mature`);
     await this.waitForMatureUtxo(transactionHash);
 
-    if (DEBUG) this.monitoring.debug(`TrxManager: Transaction ID ${transactionHash} has matured. Proceeding with next transaction.`);
+    if (DEBUG)
+      this.monitoring.debug(
+        `TrxManager: Transaction ID ${transactionHash} has matured. Proceeding with next transaction.`
+      );
 
     const txOutputs = transaction.transaction.outputs;
-    const entries: {address: string,amount: bigint}[] = [];
+    const entries: { address: string; amount: bigint }[] = [];
     const toAddresses: string[] = [];
-    for(const data of txOutputs) {
-      const decodedAddress = addressFromScriptPublicKey(data.scriptPublicKey as ScriptPublicKey, this.networkId);
-      const address = (decodedAddress!.prefix + ":" + decodedAddress!.payload);
+    for (const data of txOutputs) {
+      const decodedAddress = addressFromScriptPublicKey(
+        data.scriptPublicKey as ScriptPublicKey,
+        this.networkId
+      );
+      const address = decodedAddress!.prefix + ':' + decodedAddress!.payload;
       const amount = data.value;
-      if(address == this.address) continue
-      toAddresses.push(address)
-      entries.push({address, amount})
+      if (address == this.address) continue;
+      toAddresses.push(address);
+      entries.push({ address, amount });
     }
 
-    if(toAddresses.length > 0) {
+    if (toAddresses.length > 0) {
       await this.recordPayment(transactionHash, entries);
     }
     // Reset the balance for the wallet after the transaction has matured
@@ -171,7 +203,7 @@ export default class trxManager {
   };
 
   private registerProcessor() {
-    this.processor.addEventListener("utxo-proc-start", this.utxoProcStartHandler);
+    this.processor.addEventListener('utxo-proc-start', this.utxoProcStartHandler);
     this.processor.start();
   }
 
@@ -179,42 +211,46 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: unregisterProcessor - this.context.clear()`);
     await this.context.clear();
     if (DEBUG) this.monitoring.debug(`TrxManager: removeEventListener("utxo-proc-start")`);
-    this.processor.removeEventListener("utxo-proc-start", this.utxoProcStartHandler);
-    await this.processor.stop();    
+    this.processor.removeEventListener('utxo-proc-start', this.utxoProcStartHandler);
+    await this.processor.stop();
   }
 
   private async fetchMatureUTXOs() {
-    const coinbaseMaturity = 1000; 
+    const coinbaseMaturity = 1000;
     // Fetch current DAA score
     const { virtualDaaScore } = await this.rpc.getBlockDagInfo();
-    
+
     // Check if `virtualDaaScore` is undefined before proceeding
     if (virtualDaaScore === undefined) {
-      throw new Error("Unable to fetch DAA score.");
+      throw new Error('Unable to fetch DAA score.');
     }
-    
+
     // 1. Fetch and sort UTXOs by amount
     let utxoEntries = await this.rpc.getUtxosByAddresses([this.address]);
-    
+
     // Ensure that `utxoEntries.entries` is not undefined
     if (!utxoEntries?.entries || !Array.isArray(utxoEntries.entries)) {
-      throw new Error("Invalid or empty UTXO entries.");
+      throw new Error('Invalid or empty UTXO entries.');
     }
-    
+
     const sortedEntries = utxoEntries.entries
       .slice() // Create a copy to avoid mutating the original array
       .sort((a, b) => Number(b.amount - a.amount)); // Sort by amount descending
-    
+
     // 2. Filter based on Coinbase maturity (coinbase UTXOs only mature after a certain DAA score)
-    let matureEntries = sortedEntries.filter((entry) => {
+    let matureEntries = sortedEntries.filter(entry => {
       // Ensure that `entry` and required properties exist before proceeding
-      if (!entry || typeof entry.isCoinbase === "undefined" || typeof entry.blockDaaScore === "undefined") {
+      if (
+        !entry ||
+        typeof entry.isCoinbase === 'undefined' ||
+        typeof entry.blockDaaScore === 'undefined'
+      ) {
         return false; // Skip invalid or incomplete entries
       }
-    
+
       return (
         !entry.isCoinbase || // Allow non-coinbase UTXOs
-        (virtualDaaScore - entry.blockDaaScore >= coinbaseMaturity) // Check if coinbase UTXOs are mature
+        virtualDaaScore - entry.blockDaaScore >= coinbaseMaturity // Check if coinbase UTXOs are mature
       );
     });
 
