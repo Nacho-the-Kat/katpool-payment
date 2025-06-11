@@ -22,6 +22,9 @@ POSTGRES_HOSTNAME='katpool-db' # Configure the hostname.
 DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOSTNAME}:5432/${POSTGRES_DB}"
 DEBUG=1
 TELEGRAM_BOT_TOKEN=''
+UPHOLD_CLIENT_ID=''
+UPHOLD_CLIENT_SECRET=''
+OAUTH_STATE=''
 ```
 
 ## Config file
@@ -56,6 +59,7 @@ Please refer to [Crontab.guru](https://crontab.guru/) to set the cron expression
 ## Developer Tips
 
 > 💡 **Tip:** To avoid seeing formatting commits (such as Prettier changes) in `git blame`, run:
+
 ```bash
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
