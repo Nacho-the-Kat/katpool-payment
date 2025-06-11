@@ -7,9 +7,11 @@ type Miner = {
   balance: bigint;
 };
 
-const balFallBack: Miner[] = [{
-  balance: -1n
-}];
+const balFallBack: Miner[] = [
+  {
+    balance: -1n,
+  },
+];
 
 export type MinerBalanceRow = {
   minerId: string;
@@ -18,17 +20,19 @@ export type MinerBalanceRow = {
   nachoBalance: bigint;
 };
 
-const fallback: MinerBalanceRow[] = [{
-  minerId: '',
-  address: '',
-  balance: -1n,
-  nachoBalance: -1n
-}];
+const fallback: MinerBalanceRow[] = [
+  {
+    minerId: '',
+    address: '',
+    balance: -1n,
+    nachoBalance: -1n,
+  },
+];
 
 export enum status {
-  PENDING = "PENDING",
-  FAILED = "FAILED",
-  COMPLETED = "COMPLETED"
+  PENDING = 'PENDING',
+  FAILED = 'FAILED',
+  COMPLETED = 'COMPLETED',
 }
 
 function isValidStatus(value: any): value is status {
@@ -37,7 +41,7 @@ function isValidStatus(value: any): value is status {
 
 export enum pendingKRC20TransferField {
   nachoTransferStatus = 'nacho_transfer_status',
-  dbEntryStatus = 'db_entry_status'
+  dbEntryStatus = 'db_entry_status',
 }
 
 function isValidpendingKRC20TransferField(value: any): value is pendingKRC20TransferField {
@@ -63,7 +67,9 @@ export default class Database {
   }
 
   public getDBPoolStats() {
-    monitoring.debug(`database: getClient() ~ DB Pool - total: ${this.pool.totalCount}, idle: ${this.pool.idleCount}, waiting: ${this.pool.waitingCount}`);
+    monitoring.debug(
+      `database: getClient() ~ DB Pool - total: ${this.pool.totalCount}, idle: ${this.pool.idleCount}, waiting: ${this.pool.waitingCount}`
+    );
   }
 
   public async runQuery<T extends QueryResultRow = any>(
@@ -74,7 +80,7 @@ export default class Database {
   }
 
   async getAllBalancesExcludingPool() {
-    try {          
+    try {
       const res = await this.pool.query(
         `SELECT wallet, SUM(balance) as total_balance, SUM(nacho_rebate_kas) as nacho_total_balance
          FROM miners_balance 
@@ -83,13 +89,19 @@ export default class Database {
         ['pool']
       );
 
-      return res.rows.map((row: { wallet: string, total_balance: string, nacho_total_balance: string }): MinerBalanceRow => ({
-        minerId: 'aggregate', // Placeholder ID for aggregated balance, since we're grouping by wallet.
-        address: row.wallet,
-        balance: BigInt(row.total_balance),
-        nachoBalance: BigInt(row.nacho_total_balance)
-      }));
-    } catch(error) {
+      return res.rows.map(
+        (row: {
+          wallet: string;
+          total_balance: string;
+          nacho_total_balance: string;
+        }): MinerBalanceRow => ({
+          minerId: 'aggregate', // Placeholder ID for aggregated balance, since we're grouping by wallet.
+          address: row.wallet,
+          balance: BigInt(row.total_balance),
+          nachoBalance: BigInt(row.nacho_total_balance),
+        })
+      );
+    } catch (error) {
       monitoring.error(`database: getAllBalancesExcludingPool - query error: ${error}`);
       return fallback;
     }
@@ -110,7 +122,7 @@ export default class Database {
       );
 
       return res.rows[0]?.sum ? BigInt(res.rows[0].sum) : BigInt(0);
-    } catch(error) {
+    } catch (error) {
       monitoring.error(`database: getAllPendingBalanceAboveThreshold - query error: ${error}`);
       return -1n;
     }
@@ -126,10 +138,12 @@ export default class Database {
         ['pool']
       );
 
-      return res.rows.map((row: { balance: string }): Miner => ({
-        balance: BigInt(row.balance)
-      }));
-    } catch(error) {
+      return res.rows.map(
+        (row: { balance: string }): Miner => ({
+          balance: BigInt(row.balance),
+        })
+      );
+    } catch (error) {
       monitoring.error(`database: getPoolBalance - query error: ${error}`);
       return balFallBack;
     }
@@ -137,20 +151,27 @@ export default class Database {
 
   async resetBalancesByWallet(wallets: string[]) {
     try {
-      await this.pool.query('UPDATE miners_balance SET balance = $1 WHERE wallet = ANY($2)', [0n, wallets]);
-      monitoring.debug(`database: reset for wallet balance - query executed for wallets: ${wallets}`);
-    } catch(error) {
+      await this.pool.query('UPDATE miners_balance SET balance = $1 WHERE wallet = ANY($2)', [
+        0n,
+        wallets,
+      ]);
+      monitoring.debug(
+        `database: reset for wallet balance - query executed for wallets: ${wallets}`
+      );
+    } catch (error) {
       monitoring.error(`database: resetBalancesByWallet - query error: ${error}`);
     }
   }
 
-  async recordPendingKRC20Transfer(firstTxnID: string, 
-    sompiToMiner: bigint, 
-    nachoAmount: bigint, 
-    address: string, 
-    p2shAddress: string, 
-    nachoTransferStatus: status, 
-    dbEntryStatus: status) {
+  async recordPendingKRC20Transfer(
+    firstTxnID: string,
+    sompiToMiner: bigint,
+    nachoAmount: bigint,
+    address: string,
+    p2shAddress: string,
+    nachoTransferStatus: status,
+    dbEntryStatus: status
+  ) {
     monitoring.debug(`database: recordPendingKRC20Transfer - first txn id - ${firstTxnID}`);
     try {
       const query = `INSERT INTO pending_krc20_transfers (first_txn_id, sompi_to_miner, nacho_amount, address, p2sh_address, nacho_transfer_status, db_entry_status, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW());`;
@@ -158,17 +179,19 @@ export default class Database {
       const values = [
         firstTxnID,
         sompiToMiner.toString(), // Convert BigInt to string if using PostgreSQL
-        nachoAmount.toString(),  // Convert BigInt to string if using PostgreSQL
+        nachoAmount.toString(), // Convert BigInt to string if using PostgreSQL
         address,
         p2shAddress,
         nachoTransferStatus,
-        dbEntryStatus
+        dbEntryStatus,
       ];
-  
+
       await this.pool.query(query, values);
-      monitoring.debug(`database: recording pending KRC20 transfer - query executed for P2SH address: ${p2shAddress} - first txn hash ${firstTxnID}`);
+      monitoring.debug(
+        `database: recording pending KRC20 transfer - query executed for P2SH address: ${p2shAddress} - first txn hash ${firstTxnID}`
+      );
     } catch (error) {
-      monitoring.error(`database: recording pending KRC20 transfer: ${error}`);      
+      monitoring.error(`database: recording pending KRC20 transfer: ${error}`);
     }
   }
 
@@ -179,15 +202,25 @@ export default class Database {
    * @param newValue - The new value to set for the field.
    * @throws {Error} If the provided update field is not allowed or if a database error occurs.
    */
-  async updatePendingKRC20TransferStatus(p2shAddr: string, fieldToBeUpdated: string, updatedStatus: status) {
-    monitoring.debug(`database: updatePendingKRC20TransferStatus - p2sh: ${p2shAddr}, fieldToBeUpdated: ${fieldToBeUpdated} and updatedStatus: ${updatedStatus}`);  
+  async updatePendingKRC20TransferStatus(
+    p2shAddr: string,
+    fieldToBeUpdated: string,
+    updatedStatus: status
+  ) {
+    monitoring.debug(
+      `database: updatePendingKRC20TransferStatus - p2sh: ${p2shAddr}, fieldToBeUpdated: ${fieldToBeUpdated} and updatedStatus: ${updatedStatus}`
+    );
     if (!isValidpendingKRC20TransferField(fieldToBeUpdated)) {
-      monitoring.error(`database: updatePendingKRC20TransferStatus ~ Invalid fieldToBeUpdated provided: ${fieldToBeUpdated}`);
+      monitoring.error(
+        `database: updatePendingKRC20TransferStatus ~ Invalid fieldToBeUpdated provided: ${fieldToBeUpdated}`
+      );
       throw new Error(`Invalid fieldToBeUpdated provided: ${fieldToBeUpdated}`);
     }
 
     if (!isValidStatus(updatedStatus)) {
-      monitoring.error(`database: updatePendingKRC20TransferStatus ~ Invalid status provided: ${updatedStatus}`);
+      monitoring.error(
+        `database: updatePendingKRC20TransferStatus ~ Invalid status provided: ${updatedStatus}`
+      );
       throw new Error(`Invalid status provided: ${updatedStatus}`);
     }
 
@@ -195,12 +228,16 @@ export default class Database {
       const query = `UPDATE pending_krc20_transfers 
                    SET ${fieldToBeUpdated} = $1 
                    WHERE p2sh_address = $2`;
-    
-      monitoring.debug(`database: updatePendingKRC20TransferStatus - query will be invoked for ${p2shAddr}`);
+
+      monitoring.debug(
+        `database: updatePendingKRC20TransferStatus - query will be invoked for ${p2shAddr}`
+      );
       await this.pool.query(query, [updatedStatus, p2shAddr]);
-      monitoring.debug(`database: updatePendingKRC20TransferStatus - query executed for ${p2shAddr}`);
+      monitoring.debug(
+        `database: updatePendingKRC20TransferStatus - query executed for ${p2shAddr}`
+      );
     } catch (error) {
-      monitoring.error(`database: updating pending KRC20 transfer: ${error}`);      
+      monitoring.error(`database: updating pending KRC20 transfer: ${error}`);
       throw error;
     }
   }

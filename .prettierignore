@@ -1,0 +1,14 @@
+# Ignore common output and dependency folders
+node_modules/
+dist/
+build/
+coverage/
+out/
+
+# Ignore compiled files
+*.js
+*.d.ts
+
+# Ignore config files (optional, depending on your preferences)
+*.config.js
+*.config.cjs

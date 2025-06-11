@@ -1,13 +1,13 @@
 {
-    "node" : [],
-    "network" : "mainnet",
-    "payoutCronSchedule": "0 */12 * * *",
-    "payoutAlertCronSchedule": "0 1,7,13,19 * * *",
-    "thresholdAmount": "500000000",
-    "nachoThresholdAmount": "50000000000",    
-    "nachoRebateBuffer": "500000000",
-    "nachoSwap": 95,
-    "defaultTicker": "NACHO",
-    "kasAlertThreshold": "25000000000",
-    "nachoAlertThreshold": "100000000000"
+  "node": [],
+  "network": "mainnet",
+  "payoutCronSchedule": "0 */12 * * *",
+  "payoutAlertCronSchedule": "0 1,7,13,19 * * *",
+  "thresholdAmount": "500000000",
+  "nachoThresholdAmount": "50000000000",
+  "nachoRebateBuffer": "500000000",
+  "nachoSwap": 95,
+  "defaultTicker": "NACHO",
+  "kasAlertThreshold": "25000000000",
+  "nachoAlertThreshold": "100000000000"
 }
