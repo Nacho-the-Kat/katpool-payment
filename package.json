@@ -40,6 +40,7 @@
     "consul": "^1.2.0",
     "consul-client": "^5.0.0",
     "cron-parser": "^4.9.0",
+    "crypto": "^1.0.1",
     "denque": "^2.1.0",
     "dotenv": "^16.4.5",
     "ethers": "^6.13.5",

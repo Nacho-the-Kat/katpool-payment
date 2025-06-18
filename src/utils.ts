@@ -2,8 +2,12 @@ import axios from 'axios';
 import { CONFIG, KASPA_BASE_URL } from './constants';
 import Monitoring from './monitoring';
 import { kaspaToSompi } from '../wasm/kaspa/kaspa';
+import crypto from 'crypto';
 
 const monitoring = new Monitoring();
+
+const ENCRYPTION_KEY = process.env.TOKEN_ENCRYPTION_KEY!;
+const IV_LENGTH = 16; // Configured from katpool-app
 
 // Also to be used for NACHO as it also has 8 decimals
 export function sompiToKAS(amount: number) {
@@ -86,4 +90,14 @@ export async function withWatchdog(task: () => Promise<any>, timeoutMs: number) 
     setTimeout(() => reject(new Error(`Timeout: Task took more than ${timeoutMs}ms`)), timeoutMs)
   );
   return Promise.race([task(), timeoutPromise]);
+}
+
+export function decryptToken(encryptedToken: string): string {
+  const [ivHex, encrypted] = encryptedToken.split(':');
+  const iv = new Uint8Array(Buffer.from(ivHex, 'hex'));
+  const key = new Uint8Array(Buffer.from(ENCRYPTION_KEY, 'hex'));
+  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
 }
