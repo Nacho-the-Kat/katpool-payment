@@ -30,12 +30,14 @@ jobs:
       - name: Docker Login
         run: echo "${{ secrets.GB_KATPOOL_TOKEN }}" | docker login ${{ env.REGISTRY }} --username argonmining --password-stdin
 
-      - name: Docker Build
+      - name: Docker Build with Cache
         env:
           IMAGE_NAME: ${{ env.REPOSITORY_NAME }}:beta-v1.0.2-${{ env.branch_name }}
-        run: docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} .
-
-      - name: Docker Push
-        env:
-          IMAGE_NAME: ${{ env.REPOSITORY_NAME }}:beta-v1.0.2-${{ env.branch_name }}
-        run: docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          CACHE_FROM: ${{ env.REGISTRY }}/${{ env.REPOSITORY_NAME }}:buildcache
+        run: |
+          docker buildx build \
+            --cache-from=type=registry,ref=${{ env.CACHE_FROM }} \
+            --cache-to=type=registry,ref=${{ env.CACHE_FROM }},mode=max \
+            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
+            --push \
+            .
