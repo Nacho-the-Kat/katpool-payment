@@ -118,6 +118,8 @@ export default class trxManager {
   private async enqueueTransactions(outputs: IPaymentOutput[]) {
     const matureEntries = await this.fetchMatureUTXOs();
 
+    this.registerProcessor();
+
     const FIXED_FEE = '0.0001'; // Fixed minimal fee
     const feeInSompi = kaspaToSompi(FIXED_FEE)!;
     const { estimate } = await this.rpc.getFeeEstimate({});
