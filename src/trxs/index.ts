@@ -11,7 +11,6 @@ import {
   maximumStandardTransactionMass,
   addressFromScriptPublicKey,
   calculateTransactionFee,
-  kaspaToSompi,
 } from '../../wasm/kaspa';
 import Monitoring from '../monitoring';
 import { db, DEBUG } from '../index';
@@ -118,17 +117,12 @@ export default class trxManager {
   private async enqueueTransactions(outputs: IPaymentOutput[]) {
     const matureEntries = await this.fetchMatureUTXOs();
 
-    const FIXED_FEE = '0.0001'; // Fixed minimal fee
-    const feeInSompi = kaspaToSompi(FIXED_FEE)!;
-    const { estimate } = await this.rpc.getFeeEstimate({});
-
     const { transactions } = await createTransactions({
       entries: matureEntries,
       outputs,
       changeAddress: this.address,
-      priorityFee: feeInSompi,
+      priorityFee: 0n,
       networkId: this.networkId,
-      feeRate: estimate.lowBuckets[0].feerate,
     });
 
     // Log the lengths to debug any potential mismatch
@@ -144,12 +138,6 @@ export default class trxManager {
   }
 
   private async processTransaction(transaction: PendingTransaction) {
-    // Validate transaction mass before submission
-    const txMass = transaction.transaction.mass;
-    if (txMass > maximumStandardTransactionMass()) {
-      throw new Error(`Transaction mass ${txMass} exceeds maximum standard mass`);
-    }
-
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
     transaction.sign([this.privateKey]);
 
@@ -229,12 +217,6 @@ export default class trxManager {
 
   private async fetchMatureUTXOs() {
     const coinbaseMaturity = 1000;
-
-    await this.context.clear();
-
-    // Wait a bit for sync
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
     // Fetch current DAA score
     const { virtualDaaScore } = await this.rpc.getBlockDagInfo();
 
@@ -276,8 +258,6 @@ export default class trxManager {
     if (!matureEntries || matureEntries.length === 0) {
       matureEntries = this.context.getMatureRange(0, this.context.matureLength);
     }
-
-    await this.context.clear();
 
     return matureEntries;
   }
