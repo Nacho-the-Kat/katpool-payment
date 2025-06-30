@@ -5,6 +5,7 @@ import 'winston-daily-rotate-file';
 import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
+import datadogLogger from './datadog';
 
 interface LogJobData {
   level: 'DEBUG' | 'ERROR' | 'INFO';
@@ -58,16 +59,19 @@ export default class Monitoring {
   }
 
   log(message: string) {
+    datadogLogger.info(message);
     this.logQueue.add(() => this.processLog({ level: 'INFO', message }));
   }
 
   debug(message: string) {
+    datadogLogger.info(message);
     if (this.debugEnabled) {
       this.logQueue.add(() => this.processLog({ level: 'DEBUG', message }));
     }
   }
 
   error(message: string) {
+    datadogLogger.error(message);
     this.logQueue.add(() => this.processLog({ level: 'ERROR', message }));
   }
 
