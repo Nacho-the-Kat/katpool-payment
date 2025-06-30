@@ -11,6 +11,7 @@ import {
   maximumStandardTransactionMass,
   addressFromScriptPublicKey,
   calculateTransactionFee,
+  kaspaToSompi,
 } from '../../wasm/kaspa';
 import Monitoring from '../monitoring';
 import { db, DEBUG } from '../index';
@@ -64,6 +65,8 @@ export default class trxManager {
   }
 
   async transferBalances(balances: MinerBalanceRow[]) {
+    this.monitoring.log(`TrxManager: Starting KAS payment batch - Total recipients: ${balances.length}`);
+    
     let payments: { [address: string]: bigint } = {};
 
     // Aggregate balances by wallet address
@@ -92,8 +95,11 @@ export default class trxManager {
     );
 
     if (thresholdEligiblePayments.length === 0) {
-      return this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
+      this.monitoring.log('TrxManager: No payments found for current transfer cycle.');
+      return;
     }
+
+    this.monitoring.log(`TrxManager: KAS payment batch processing - Eligible recipients: ${thresholdEligiblePayments.length}, Threshold: ${thresholdAmount}`);
 
     // All pending balance to be transferred in current payment cycle
     const totalEligibleAmount = await this.db.getAllPendingBalanceAboveThreshold(
@@ -110,30 +116,62 @@ export default class trxManager {
     );
 
     // Enqueue transactions for processing
-    await this.enqueueTransactions(thresholdEligiblePayments);
-    this.monitoring.log(`TrxManager: Transactions queued for processing.`);
+    try {
+      await this.enqueueTransactions(thresholdEligiblePayments);
+      this.monitoring.log(`TrxManager: KAS payment batch queued successfully - Total transactions: ${thresholdEligiblePayments.length}`);
+    } catch (error) {
+      const errorMsg = `Failed to enqueue KAS payment transactions - Error: ${error}`;
+      this.monitoring.error(`TrxManager: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
   }
 
   private async enqueueTransactions(outputs: IPaymentOutput[]) {
+    this.monitoring.log(`TrxManager: Creating transactions for ${outputs.length} payment outputs`);
+    
     const matureEntries = await this.fetchMatureUTXOs();
 
-    const { transactions } = await createTransactions({
-      entries: matureEntries,
-      outputs,
-      changeAddress: this.address,
-      priorityFee: 0n,
-      networkId: this.networkId,
-    });
+    const FIXED_FEE = '0.0001'; // Fixed minimal fee
+    const feeInSompi = kaspaToSompi(FIXED_FEE)!;
+    const { estimate } = await this.rpc.getFeeEstimate({});
 
-    // Log the lengths to debug any potential mismatch
-    this.monitoring.log(
-      `TrxManager: Created ${transactions.length} transactions for ${outputs.length} outputs.`
-    );
+    try {
+      const { transactions } = await createTransactions({
+        entries: matureEntries,
+        outputs,
+        changeAddress: this.address,
+        priorityFee: feeInSompi,
+        networkId: this.networkId,
+        feeRate: estimate.lowBuckets[0].feerate,
+      });
 
-    // Process each transaction sequentially with its associated address
-    for (let i = 0; i < transactions.length; i++) {
-      const transaction = transactions[i];
-      await this.processTransaction(transaction); // Explicitly cast to string here too
+      // Log the lengths to debug any potential mismatch
+      this.monitoring.log(
+        `TrxManager: Created ${transactions.length} transactions for ${outputs.length} outputs.`
+      );
+
+      // Process each transaction sequentially with its associated address
+      let successfulTransactions = 0;
+      let failedTransactions = 0;
+      
+      for (let i = 0; i < transactions.length; i++) {
+        const transaction = transactions[i];
+        try {
+          await this.processTransaction(transaction);
+          successfulTransactions++;
+        } catch (error) {
+          failedTransactions++;
+          const errorMsg = `Transaction processing failed - Transaction ID: ${transaction.id} - Error: ${error}`;
+          this.monitoring.error(`TrxManager: ${errorMsg}`);
+          // Continue with next transaction instead of stopping the entire batch
+        }
+      }
+      
+      this.monitoring.log(`TrxManager: Transaction batch completed - Successful: ${successfulTransactions}, Failed: ${failedTransactions}, Total: ${transactions.length}`);
+    } catch (error) {
+      const errorMsg = `Failed to create transactions - Error: ${error}`;
+      this.monitoring.error(`TrxManager: ${errorMsg}`);
+      throw new Error(errorMsg);
     }
   }
 
@@ -145,11 +183,28 @@ export default class trxManager {
     //this.monitoring.log(`TrxManager: Tx Fee ${sompiToKaspaStringWithSuffix(txFee, this.networkId)}`);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
-    const transactionHash = await transaction.submit(this.processor.rpc);
+    
+    let transactionHash: string;
+    try {
+      transactionHash = await transaction.submit(this.processor.rpc);
+      this.monitoring.log(`TrxManager: KAS payment transaction submitted successfully - Transaction ID: ${transactionHash}`);
+    } catch (error) {
+      const errorMsg = `Failed to submit KAS payment transaction - Transaction ID: ${transaction.id} - Error: ${error}`;
+      this.monitoring.error(`TrxManager: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
 
     if (DEBUG)
       this.monitoring.debug(`TrxManager: Waiting for transaction ID: ${transaction.id} to mature`);
-    await this.waitForMatureUtxo(transactionHash);
+    
+    try {
+      await this.waitForMatureUtxo(transactionHash);
+      this.monitoring.log(`TrxManager: KAS payment transaction matured successfully - Transaction ID: ${transactionHash}`);
+    } catch (error) {
+      const errorMsg = `KAS payment transaction failed to mature - Transaction ID: ${transactionHash} - Error: ${error}`;
+      this.monitoring.error(`TrxManager: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
 
     if (DEBUG)
       this.monitoring.debug(
@@ -172,11 +227,28 @@ export default class trxManager {
     }
 
     if (toAddresses.length > 0) {
-      await this.recordPayment(transactionHash, entries);
+      try {
+        await this.recordPayment(transactionHash, entries);
+        // Log successful payment details
+        for (const entry of entries) {
+          this.monitoring.log(`TrxManager: KAS payment successful - Recipient: ${entry.address}, Amount: ${sompiToKAS(Number(entry.amount))} KAS, Transaction ID: ${transactionHash}`);
+        }
+      } catch (error) {
+        const errorMsg = `Failed to record KAS payment - Transaction ID: ${transactionHash} - Error: ${error}`;
+        this.monitoring.error(`TrxManager: ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
     }
+    
     // Reset the balance for the wallet after the transaction has matured
-    await this.db.resetBalancesByWallet(toAddresses);
-    this.monitoring.log(`TrxManager: Reset balances for wallet ${toAddresses}`);
+    try {
+      await this.db.resetBalancesByWallet(toAddresses);
+      this.monitoring.log(`TrxManager: Reset balances for wallet ${toAddresses}`);
+    } catch (error) {
+      const errorMsg = `Failed to reset balances for wallets: ${toAddresses} - Error: ${error}`;
+      this.monitoring.error(`TrxManager: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
   }
 
   private async waitForMatureUtxo(transactionId: string): Promise<void> {

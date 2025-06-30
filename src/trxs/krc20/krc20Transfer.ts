@@ -64,6 +64,9 @@ export async function transferKRC20(
   const treasuryAddr = transactionManager.address;
   const privateKey = transactionManager.privateKey;
 
+  // Log KRC20 transfer attempt
+  monitoring.log(`KRC20Transfer: Starting KRC20 transfer - Token: ${pTicker}, Recipient: ${pDest}, Amount: ${pAmount}, KAS Amount: ${kasAmount}, Full Rebate: ${fullRebate}`);
+
   // New UTXO subscription setup (ADD this):
   monitoring.debug(
     `KRC20Transfer: Subscribing to UTXO changes for address: ${treasuryAddr.toString()}`
@@ -182,9 +185,17 @@ export async function transferKRC20(
     for (const transaction of transactions) {
       transaction.sign([privateKey]);
       monitoring.debug(`KRC20Transfer: Transaction signed with ID: ${transaction.id}`);
-      const hash = await transaction.submit(rpc);
-      monitoring.log(`KRC20Transfer: submitted P2SH commit sequence transaction on: ${hash}`);
-      SubmittedtrxId = hash;
+      
+      let hash: string;
+      try {
+        hash = await transaction.submit(rpc);
+        monitoring.log(`KRC20Transfer: KRC20 commit transaction submitted successfully - Token: ${pTicker}, Recipient: ${pDest}, Amount: ${pAmount}, Transaction ID: ${hash}`);
+        SubmittedtrxId = hash;
+      } catch (error) {
+        const errorMsg = `Failed to submit KRC20 commit transaction - Token: ${pTicker}, Recipient: ${pDest}, Amount: ${pAmount} - Error: ${error}`;
+        monitoring.error(`KRC20Transfer: ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
 
       try {
         let actualKASAmount = kasAmount;
@@ -201,12 +212,14 @@ export async function transferKRC20(
           status.PENDING,
           status.PENDING
         );
+        monitoring.log(`KRC20Transfer: Pending KRC20 transfer recorded successfully - Token: ${pTicker}, Recipient: ${pDest}, Amount: ${pAmount}, Transaction ID: ${hash}`);
       } catch (error) {
         monitoring.error(`KRC20Transfer: Failed to record pending KRC20 transfer: ${error}`);
       }
 
       try {
         await resetBalancesByWallet(db, pDest, kasAmount, 'nacho_rebate_kas', fullRebate);
+        monitoring.log(`KRC20Transfer: Reset balances for nacho_rebate_kas successfully - Recipient: ${pDest}, Amount: ${kasAmount}`);
       } catch (error) {
         monitoring.error(
           `KRC20Transfer: Failed to reset balances for nacho_rebate_kas of ${amount} sompi for ${pDest}: ${error}`
@@ -216,6 +229,7 @@ export async function transferKRC20(
       try {
         // Deduct full amount from POOL balance entry, despite non-eligibility for full rebate.
         await resetBalancesByWallet(db, treasuryAddr, kasAmount * 3n, 'balance', false);
+        monitoring.log(`KRC20Transfer: Reset pool balance successfully - Amount: ${kasAmount * 3n}`);
       } catch (error) {
         monitoring.error(
           `KRC20Transfer: Failed to reset balances for pool balance with needed reduction of ${kasAmount * 3n} sompi for ${pDest} : ${error}`
@@ -295,9 +309,16 @@ export async function transferKRC20(
         const signature = await transaction.createInputSignature(ourOutput, privateKey);
         transaction.fillInput(ourOutput, script.encodePayToScriptHashSignatureScript(signature));
       }
-      revealHash = await transaction.submit(rpc);
-      monitoring.log(`KRC20Transfer: submitted reveal tx sequence transaction: ${revealHash}`);
-      SubmittedtrxId = revealHash;
+      
+      try {
+        revealHash = await transaction.submit(rpc);
+        monitoring.log(`KRC20Transfer: KRC20 reveal transaction submitted successfully - Token: ${pTicker}, Recipient: ${pDest}, Amount: ${pAmount}, Transaction ID: ${revealHash}`);
+        SubmittedtrxId = revealHash;
+      } catch (error) {
+        const errorMsg = `Failed to submit KRC20 reveal transaction - Token: ${pTicker}, Recipient: ${pDest}, Amount: ${pAmount} - Error: ${error}`;
+        monitoring.error(`KRC20Transfer: ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
     }
 
     const revealTimeout = setTimeout(() => {

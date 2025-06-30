@@ -21,6 +21,8 @@ export async function transferKRC20Tokens(
   poolBal: bigint,
   transactionManager: trxManager
 ) {
+  monitoring.log(`transferKRC20Tokens: Starting KRC20 token transfer batch - Token: ${pTicker}, Total KRC20 Amount: ${krc20Amount}, Pool Balance: ${poolBal}, Recipients: ${balances.length}`);
+  
   let payments: { [address: string]: bigint } = {};
 
   // Aggregate balances by wallet address
