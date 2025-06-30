@@ -8,7 +8,7 @@ const monitoring = new Monitoring();
 // Default values
 const DEFAULT_CONFIG = {
   node: [],
-  network: 'mainnet',
+  network: 'testnet-11',
   payoutCronSchedule: '0 */12 * * *',
   payoutAlertCronSchedule: '0 */6 * * *',
   thresholdAmount: kaspaToSompi('5')!,
