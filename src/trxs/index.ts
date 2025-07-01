@@ -11,6 +11,7 @@ import {
   maximumStandardTransactionMass,
   addressFromScriptPublicKey,
   calculateTransactionFee,
+  kaspaToSompi,
 } from '../../wasm/kaspa';
 import Monitoring from '../monitoring';
 import { db, DEBUG } from '../index';
@@ -116,12 +117,14 @@ export default class trxManager {
 
   private async enqueueTransactions(outputs: IPaymentOutput[]) {
     const matureEntries = await this.fetchMatureUTXOs();
+    const FIXED_FEE = '0.0001'; // Fixed minimal fee
+    const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 
     const { transactions } = await createTransactions({
       entries: matureEntries,
       outputs,
       changeAddress: this.address,
-      priorityFee: 0n,
+      priorityFee: feeInSompi,
       networkId: this.networkId,
     });
 
@@ -139,6 +142,26 @@ export default class trxManager {
 
   private async processTransaction(transaction: PendingTransaction) {
     if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
+    // Ensure the private key is valid before signing
+    if (!this.privateKey) {
+      throw new Error(`Private key is missing or invalid.`);
+    }
+
+    // Validate change amount before submission
+    this.monitoring.debug(
+      `TrxManager: Change amount for transaction ID: ${transaction.id} - ${sompiToKaspaStringWithSuffix(transaction.changeAmount, this.networkId)}`
+    );
+    if (transaction.changeAmount < kaspaToSompi('0.02')!) {
+      throw new Error(
+        `Transaction ID ${transaction.id} has change amount less than 0.02 KAS. Skipping transaction.`
+      );
+    }
+
+    // Validate transaction mass before submission
+    const txMass = transaction.transaction.mass;
+    if (txMass > maximumStandardTransactionMass()) {
+      throw new Error(`Transaction mass ${txMass} exceeds maximum standard mass`);
+    }
     transaction.sign([this.privateKey]);
 
     //const txFee = calculateTransactionFee(this.networkId, transaction.transaction, 1)!;
