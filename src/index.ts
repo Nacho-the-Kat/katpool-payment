@@ -39,10 +39,14 @@ process.on('exit', code => {
 
 process.on('uncaughtException', err => {
   monitoring.error(`Main: Uncaught Exception: ${err}`);
+  monitoring.error(`Main: Uncaught Exception Stack: ${err.stack}`);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   monitoring.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  if (reason instanceof Error) {
+    monitoring.error(`Unhandled Rejection Stack: ${reason.stack}`);
+  }
 });
 
 process.on('SIGINT', () => {
@@ -306,6 +310,7 @@ cron.schedule(paymentCronSchedule, () => {
 
       monitoring.log('Main: ✅ Payment Cron final sleep done — safe to exit.');
     } catch (error) {
+      monitoring.error(`Main: Unhandled error in paymentCronSchedule: ${error.stack}`);
       monitoring.error(`Main: Unhandled error in paymentCronSchedule: ${error}`);
     }
   })();
