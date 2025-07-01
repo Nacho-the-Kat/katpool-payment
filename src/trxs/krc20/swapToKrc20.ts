@@ -14,7 +14,12 @@ export default class swapToKrc20 {
    * @returns The equivalent amount of NACHO
    */
   async swapKaspaToKRC(balance: bigint) {
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({
+      headless: true,
+      defaultViewport: null,
+      executablePath: '/usr/bin/google-chrome',
+      args: ['--no-sandbox'],
+    });
     const page = await browser.newPage();
 
     // Set realistic headers to avoid bot detection
@@ -34,7 +39,7 @@ export default class swapToKrc20 {
         try {
           return JSON.parse(bodyText);
         } catch (e) {
-          console.error('Page content:', bodyText);
+          monitoring.error(`swapKaspaToKRC: Page content: ${bodyText}`);
           throw new Error('Not JSON response');
         }
       }),
