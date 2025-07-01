@@ -152,7 +152,7 @@ export default class trxManager {
       `TrxManager: Change amount for transaction ID: ${transaction.id} - ${sompiToKaspaStringWithSuffix(transaction.changeAmount, this.networkId)}`
     );
     if (transaction.changeAmount < kaspaToSompi('0.02')!) {
-      throw new Error(
+      this.monitoring.error(
         `Transaction ID ${transaction.id} has change amount less than 0.02 KAS. Skipping transaction.`
       );
     }
@@ -160,7 +160,7 @@ export default class trxManager {
     // Validate transaction mass before submission
     const txMass = transaction.transaction.mass;
     if (txMass > maximumStandardTransactionMass()) {
-      throw new Error(`Transaction mass ${txMass} exceeds maximum standard mass`);
+      this.monitoring.error(`Transaction mass ${txMass} exceeds maximum standard mass`);
     }
     transaction.sign([this.privateKey]);
 
