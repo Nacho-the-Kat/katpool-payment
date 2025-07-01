@@ -60,7 +60,7 @@ export default class trxManager {
       const query = `INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash) VALUES ${valuesPlaceHolder};`;
       await db.runQuery(query, queryParams);
     } catch (error) {
-      this.monitoring.error(`TrxManager: recording payment for ${transactionHash}: ${error}`);
+      this.monitoring.error(`TrxManager: recording payment for ${transactionHash}: ${error}\nStack: ${error instanceof Error ? error.stack : 'No stack available'}`);
     }
   }
 
@@ -72,7 +72,7 @@ export default class trxManager {
     // Aggregate balances by wallet address
     for (const { address, balance } of balances) {
       if (!address) {
-        this.monitoring.error(`TrxManager: transferBalances ~ Invalid address found: ${address}`);
+        this.monitoring.error(`TrxManager: transferBalances ~ Invalid address found: ${address}\nStack: ${new Error().stack}`);
         continue;
       }
 
@@ -121,7 +121,7 @@ export default class trxManager {
       this.monitoring.log(`TrxManager: KAS payment batch queued successfully - Total transactions: ${thresholdEligiblePayments.length}`);
     } catch (error) {
       const errorMsg = `Failed to enqueue KAS payment transactions - Error: ${error}`;
-      this.monitoring.error(`TrxManager: ${errorMsg}`);
+      this.monitoring.error(`TrxManager: ${errorMsg}\nStack: ${error instanceof Error ? error.stack : 'No stack available'}`);
       throw new Error(errorMsg);
     }
   }
@@ -162,7 +162,7 @@ export default class trxManager {
         } catch (error) {
           failedTransactions++;
           const errorMsg = `Transaction processing failed - Transaction ID: ${transaction.id} - Error: ${error}`;
-          this.monitoring.error(`TrxManager: ${errorMsg}`);
+          this.monitoring.error(`TrxManager: ${errorMsg}\nStack: ${error instanceof Error ? error.stack : 'No stack available'}`);
           // Continue with next transaction instead of stopping the entire batch
         }
       }
@@ -170,7 +170,7 @@ export default class trxManager {
       this.monitoring.log(`TrxManager: Transaction batch completed - Successful: ${successfulTransactions}, Failed: ${failedTransactions}, Total: ${transactions.length}`);
     } catch (error) {
       const errorMsg = `Failed to create transactions - Error: ${error}`;
-      this.monitoring.error(`TrxManager: ${errorMsg}`);
+      this.monitoring.error(`TrxManager: ${errorMsg}\nStack: ${error instanceof Error ? error.stack : 'No stack available'}`);
       throw new Error(errorMsg);
     }
   }
@@ -196,7 +196,7 @@ export default class trxManager {
       this.monitoring.log(`TrxManager: KAS payment transaction submitted successfully - Transaction ID: ${transactionHash}`);
     } catch (error) {
       const errorMsg = `Failed to submit KAS payment transaction - Transaction ID: ${transaction.id} - Error: ${error}`;
-      this.monitoring.error(`TrxManager: ${errorMsg}`);
+      this.monitoring.error(`TrxManager: ${errorMsg}\nStack: ${error instanceof Error ? error.stack : 'No stack available'}`);
       throw new Error(errorMsg);
     }
 
@@ -208,7 +208,7 @@ export default class trxManager {
       this.monitoring.log(`TrxManager: KAS payment transaction matured successfully - Transaction ID: ${transactionHash}`);
     } catch (error) {
       const errorMsg = `KAS payment transaction failed to mature - Transaction ID: ${transactionHash} - Error: ${error}`;
-      this.monitoring.error(`TrxManager: ${errorMsg}`);
+      this.monitoring.error(`TrxManager: ${errorMsg}\nStack: ${error instanceof Error ? error.stack : 'No stack available'}`);
       throw new Error(errorMsg);
     }
 
@@ -241,7 +241,7 @@ export default class trxManager {
         }
       } catch (error) {
         const errorMsg = `Failed to record KAS payment - Transaction ID: ${transactionHash} - Error: ${error}`;
-        this.monitoring.error(`TrxManager: ${errorMsg}`);
+        this.monitoring.error(`TrxManager: ${errorMsg}\nStack: ${error instanceof Error ? error.stack : 'No stack available'}`);
         throw new Error(errorMsg);
       }
     }
@@ -252,7 +252,7 @@ export default class trxManager {
       this.monitoring.log(`TrxManager: Reset balances for wallet ${toAddresses}`);
     } catch (error) {
       const errorMsg = `Failed to reset balances for wallets: ${toAddresses} - Error: ${error}`;
-      this.monitoring.error(`TrxManager: ${errorMsg}`);
+      this.monitoring.error(`TrxManager: ${errorMsg}\nStack: ${error instanceof Error ? error.stack : 'No stack available'}`);
       throw new Error(errorMsg);
     }
   }
