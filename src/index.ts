@@ -223,6 +223,9 @@ cron.schedule(paymentCronSchedule, () => {
             );
           } catch (error) {
             monitoring.error(`Main: Balance fetch before payout: ${error}`);
+            if (error instanceof Error) {
+              monitoring.error(`Main: Balance fetch before payout stack: ${error.stack}`);
+            }
           }
 
           let poolBalance = 0n;
@@ -238,6 +241,9 @@ cron.schedule(paymentCronSchedule, () => {
             await transactionManager!.transferBalances(balances);
           } catch (error) {
             monitoring.error(`Main: Error during KAS payout: ${error}`);
+            if (error instanceof Error) {
+              monitoring.error(`Main: Error during KAS payout stack: ${error.stack}`);
+            }
           }
 
           // Get quote for KASPA to NACHO for rebate
@@ -254,6 +260,9 @@ cron.schedule(paymentCronSchedule, () => {
               );
             } catch (error) {
               monitoring.error(`Main: Fetching KAS to NACHO quote: ${error}`);
+              if (error instanceof Error) {
+                monitoring.error(`Main: Fetching KAS to NACHO quote stack: ${error.stack}`);
+              }
             }
           }
 
@@ -274,6 +283,9 @@ cron.schedule(paymentCronSchedule, () => {
               monitoring.log(`Main: Scheduled KRC20 balance transfer completed`);
             } catch (error) {
               monitoring.error(`Main: Error during KRC20 transfer: ${error}`);
+              if (error instanceof Error) {
+                monitoring.error(`Main: Error during KRC20 transfer stack: ${error.stack}`);
+              }
             }
           } else {
             monitoring.debug(
@@ -298,9 +310,15 @@ cron.schedule(paymentCronSchedule, () => {
             );
           } catch (error) {
             monitoring.error(`Main: Balance fetch after payout: ${error}`);
+            if (error instanceof Error) {
+              monitoring.error(`Main: Balance fetch after payout stack: ${error.stack}`);
+            }
           }
         } catch (transactionError) {
           monitoring.error(`Main: Transaction manager error: ${transactionError}`);
+          if (transactionError instanceof Error) {
+            monitoring.error(`Main: Transaction manager error stack: ${transactionError.stack}`);
+          }
         }
       } else {
         monitoring.error('Main: RPC connection is not established before balance transfer');
@@ -331,6 +349,9 @@ cron.schedule(paymentAlertCronSchedule, () => {
           await tgBotObj.checkTreasuryWalletForAlert(transactionManager!);
         } catch (error) {
           monitoring.error(`Main: payment alert: ${error}`);
+          if (error instanceof Error) {
+            monitoring.error(`Main: payment alert stack: ${error.stack}`);
+          }
         }
       } else {
         monitoring.error('Main: RPC connection is not established before alerting cron');
@@ -342,6 +363,9 @@ cron.schedule(paymentAlertCronSchedule, () => {
       monitoring.log('Main: ✅ Alert Cron final sleep done — safe to exit.');
     } catch (error) {
       monitoring.error(`Main: Unhandled error in alertCronSchedule: ${error}`);
+      if (error instanceof Error) {
+        monitoring.error(`Main: Unhandled error in alertCronSchedule stack: ${error.stack}`);
+      }
     }
   };
 });
