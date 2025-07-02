@@ -54,7 +54,7 @@ RUN rustup target add wasm32-unknown-unknown
 # Step 7: Clone the rusty-kaspa repository (this layer will be cached unless the git ref changes)
 RUN git clone https://github.com/kaspanet/rusty-kaspa /rusty-kaspa && \
     cd /rusty-kaspa && \
-    git checkout v1.0.0
+    git checkout v1.0.1
 
 # Step 8: Build WASM (this expensive step will be cached)
 WORKDIR /rusty-kaspa/wasm
