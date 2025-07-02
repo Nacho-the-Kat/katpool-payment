@@ -206,9 +206,9 @@ export default class trxManager {
         try {
           const entry = entries.find(e => e.address === address);
           const amount = entry && entry.amount ? sompiToKAS(Number(entry.amount)) : 'UNKNOWN';
-          this.monitoring.log(`TrxManager: Recipient: ${address} | amount: ${amount}`);
+          this.monitoring.log(`TrxManager: Recipient: ${address} | amount: ${amount} | transaction hash: ${transactionHash}`);
         } catch (error) {
-          this.monitoring.error(`TrxManager: Error logging recipient ${address}: ${error}`);
+          this.monitoring.error(`TrxManager: Error logging recipient ${address} | transaction hash: ${transactionHash} | error: ${error}`);
           // Continue with next address
         }
       }
