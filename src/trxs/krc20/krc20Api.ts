@@ -6,8 +6,6 @@ import { CONFIG } from '../../constants';
 export let KASPLEX_URL = 'https://api.kasplex.org';
 if (CONFIG.network === 'testnet-10') {
   KASPLEX_URL = 'https://tn10api.kasplex.org';
-} else if (CONFIG.network === 'testnet-11') {
-  KASPLEX_URL = 'https://tn11api.kasplex.org';
 }
 
 let krc20TokenAPI = `${KASPLEX_URL}/v1/krc20/address/{address}/token/{ticker}`;
@@ -15,8 +13,6 @@ let krc20TokenAPI = `${KASPLEX_URL}/v1/krc20/address/{address}/token/{ticker}`;
 let KRC721_STREAM_URL = 'https://mainnet.krc721.stream';
 if (CONFIG.network === 'testnet-10') {
   KRC721_STREAM_URL = 'https://testnet-10.krc721.stream';
-} else if (CONFIG.network === 'testnet-11') {
-  KRC721_STREAM_URL = 'https://testnet-11.krc721.stream';
 }
 let NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${CONFIG.network}/address/{address}/{ticker}`;
 
