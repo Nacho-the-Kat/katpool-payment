@@ -38,11 +38,15 @@ process.on('exit', code => {
 });
 
 process.on('uncaughtException', err => {
-  monitoring.error(`Main: Uncaught Exception: ${err}`);
+  monitoring.error(`Main: Uncaught Exception: ${err}\n${err.stack}`);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  monitoring.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  let message = `Unhandled Rejection at: ${promise}, reason: ${reason}`;
+  if (reason instanceof Error && reason.stack) {
+    message += `\n${reason.stack}`;
+  }
+  monitoring.error(message);
 });
 
 process.on('SIGINT', () => {
@@ -140,6 +144,9 @@ const exitStepsPaymentCron = async () => {
     });
   } catch (error) {
     monitoring.error(`Main: Removing event listener for 'utxos-changed': ${error}`);
+    if (error instanceof Error && error.stack) {
+      monitoring.error(error.stack);
+    }
   }
 
   monitoring.log(`Main: Invoking DB Pool stats after every operation completion...`);
@@ -219,6 +226,9 @@ cron.schedule(paymentCronSchedule, () => {
             );
           } catch (error) {
             monitoring.error(`Main: Balance fetch before payout: ${error}`);
+            if (error instanceof Error && error.stack) {
+              monitoring.error(error.stack);
+            }
           }
 
           let poolBalance = 0n;
@@ -234,6 +244,9 @@ cron.schedule(paymentCronSchedule, () => {
             await transactionManager!.transferBalances(balances);
           } catch (error) {
             monitoring.error(`Main: Error during KAS payout: ${error}`);
+            if (error instanceof Error && error.stack) {
+              monitoring.error(error.stack);
+            }
           }
 
           // Get quote for KASPA to NACHO for rebate
@@ -250,6 +263,9 @@ cron.schedule(paymentCronSchedule, () => {
               );
             } catch (error) {
               monitoring.error(`Main: Fetching KAS to NACHO quote: ${error}`);
+              if (error instanceof Error && error.stack) {
+                monitoring.error(error.stack);
+              }
             }
           }
 
@@ -270,6 +286,9 @@ cron.schedule(paymentCronSchedule, () => {
               monitoring.log(`Main: Scheduled KRC20 balance transfer completed`);
             } catch (error) {
               monitoring.error(`Main: Error during KRC20 transfer: ${error}`);
+              if (error instanceof Error && error.stack) {
+                monitoring.error(error.stack);
+              }
             }
           } else {
             monitoring.debug(
@@ -294,9 +313,15 @@ cron.schedule(paymentCronSchedule, () => {
             );
           } catch (error) {
             monitoring.error(`Main: Balance fetch after payout: ${error}`);
+            if (error instanceof Error && error.stack) {
+              monitoring.error(error.stack);
+            }
           }
         } catch (transactionError) {
           monitoring.error(`Main: Transaction manager error: ${transactionError}`);
+          if (transactionError instanceof Error && transactionError.stack) {
+            monitoring.error(transactionError.stack);
+          }
         }
       } else {
         monitoring.error('Main: RPC connection is not established before balance transfer');
@@ -307,6 +332,9 @@ cron.schedule(paymentCronSchedule, () => {
       monitoring.log('Main: ✅ Payment Cron final sleep done — safe to exit.');
     } catch (error) {
       monitoring.error(`Main: Unhandled error in paymentCronSchedule: ${error}`);
+      if (error instanceof Error && error.stack) {
+        monitoring.error(error.stack);
+      }
     }
   })();
 });
@@ -326,6 +354,9 @@ cron.schedule(paymentAlertCronSchedule, () => {
           await tgBotObj.checkTreasuryWalletForAlert(transactionManager!);
         } catch (error) {
           monitoring.error(`Main: payment alert: ${error}`);
+          if (error instanceof Error && error.stack) {
+            monitoring.error(error.stack);
+          }
         }
       } else {
         monitoring.error('Main: RPC connection is not established before alerting cron');
@@ -337,6 +368,9 @@ cron.schedule(paymentAlertCronSchedule, () => {
       monitoring.log('Main: ✅ Alert Cron final sleep done — safe to exit.');
     } catch (error) {
       monitoring.error(`Main: Unhandled error in alertCronSchedule: ${error}`);
+      if (error instanceof Error && error.stack) {
+        monitoring.error(error.stack);
+      }
     }
   };
 });
