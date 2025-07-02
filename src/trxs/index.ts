@@ -18,7 +18,7 @@ import { db, DEBUG } from '../index';
 import { CONFIG } from '../constants';
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { sompiToKAS } from '../utils';
-
+import datadogLogger from '../monitoring/datadog';
 export default class trxManager {
   public networkId: string;
   public rpc: RpcClient;
@@ -200,6 +200,22 @@ export default class trxManager {
     // Reset the balance for the wallet after the transaction has matured
     await this.db.resetBalancesByWallet(toAddresses);
     this.monitoring.log(`TrxManager: Reset balances for wallet ${toAddresses}`);
+    // Log all successful payments with amounts, recipient, and transaction ID.
+    try {
+      this.monitoring.log(`TrxManager: Transaction ID: ${transactionHash}`);
+      for(const address of toAddresses) {
+        try {
+          const entry = entries.find(e => e.address === address);
+          const amount = entry && entry.amount ? sompiToKAS(Number(entry.amount)) : 'UNKNOWN';
+          datadogLogger.info(`TrxManager: Recipient: ${address}`, { amount });
+        } catch (error) {
+          this.monitoring.error(`TrxManager: Error logging recipient ${address}: ${error}`);
+          // Continue with next address
+        }
+      }
+    } catch (error) {
+      this.monitoring.error(`TrxManager: Error during logging: ${error}`);
+    }
   }
 
   private async waitForMatureUtxo(transactionId: string): Promise<void> {
