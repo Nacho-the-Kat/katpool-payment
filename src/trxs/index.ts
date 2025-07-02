@@ -18,7 +18,6 @@ import { db, DEBUG } from '../index';
 import { CONFIG } from '../constants';
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { sompiToKAS } from '../utils';
-
 export default class trxManager {
   public networkId: string;
   public rpc: RpcClient;
@@ -200,6 +199,22 @@ export default class trxManager {
     // Reset the balance for the wallet after the transaction has matured
     await this.db.resetBalancesByWallet(toAddresses);
     this.monitoring.log(`TrxManager: Reset balances for wallet ${toAddresses}`);
+    // Log all successful payments with amounts, recipient, and transaction ID.
+    try {
+      this.monitoring.log(`TrxManager: Transaction ID: ${transactionHash}`);
+      for(const address of toAddresses) {
+        try {
+          const entry = entries.find(e => e.address === address);
+          const amount = entry && entry.amount ? sompiToKAS(Number(entry.amount)) : 'UNKNOWN';
+          this.monitoring.log(`TrxManager: Recipient: ${address} | amount: ${amount} | transaction hash: ${transactionHash}`);
+        } catch (error) {
+          this.monitoring.error(`TrxManager: Error logging recipient ${address} | transaction hash: ${transactionHash} | error: ${error}`);
+          // Continue with next address
+        }
+      }
+    } catch (error) {
+      this.monitoring.error(`TrxManager: Error during logging: ${error}`);
+    }
   }
 
   private async waitForMatureUtxo(transactionId: string): Promise<void> {
