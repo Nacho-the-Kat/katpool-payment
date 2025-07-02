@@ -26,14 +26,14 @@ const timeout = 180000; // 3 minutes timeout
 const monitoring = new Monitoring();
 
 // UTXO selection thresholds in sompi (1 KAS = 100_000_000 sompi)
-const PREFERRED_MIN_UTXO = BigInt(kaspaToSompi('5')!); // 5 KAS
+const PREFERRED_MIN_UTXO = BigInt(kaspaToSompi('3')!); // 3 KAS
 const ABSOLUTE_MIN_UTXO = BigInt(kaspaToSompi('1')!); // 1 KAS
 
 // Helper function to find suitable UTXO
 function findSuitableUtxo(entries: any[]): any {
   if (!entries.length) return null;
 
-  // First try to find a UTXO ≥ 5 KAS
+  // First try to find a UTXO ≥ 3 KAS
   let utxo = entries.find(entry => BigInt(entry.entry.amount) >= PREFERRED_MIN_UTXO);
 
   // If not found, try to find a UTXO ≥ 1 KAS
