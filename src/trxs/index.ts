@@ -18,7 +18,6 @@ import { db, DEBUG } from '../index';
 import { CONFIG } from '../constants';
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { sompiToKAS } from '../utils';
-import datadogLogger from '../monitoring/datadog';
 export default class trxManager {
   public networkId: string;
   public rpc: RpcClient;
@@ -207,7 +206,7 @@ export default class trxManager {
         try {
           const entry = entries.find(e => e.address === address);
           const amount = entry && entry.amount ? sompiToKAS(Number(entry.amount)) : 'UNKNOWN';
-          datadogLogger.info(`TrxManager: Recipient: ${address}`, { amount });
+          this.monitoring.log(`TrxManager: Recipient: ${address} | amount: ${amount}`);
         } catch (error) {
           this.monitoring.error(`TrxManager: Error logging recipient ${address}: ${error}`);
           // Continue with next address
