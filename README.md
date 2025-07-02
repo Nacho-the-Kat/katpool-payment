@@ -2,27 +2,30 @@
 
 Check [katpool-app](https://github.com/argonmining/katpool-app) repo for details
 
-## Download Kaspa WASM
+## Download Kaspa WASM SDK
 
-** IMPORTANT **
-Before anything, add wasm foolder to the local folder
-You can download the latest form here: https://kaspa.aspectron.org/nightly/downloads/ move nodejs to the repo folder as wasm
-unzip, rename and move `nodejs` that contains `kaspa` and kaspa-dev`to`wasm` folder locally.
+**Note:** This setup is intended for **local development only**.
 
-## Create env variables
+### Steps:
 
-create .env file
+1. Download the latest Kaspa WASM SDK from the official Rusty-Kaspa GitHub releases:
+   [rusty-kaspa/releases](https://github.com/kaspanet/rusty-kaspa/releases)
 
-```
-TREASURY_PRIVATE_KEY=<private key>
-POSTGRES_USER=<db-user>
-POSTGRES_PASSWORD=<db-passwd>
-POSTGRES_DB=<db-name>
-POSTGRES_HOSTNAME='katpool-db' # Configure the hostname.
-DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOSTNAME}:5432/${POSTGRES_DB}"
-DEBUG=1
-TELEGRAM_BOT_TOKEN=''
-```
+2. Locate and download the file named:
+   kaspa-wasm32-sdk-<LATEST_VERSION>.zip
+
+Example: `kaspa-wasm32-sdk-v1.0.0.zip`
+
+3. Extract the archive and locate the `nodejs` directory inside it.
+
+4. Rename the extracted `nodejs` folder to `wasm` and place it inside your project repository.
+
+The folder should contain:
+
+- `kaspa`
+- `kaspa-dev`
+
+5. Ensure that the import paths in your code correctly reference the local `wasm` folder.
 
 ## Config file
 
