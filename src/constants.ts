@@ -54,8 +54,6 @@ let KASPA_BASE_URL = 'https://api.kaspa.org';
 
 if (CONFIG.network === 'testnet-10') {
   KASPA_BASE_URL = 'https://api-tn10.kaspa.org';
-} else if (CONFIG.network === 'testnet-11') {
-  KASPA_BASE_URL = 'https://api-tn11.kaspa.org';
 }
 
 export { KASPA_BASE_URL, CONFIG };
