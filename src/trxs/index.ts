@@ -276,7 +276,7 @@ export default class trxManager {
     await this.processor.stop();
   }
 
-  private async fetchMatureUTXOs() {
+  async fetchMatureUTXOs() {
     const coinbaseMaturity = 1000;
     // Fetch current DAA score
     const { virtualDaaScore } = await this.rpc.getBlockDagInfo();

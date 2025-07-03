@@ -153,8 +153,7 @@ export async function transferKRC20(
   }
 
   try {
-    const { entries } = await rpc.getUtxosByAddresses({ addresses: [treasuryAddr.toString()] });
-
+    const entries = await transactionManager.fetchMatureUTXOs();
     // Find a suitable UTXO
     const selectedUtxo = findSuitableUtxo(entries);
     if (!selectedUtxo) {
@@ -280,7 +279,7 @@ export async function transferKRC20(
   if (eventReceived) {
     eventReceived = false;
     monitoring.debug(`KRC20Transfer: creating UTXO entries from ${treasuryAddr.toString()}`);
-    const { entries } = await rpc.getUtxosByAddresses({ addresses: [treasuryAddr.toString()] });
+    const entries = await transactionManager.fetchMatureUTXOs();
     monitoring.debug(`KRC20Transfer: creating revealUTXOs from P2SHAddress`);
     const revealUTXOs = await rpc.getUtxosByAddresses({ addresses: [P2SHAddress.toString()] });
     monitoring.debug(`KRC20Transfer: Creating Transaction with revealUTX0s entries.`);
