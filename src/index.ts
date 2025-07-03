@@ -92,11 +92,20 @@ const alertInterval = cronParser.parseExpression(paymentAlertCronSchedule);
 const nextAlertScedule = new Date(alertInterval.next().getTime()).toISOString();
 if (DEBUG) monitoring.debug(`Main: Next alert is scheduled at ${nextAlertScedule}`);
 
+let rpcUrl = 'kaspad:17110';
+if (CONFIG.network === 'testnet-10') {
+  rpcUrl = 'kaspad-test10:17210';
+}
+
+monitoring.log(`Main: rpc url: ${rpcUrl}`);
+
 const rpc = new RpcClient({
-  resolver: new Resolver(),
+  url: rpcUrl, // This is WRPC (borsh) end point
+  // resolver: new Resolver(),
   encoding: Encoding.Borsh,
   networkId: CONFIG.network,
 });
+
 const swapToKrc20Obj = new swapToKrc20();
 
 let transactionManager: trxManager | null = null;

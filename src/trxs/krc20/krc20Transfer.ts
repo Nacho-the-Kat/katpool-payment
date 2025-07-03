@@ -5,6 +5,7 @@ import {
   addressFromScriptPublicKey,
   createTransactions,
   kaspaToSompi,
+  PendingTransaction,
 } from '../../../wasm/kaspa';
 import { CONFIG } from '../../constants';
 import Monitoring from '../../monitoring';
@@ -13,6 +14,7 @@ import trxManager from '../index.ts';
 import { fetchAccountTransactionCount, fetchKASBalance, withWatchdog } from '../../utils.ts';
 import { pendingKRC20TransferField, status } from '../../database/index.ts';
 import { recordPayment, resetBalancesByWallet } from './transferKrc20Tokens.ts';
+import { validatePendingTransactions } from '../utils.ts';
 
 let ticker = CONFIG.defaultTicker;
 let dest = '';
@@ -152,8 +154,7 @@ export async function transferKRC20(
   }
 
   try {
-    const { entries } = await rpc.getUtxosByAddresses({ addresses: [treasuryAddr.toString()] });
-
+    const entries = await transactionManager.fetchMatureUTXOs();
     // Find a suitable UTXO
     const selectedUtxo = findSuitableUtxo(entries);
     if (!selectedUtxo) {
@@ -165,26 +166,46 @@ export async function transferKRC20(
 
     // First transaction: Send the UTXO to P2SH address
     if (entries.length === 1) utxoAmount = utxoAmount - 3n * BigInt(feeInSompi)!;
-    const { transactions } = await createTransactions({
-      priorityEntries: [selectedUtxo],
-      entries: entries.filter(e => e !== selectedUtxo),
-      outputs: [
-        {
-          address: P2SHAddress.toString(),
-          amount: PREFERRED_MIN_UTXO, // Send PREFERRED_MIN_UTXO
-        },
-      ],
-      changeAddress: treasuryAddr.toString(),
-      priorityFee: feeInSompi,
-      networkId: network,
-    });
+
+    let transactions: PendingTransaction[];
+    try {
+      const result = await createTransactions({
+        priorityEntries: [selectedUtxo],
+        entries: entries.filter(e => e !== selectedUtxo),
+        outputs: [
+          {
+            address: P2SHAddress.toString(),
+            amount: PREFERRED_MIN_UTXO, // Send PREFERRED_MIN_UTXO
+          },
+        ],
+        changeAddress: treasuryAddr.toString(),
+        priorityFee: feeInSompi,
+        networkId: network,
+      });
+      transactions = result.transactions;
+    } catch (error) {
+      monitoring.error(`KRC20Transfer: Failed to create transactions: ${error}`);
+      return;
+    }
 
     for (const transaction of transactions) {
-      transaction.sign([privateKey]);
-      monitoring.debug(`KRC20Transfer: Transaction signed with ID: ${transaction.id}`);
-      const hash = await transaction.submit(rpc);
-      monitoring.log(`KRC20Transfer: submitted P2SH commit sequence transaction on: ${hash}`);
-      SubmittedtrxId = hash;
+      validatePendingTransactions(transaction, privateKey, transactionManager.networkId);
+      try {
+        transaction.sign([privateKey]);
+        monitoring.debug(`KRC20Transfer: Transaction signed with ID: ${transaction.id}`);
+      } catch (error) {
+        monitoring.error(`KRC20Transfer: Failed to sign transaction: ${error}`);
+        return;
+      }
+
+      try {
+        const hash = await transaction.submit(rpc);
+        monitoring.log(`KRC20Transfer: submitted P2SH commit sequence transaction on: ${hash}`);
+        SubmittedtrxId = hash;
+      } catch (error) {
+        monitoring.error(`KRC20Transfer: Failed to submit transaction: ${error}`);
+        return;
+      }
 
       try {
         let actualKASAmount = kasAmount;
@@ -193,7 +214,7 @@ export async function transferKRC20(
           actualKASAmount = actualKASAmount * 3n;
         }
         await db.recordPendingKRC20Transfer(
-          hash,
+          SubmittedtrxId,
           actualKASAmount,
           BigInt(amount),
           pDest,
@@ -260,7 +281,7 @@ export async function transferKRC20(
   if (eventReceived) {
     eventReceived = false;
     monitoring.debug(`KRC20Transfer: creating UTXO entries from ${treasuryAddr.toString()}`);
-    const { entries } = await rpc.getUtxosByAddresses({ addresses: [treasuryAddr.toString()] });
+    const entries = await transactionManager.fetchMatureUTXOs();
     monitoring.debug(`KRC20Transfer: creating revealUTXOs from P2SHAddress`);
     const revealUTXOs = await rpc.getUtxosByAddresses({ addresses: [P2SHAddress.toString()] });
     monitoring.debug(`KRC20Transfer: Creating Transaction with revealUTX0s entries.`);
@@ -268,26 +289,40 @@ export async function transferKRC20(
     // Second transaction: Return everything except the fixed fee
     const revealUtxoAmount = BigInt(revealUTXOs.entries[0].entry.amount);
 
-    const { transactions } = await createTransactions({
-      priorityEntries: [revealUTXOs.entries[0]],
-      entries: entries,
-      outputs: [
-        {
-          address: treasuryAddr.toString(), // Return to sender
-          amount: revealUtxoAmount, // Return everything
-        },
-      ],
-      changeAddress: treasuryAddr.toString(),
-      priorityFee: feeInSompi,
-      networkId: network,
-    });
+    let transactions: PendingTransaction[];
+    try {
+      const result = await createTransactions({
+        priorityEntries: [revealUTXOs.entries[0]],
+        entries: entries,
+        outputs: [
+          {
+            address: treasuryAddr.toString(), // Return to sender
+            amount: revealUtxoAmount, // Return everything
+          },
+        ],
+        changeAddress: treasuryAddr.toString(),
+        priorityFee: feeInSompi,
+        networkId: network,
+      });
+      transactions = result.transactions;
+    } catch (error) {
+      monitoring.error(`KRC20Transfer: Failed to create reveal transactions: ${error}`);
+      return;
+    }
 
     let revealHash: any;
     for (const transaction of transactions) {
-      transaction.sign([privateKey], false);
-      monitoring.debug(
-        `KRC20Transfer: Transaction with revealUTX0s signed with ID: ${transaction.id}`
-      );
+      validatePendingTransactions(transaction, privateKey, transactionManager.networkId);
+      try {
+        transaction.sign([privateKey], false);
+        monitoring.debug(
+          `KRC20Transfer: Transaction with revealUTX0s signed with ID: ${transaction.id}`
+        );
+      } catch (error) {
+        monitoring.error(`KRC20Transfer: Failed to sign reveal transaction: ${error}`);
+        return;
+      }
+
       const ourOutput = transaction.transaction.inputs.findIndex(
         input => input.signatureScript === ''
       );
@@ -295,9 +330,15 @@ export async function transferKRC20(
         const signature = await transaction.createInputSignature(ourOutput, privateKey);
         transaction.fillInput(ourOutput, script.encodePayToScriptHashSignatureScript(signature));
       }
-      revealHash = await transaction.submit(rpc);
-      monitoring.log(`KRC20Transfer: submitted reveal tx sequence transaction: ${revealHash}`);
-      SubmittedtrxId = revealHash;
+
+      try {
+        revealHash = await transaction.submit(rpc);
+        monitoring.log(`KRC20Transfer: submitted reveal tx sequence transaction: ${revealHash}`);
+        SubmittedtrxId = revealHash;
+      } catch (error) {
+        monitoring.error(`KRC20Transfer: Failed to submit reveal transaction: ${error}`);
+        return;
+      }
     }
 
     const revealTimeout = setTimeout(() => {
