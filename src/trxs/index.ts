@@ -1,14 +1,12 @@
 import Database, { MinerBalanceRow } from '../database';
 import {
   PendingTransaction,
-  sompiToKaspaStringWithSuffix,
   type IPaymentOutput,
   createTransactions,
   PrivateKey,
   UtxoProcessor,
   UtxoContext,
   type RpcClient,
-  maximumStandardTransactionMass,
   addressFromScriptPublicKey,
   calculateTransactionFee,
   kaspaToSompi,
@@ -18,6 +16,7 @@ import { db, DEBUG } from '../index';
 import { CONFIG } from '../constants';
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { sompiToKAS } from '../utils';
+import { validatePendingTransactions } from './utils';
 export default class trxManager {
   public networkId: string;
   public rpc: RpcClient;
@@ -147,28 +146,7 @@ export default class trxManager {
   }
 
   private async processTransaction(transaction: PendingTransaction) {
-    if (DEBUG) this.monitoring.debug(`TrxManager: Signing transaction ID: ${transaction.id}`);
-    // Ensure the private key is valid before signing
-    if (!this.privateKey) {
-      throw new Error(`Private key is missing or invalid.`);
-    }
-
-    // Validate change amount before submission
-    this.monitoring.debug(
-      `TrxManager: Change amount for transaction ID: ${transaction.id} - ${sompiToKaspaStringWithSuffix(transaction.changeAmount, this.networkId)}`
-    );
-    if (transaction.changeAmount < kaspaToSompi('0.02')!) {
-      this.monitoring.error(
-        `Transaction ID ${transaction.id} has change amount less than 0.02 KAS. Skipping transaction.`
-      );
-    }
-
-    // Validate transaction mass before submission
-    const txMass = transaction.transaction.mass;
-    if (txMass > maximumStandardTransactionMass()) {
-      this.monitoring.error(`Transaction mass ${txMass} exceeds maximum standard mass`);
-    }
-
+    validatePendingTransactions(transaction, this.privateKey, this.networkId);
     try {
       transaction.sign([this.privateKey]);
     } catch (error) {

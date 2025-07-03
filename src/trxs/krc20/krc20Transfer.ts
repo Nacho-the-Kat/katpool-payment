@@ -14,6 +14,7 @@ import trxManager from '../index.ts';
 import { fetchAccountTransactionCount, fetchKASBalance, withWatchdog } from '../../utils.ts';
 import { pendingKRC20TransferField, status } from '../../database/index.ts';
 import { recordPayment, resetBalancesByWallet } from './transferKrc20Tokens.ts';
+import { validatePendingTransactions } from '../utils.ts';
 
 let ticker = CONFIG.defaultTicker;
 let dest = '';
@@ -188,6 +189,7 @@ export async function transferKRC20(
     }
 
     for (const transaction of transactions) {
+      validatePendingTransactions(transaction, privateKey, transactionManager.networkId);
       try {
         transaction.sign([privateKey]);
         monitoring.debug(`KRC20Transfer: Transaction signed with ID: ${transaction.id}`);
@@ -310,6 +312,7 @@ export async function transferKRC20(
 
     let revealHash: any;
     for (const transaction of transactions) {
+      validatePendingTransactions(transaction, privateKey, transactionManager.networkId);
       try {
         transaction.sign([privateKey], false);
         monitoring.debug(
