@@ -119,13 +119,20 @@ export default class trxManager {
     const FIXED_FEE = '0.0001'; // Fixed minimal fee
     const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 
-    const { transactions } = await createTransactions({
-      entries: matureEntries,
-      outputs,
-      changeAddress: this.address,
-      priorityFee: feeInSompi,
-      networkId: this.networkId,
-    });
+    let transactions: PendingTransaction[];
+    try {
+      const result = await createTransactions({
+        entries: matureEntries,
+        outputs,
+        changeAddress: this.address,
+        priorityFee: feeInSompi,
+        networkId: this.networkId,
+      });
+      transactions = result.transactions;
+    } catch (error) {
+      this.monitoring.error(`TrxManager: Failed to create transactions: ${error}`);
+      return;
+    }
 
     // Log the lengths to debug any potential mismatch
     this.monitoring.log(
@@ -161,13 +168,25 @@ export default class trxManager {
     if (txMass > maximumStandardTransactionMass()) {
       this.monitoring.error(`Transaction mass ${txMass} exceeds maximum standard mass`);
     }
-    transaction.sign([this.privateKey]);
+
+    try {
+      transaction.sign([this.privateKey]);
+    } catch (error) {
+      this.monitoring.error(`TrxManager: Failed to sign transaction ${transaction.id}: ${error}`);
+      return;
+    }
 
     //const txFee = calculateTransactionFee(this.networkId, transaction.transaction, 1)!;
     //this.monitoring.log(`TrxManager: Tx Fee ${sompiToKaspaStringWithSuffix(txFee, this.networkId)}`);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
-    const transactionHash = await transaction.submit(this.processor.rpc);
+    let transactionHash;
+    try {
+      transactionHash = await transaction.submit(this.processor.rpc);
+    } catch (error) {
+      this.monitoring.error(`TrxManager: Failed to submit transaction ${transaction.id}: ${error}`);
+      return;
+    }
 
     if (DEBUG)
       this.monitoring.debug(`TrxManager: Waiting for transaction ID: ${transaction.id} to mature`);
@@ -202,13 +221,17 @@ export default class trxManager {
     // Log all successful payments with amounts, recipient, and transaction ID.
     try {
       this.monitoring.log(`TrxManager: Transaction ID: ${transactionHash}`);
-      for(const address of toAddresses) {
+      for (const address of toAddresses) {
         try {
           const entry = entries.find(e => e.address === address);
           const amount = entry && entry.amount ? sompiToKAS(Number(entry.amount)) : 'UNKNOWN';
-          this.monitoring.log(`TrxManager: Recipient: ${address} | amount: ${amount} | transaction hash: ${transactionHash}`);
+          this.monitoring.log(
+            `TrxManager: Recipient: ${address} | amount: ${amount} | transaction hash: ${transactionHash}`
+          );
         } catch (error) {
-          this.monitoring.error(`TrxManager: Error logging recipient ${address} | transaction hash: ${transactionHash} | error: ${error}`);
+          this.monitoring.error(
+            `TrxManager: Error logging recipient ${address} | transaction hash: ${transactionHash} | error: ${error}`
+          );
           // Continue with next address
         }
       }
