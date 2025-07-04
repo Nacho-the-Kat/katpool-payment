@@ -4,7 +4,7 @@ import {
   PendingTransaction,
   PrivateKey,
   sompiToKaspaStringWithSuffix,
-} from '../../wasm/kaspa/kaspa';
+} from '../../wasm/kaspa-dev/kaspa';
 import { DEBUG } from '../index';
 import Monitoring from '../monitoring';
 

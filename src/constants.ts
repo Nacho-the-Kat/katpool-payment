@@ -1,9 +1,11 @@
 import fs from 'fs';
 import Monitoring from './monitoring';
 import path from 'path';
-import { kaspaToSompi } from '../wasm/kaspa/kaspa';
+import { kaspaToSompi } from '../wasm/kaspa-dev/kaspa';
 
 const monitoring = new Monitoring();
+
+export const FIXED_FEE = '0.0001'; // Fixed minimal fee
 
 // Default values
 const DEFAULT_CONFIG = {

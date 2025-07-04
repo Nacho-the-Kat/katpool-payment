@@ -9,7 +9,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { RpcClient, Encoding, Resolver } from '../wasm/kaspa';
+import { RpcClient, Encoding, Resolver } from '../wasm/kaspa-dev';
 import { CONFIG } from './constants';
 import Monitoring from './monitoring';
 import trxManager from './trxs';
@@ -267,9 +267,11 @@ cron.schedule(paymentCronSchedule, () => {
             try {
               poolBalance = (BigInt(poolBalance) * BigInt(CONFIG.nachoSwap * 100)) / 10000n;
               amount = await swapToKrc20Obj!.swapKaspaToKRC(poolBalance);
-              monitoring.debug(
-                `Main: Amount of ${CONFIG.defaultTicker} tokens to be used for NACHO rebate: ${sompiToKAS(Number(amount))} ${CONFIG.defaultTicker}`
-              );
+              if (amount != -1n) {
+                monitoring.debug(
+                  `Main: Amount of ${CONFIG.defaultTicker} tokens to be used for NACHO rebate: ${sompiToKAS(Number(amount))} ${CONFIG.defaultTicker}`
+                );
+              }
             } catch (error) {
               monitoring.error(`Main: Fetching KAS to NACHO quote: ${error}`);
               if (error instanceof Error && error.stack) {
@@ -279,7 +281,11 @@ cron.schedule(paymentCronSchedule, () => {
           }
 
           // Transfer NACHO
-          if (amount != 0n && treasuryNACHOBalance > amount) {
+          if (amount == -1n) {
+            monitoring.debug(
+              `Main: NACHO rebate transfer skipped — floor price could not be fetched.`
+            );
+          } else if (amount > 0n && treasuryNACHOBalance > amount) {
             try {
               // Wait for one minute before invoking KRC20 transfers.
               await Bun.sleep(60000);
@@ -371,7 +377,11 @@ cron.schedule(paymentAlertCronSchedule, () => {
         monitoring.error('Main: RPC connection is not established before alerting cron');
       }
 
-      await transactionManager?.unregisterProcessor();
+      try {
+        await transactionManager?.unregisterProcessor();
+      } catch (error) {
+        monitoring.error(`Main: unregistering processor: ${error}`);
+      }
 
       await Bun.sleep(1000); // Just before unregisterProcessor
       monitoring.log('Main: ✅ Alert Cron final sleep done — safe to exit.');

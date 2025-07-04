@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { CONFIG, KASPA_BASE_URL } from './constants';
 import Monitoring from './monitoring';
-import { kaspaToSompi } from '../wasm/kaspa/kaspa';
+import { kaspaToSompi } from '../wasm/kaspa-dev/kaspa';
 
 const monitoring = new Monitoring();
 
@@ -79,11 +79,4 @@ export async function fetchAccountTransactionCount(address: string) {
     monitoring.error(`utils: While getting transaction count of ${address} : ${err}`);
     return 0;
   }
-}
-
-export async function withWatchdog(task: () => Promise<any>, timeoutMs: number) {
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`Timeout: Task took more than ${timeoutMs}ms`)), timeoutMs)
-  );
-  return Promise.race([task(), timeoutPromise]);
 }

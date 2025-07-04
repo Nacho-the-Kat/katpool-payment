@@ -8,15 +8,16 @@ import {
   UtxoContext,
   type RpcClient,
   addressFromScriptPublicKey,
-  calculateTransactionFee,
+  // calculateTransactionFee,
   kaspaToSompi,
-} from '../../wasm/kaspa';
+} from '../../wasm/kaspa-dev';
 import Monitoring from '../monitoring';
 import { db, DEBUG } from '../index';
-import { CONFIG } from '../constants';
-import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
+import { CONFIG, FIXED_FEE } from '../constants';
+import type { ScriptPublicKey } from '../../wasm/kaspa-dev/kaspa';
 import { sompiToKAS } from '../utils';
 import { validatePendingTransactions } from './utils';
+import Jsonbig from 'json-bigint';
 export default class trxManager {
   public networkId: string;
   public rpc: RpcClient;
@@ -36,7 +37,7 @@ export default class trxManager {
     this.privateKey = new PrivateKey(privKey);
     this.address = this.privateKey.toAddress(networkId).toString();
     if (DEBUG) this.monitoring.debug(`TrxManager: Pool Treasury Address: ${this.address}`);
-    this.processor = new UtxoProcessor({ rpc, networkId });
+    this.processor = new UtxoProcessor({ rpc: this.rpc, networkId });
     this.context = new UtxoContext({ processor: this.processor });
     this.registerProcessor();
   }
@@ -115,7 +116,6 @@ export default class trxManager {
 
   private async enqueueTransactions(outputs: IPaymentOutput[]) {
     const matureEntries = await this.fetchMatureUTXOs();
-    const FIXED_FEE = '0.0001'; // Fixed minimal fee
     const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 
     let transactions: PendingTransaction[];
@@ -160,7 +160,7 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
     let transactionHash;
     try {
-      transactionHash = await transaction.submit(this.processor.rpc);
+      transactionHash = await transaction.submit(this.rpc);
     } catch (error) {
       this.monitoring.error(`TrxManager: Failed to submit transaction ${transaction.id}: ${error}`);
       return;
@@ -183,6 +183,11 @@ export default class trxManager {
         data.scriptPublicKey as ScriptPublicKey,
         this.networkId
       );
+      if (!decodedAddress) {
+        this.monitoring.error(
+          `TrxManager: decodedAddress is undefined. for ${Jsonbig.stringify(data)}`
+        );
+      }
       const address = decodedAddress!.prefix + ':' + decodedAddress!.payload;
       const amount = data.value;
       if (address == this.address) continue;
@@ -250,6 +255,7 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: unregisterProcessor - this.context.clear()`);
     await this.context.clear();
     if (DEBUG) this.monitoring.debug(`TrxManager: removeEventListener("utxo-proc-start")`);
+    this.context.unregisterAddresses([this.address]);
     this.processor.removeEventListener('utxo-proc-start', this.utxoProcStartHandler);
     await this.processor.stop();
   }

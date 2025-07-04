@@ -6,12 +6,12 @@ import {
   createTransactions,
   kaspaToSompi,
   PendingTransaction,
-} from '../../../wasm/kaspa';
-import { CONFIG } from '../../constants';
+} from '../../../wasm/kaspa-dev';
+import { CONFIG, FIXED_FEE } from '../../constants';
 import Monitoring from '../../monitoring';
 import { DEBUG, db } from '../../index.ts';
 import trxManager from '../index.ts';
-import { fetchAccountTransactionCount, fetchKASBalance, withWatchdog } from '../../utils.ts';
+import { fetchAccountTransactionCount, fetchKASBalance } from '../../utils.ts';
 import { pendingKRC20TransferField, status } from '../../database/index.ts';
 import { recordPayment, resetBalancesByWallet } from './transferKrc20Tokens.ts';
 import { validatePendingTransactions } from '../utils.ts';
@@ -21,8 +21,7 @@ let dest = '';
 let amount = '1';
 let rpc: RpcClient;
 
-const network = CONFIG.network || 'mainnet';
-const FIXED_FEE = '0.0001'; // Fixed minimal fee
+const network = CONFIG.network;
 const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 const timeout = 180000; // 3 minutes timeout
 const monitoring = new Monitoring();
@@ -46,7 +45,13 @@ function findSuitableUtxo(entries: any[]): any {
   return utxo;
 }
 
-export async function transferKRC20(
+/**
+ * Handles transferring KRC20 tokens to the destination address.
+ * - Logs entry in the Pending KRC20 Transfer table (helps in debugging stuck P2SH transactions).
+ * - Resets the user's KRC20 balance in the database.
+ * - Records the payment in the payment history.
+ */
+export async function transferAndRecordKRC20Payment(
   pRPC: RpcClient,
   pTicker: string,
   pDest: string,
@@ -144,7 +149,13 @@ export async function transferKRC20(
     .addData(Buffer.from(JSON.stringify(data, null, 0)))
     .addOp(Opcodes.OpEndIf);
 
-  const P2SHAddress = addressFromScriptPublicKey(script.createPayToScriptHashScript(), network)!;
+  const P2SHAddress = addressFromScriptPublicKey(script.createPayToScriptHashScript(), network);
+  if (!P2SHAddress) {
+    monitoring.error(
+      `KRC20Transfer: P2SHAddress is undefined for transferring NACHO to ${dest}, amount: ${amount.toString()} NACHO (with decimal).`
+    );
+    return;
+  }
   let eventReceived = false;
   let control = { stopPolling: false }; // Track polling status
 
