@@ -1,4 +1,4 @@
-import { RpcClient } from '../../../wasm/kaspa/kaspa';
+import { RpcClient } from '../../../wasm/kaspa-dev/kaspa';
 import { transferAndRecordKRC20Payment } from './krc20Transfer';
 import Database, { MinerBalanceRow, pendingKRC20TransferField, status } from '../../database';
 import { CONFIG } from '../../constants';

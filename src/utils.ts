@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { CONFIG, KASPA_BASE_URL } from './constants';
 import Monitoring from './monitoring';
-import { kaspaToSompi } from '../wasm/kaspa/kaspa';
+import { kaspaToSompi } from '../wasm/kaspa-dev/kaspa';
 
 const monitoring = new Monitoring();
 

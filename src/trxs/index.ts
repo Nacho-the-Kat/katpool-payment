@@ -10,11 +10,11 @@ import {
   addressFromScriptPublicKey,
   // calculateTransactionFee,
   kaspaToSompi,
-} from '../../wasm/kaspa';
+} from '../../wasm/kaspa-dev';
 import Monitoring from '../monitoring';
 import { db, DEBUG } from '../index';
 import { CONFIG, FIXED_FEE } from '../constants';
-import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
+import type { ScriptPublicKey } from '../../wasm/kaspa-dev/kaspa';
 import { sompiToKAS } from '../utils';
 import { validatePendingTransactions } from './utils';
 export default class trxManager {
