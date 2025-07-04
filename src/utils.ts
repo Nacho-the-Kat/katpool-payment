@@ -80,10 +80,3 @@ export async function fetchAccountTransactionCount(address: string) {
     return 0;
   }
 }
-
-export async function withWatchdog(task: () => Promise<any>, timeoutMs: number) {
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`Timeout: Task took more than ${timeoutMs}ms`)), timeoutMs)
-  );
-  return Promise.race([task(), timeoutPromise]);
-}

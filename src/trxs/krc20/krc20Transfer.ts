@@ -11,7 +11,7 @@ import { CONFIG } from '../../constants';
 import Monitoring from '../../monitoring';
 import { DEBUG, db } from '../../index.ts';
 import trxManager from '../index.ts';
-import { fetchAccountTransactionCount, fetchKASBalance, withWatchdog } from '../../utils.ts';
+import { fetchAccountTransactionCount, fetchKASBalance } from '../../utils.ts';
 import { pendingKRC20TransferField, status } from '../../database/index.ts';
 import { recordPayment, resetBalancesByWallet } from './transferKrc20Tokens.ts';
 import { validatePendingTransactions } from '../utils.ts';
