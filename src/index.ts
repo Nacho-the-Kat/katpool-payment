@@ -371,7 +371,11 @@ cron.schedule(paymentAlertCronSchedule, () => {
         monitoring.error('Main: RPC connection is not established before alerting cron');
       }
 
-      await transactionManager?.unregisterProcessor();
+      try {
+        await transactionManager?.unregisterProcessor();
+      } catch (error) {
+        monitoring.error(`Main: unregistering processor: ${error}`);
+      }
 
       await Bun.sleep(1000); // Just before unregisterProcessor
       monitoring.log('Main: ✅ Alert Cron final sleep done — safe to exit.');

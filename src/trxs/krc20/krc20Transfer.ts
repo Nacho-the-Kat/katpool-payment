@@ -144,7 +144,13 @@ export async function transferKRC20(
     .addData(Buffer.from(JSON.stringify(data, null, 0)))
     .addOp(Opcodes.OpEndIf);
 
-  const P2SHAddress = addressFromScriptPublicKey(script.createPayToScriptHashScript(), network)!;
+  const P2SHAddress = addressFromScriptPublicKey(script.createPayToScriptHashScript(), network);
+  if (!P2SHAddress) {
+    monitoring.error(
+      `KRC20Transfer: P2SHAddress is undefined for transferring NACHO to ${dest}, amount: ${amount.toString()} NACHO (with decimal).`
+    );
+    return;
+  }
   let eventReceived = false;
   let control = { stopPolling: false }; // Track polling status
 

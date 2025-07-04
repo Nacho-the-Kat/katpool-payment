@@ -8,7 +8,7 @@ import {
   UtxoContext,
   type RpcClient,
   addressFromScriptPublicKey,
-  calculateTransactionFee,
+  // calculateTransactionFee,
   kaspaToSompi,
 } from '../../wasm/kaspa';
 import Monitoring from '../monitoring';
@@ -183,6 +183,9 @@ export default class trxManager {
         data.scriptPublicKey as ScriptPublicKey,
         this.networkId
       );
+      if (!decodedAddress) {
+        this.monitoring.error(`TrxManager: decodedAddress is undefined.`);
+      }
       const address = decodedAddress!.prefix + ':' + decodedAddress!.payload;
       const amount = data.value;
       if (address == this.address) continue;
@@ -250,6 +253,7 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: unregisterProcessor - this.context.clear()`);
     await this.context.clear();
     if (DEBUG) this.monitoring.debug(`TrxManager: removeEventListener("utxo-proc-start")`);
+    this.context.unregisterAddresses([this.address]);
     this.processor.removeEventListener('utxo-proc-start', this.utxoProcStartHandler);
     await this.processor.stop();
   }
