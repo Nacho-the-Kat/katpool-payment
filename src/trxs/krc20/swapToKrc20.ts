@@ -1,5 +1,5 @@
 import Monitoring from '../../monitoring/index.ts';
-import puppeteer from 'puppeteer';
+import puppeteer, { Browser } from 'puppeteer';
 
 const quoteURL = 'https://api.kaspa.com/api/floor-price?ticker=NACHO';
 
@@ -13,13 +13,19 @@ export default class swapToKrc20 {
    * @param balance - The amount of KAS (in bigint) to be swapped for NACHO.
    * @returns The equivalent amount of NACHO
    */
-  async swapKaspaToKRC(balance: bigint) {
-    const browser = await puppeteer.launch({
-      headless: true,
-      defaultViewport: null,
-      executablePath: '/usr/bin/google-chrome',
-      args: ['--no-sandbox'],
-    });
+  async swapKaspaToKRC(balance: bigint): Promise<bigint> {
+    let browser: Browser;
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        defaultViewport: null,
+        executablePath: '/usr/bin/google-chrome',
+        args: ['--no-sandbox'],
+      });
+    } catch (error) {
+      monitoring.error(`swapKaspaToKRC: Pupeteer error: ${error}.`);
+      return -1n;
+    }
     const page = await browser.newPage();
 
     // Set realistic headers to avoid bot detection
