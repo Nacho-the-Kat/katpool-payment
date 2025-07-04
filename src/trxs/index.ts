@@ -36,7 +36,7 @@ export default class trxManager {
     this.privateKey = new PrivateKey(privKey);
     this.address = this.privateKey.toAddress(networkId).toString();
     if (DEBUG) this.monitoring.debug(`TrxManager: Pool Treasury Address: ${this.address}`);
-    this.processor = new UtxoProcessor({ rpc, networkId });
+    this.processor = new UtxoProcessor({ rpc: this.rpc, networkId });
     this.context = new UtxoContext({ processor: this.processor });
     this.registerProcessor();
   }
@@ -159,7 +159,7 @@ export default class trxManager {
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
     let transactionHash;
     try {
-      transactionHash = await transaction.submit(this.processor.rpc);
+      transactionHash = await transaction.submit(this.rpc);
     } catch (error) {
       this.monitoring.error(`TrxManager: Failed to submit transaction ${transaction.id}: ${error}`);
       return;
