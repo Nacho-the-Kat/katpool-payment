@@ -7,7 +7,7 @@ import {
   kaspaToSompi,
   PendingTransaction,
 } from '../../../wasm/kaspa';
-import { CONFIG } from '../../constants';
+import { CONFIG, FIXED_FEE } from '../../constants';
 import Monitoring from '../../monitoring';
 import { DEBUG, db } from '../../index.ts';
 import trxManager from '../index.ts';
@@ -21,8 +21,7 @@ let dest = '';
 let amount = '1';
 let rpc: RpcClient;
 
-const network = CONFIG.network || 'mainnet';
-const FIXED_FEE = '0.0001'; // Fixed minimal fee
+const network = CONFIG.network;
 const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 const timeout = 180000; // 3 minutes timeout
 const monitoring = new Monitoring();
