@@ -71,34 +71,6 @@ export async function transferAndRecordKRC20Payment(
   const treasuryAddr = transactionManager.address;
   const privateKey = transactionManager.privateKey;
 
-  // New UTXO subscription setup (ADD this):
-  monitoring.debug(
-    `KRC20Transfer: Subscribing to UTXO changes for address: ${treasuryAddr.toString()}`
-  );
-
-  try {
-    try {
-      monitoring.debug(
-        `KRC20Transfer: Unsubscribing to UTXO changes for address: ${treasuryAddr.toString()}`
-      );
-      await rpc.unsubscribeUtxosChanged([treasuryAddr.toString()]);
-      monitoring.debug(`KRC20Transfer: this.context.clear()`);
-      await transactionManager?.context?.clear();
-    } catch (error) {
-      monitoring.debug(
-        `KRC20Transfer: Unsubscribing to UTXO changes for address: ${treasuryAddr.toString()}: ${error}`
-      );
-    }
-    // New UTXO subscription setup (ADD this):
-    monitoring.debug(
-      `KRC20Transfer: Subscribing to UTXO changes for address: ${treasuryAddr.toString()}`
-    );
-    await rpc.subscribeUtxosChanged([treasuryAddr.toString()]);
-  } catch (error) {
-    monitoring.error(`KRC20Transfer: Failed to subscribe to UTXO changes: ${error}`);
-    return;
-  }
-
   const utxosChangedStartHandler = async (event: any) => {
     monitoring.debug(
       `KRC20Transfer: UTXO changes detected for address: ${treasuryAddr.toString()}`

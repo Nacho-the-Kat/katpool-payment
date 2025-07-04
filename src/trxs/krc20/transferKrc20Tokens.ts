@@ -45,6 +45,16 @@ export async function transferKRC20Tokens(
     krc20Amount = krc20Amount - NACHORebateBuffer;
   }
 
+  try {
+    monitoring.debug(
+      `transferKRC20Tokens: Subscribing to UTXO changes for address: ${transactionManager.address.toString()}`
+    );
+    await pRPC.subscribeUtxosChanged([transactionManager.address.toString()]);
+  } catch (error) {
+    monitoring.error(`transferKRC20Tokens: Failed to subscribe to UTXO changes: ${error}`);
+    return;
+  }
+
   let eligibleNACHOTransfer = 0;
   // amount is the actual value paid accounting the full rebate status.
   for (let [address, amount] of Object.entries(payments)) {
@@ -108,6 +118,19 @@ export async function transferKRC20Tokens(
 
     // ⏳ Add a small delay before sending the next transaction
     await new Promise(resolve => setTimeout(resolve, 3000)); // 3s delay
+  }
+
+  try {
+    monitoring.debug(
+      `transferKRC20Tokens: Unsubscribing to UTXO changes for address: ${transactionManager.address.toString()}`
+    );
+    await pRPC.unsubscribeUtxosChanged([transactionManager.address.toString()]);
+    monitoring.debug(`transferKRC20Tokens: this.context.clear()`);
+    await transactionManager.context.clear();
+  } catch (error) {
+    monitoring.debug(
+      `transferKRC20Tokens: Failed to Unsubscribe to UTXO changes for address: ${transactionManager.address.toString()}: ${error}`
+    );
   }
 
   monitoring.debug(`transferKRC20Tokens: Total eligible NACHO transfers: ${eligibleNACHOTransfer}`);
