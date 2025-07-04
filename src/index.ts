@@ -23,6 +23,7 @@ import { fetchKASBalance, sompiToKAS } from './utils';
 import { TelegramBotAlert } from './alerting/telegramBot';
 import bot from './alerting/bot';
 import Database from './database';
+import { upholdPayout } from './trxs/uphold';
 
 // Debug mode setting
 export let DEBUG = 0;
@@ -72,6 +73,13 @@ if (!databaseUrl) {
   throw new Error('Environment variable DATABASE_URL is not set.');
 }
 export const db = new Database(databaseUrl);
+
+if (!process.env.UPHOLD_CLIENT_ID) {
+  throw new Error('Environment variable UPHOLD_CLIENT_ID is not set.');
+}
+if (!process.env.UPHOLD_CLIENT_SECRET) {
+  throw new Error('Environment variable UPHOLD_CLIENT_SECRET is not set.');
+}
 
 // Configuration parameters
 const paymentCronSchedule = cronValidation(CONFIG.payoutCronSchedule); // Defaults to twice a day if not set
@@ -248,7 +256,7 @@ cron.schedule(paymentCronSchedule, () => {
             monitoring.error('Main: Could not fetch Pool balance from Database.');
           }
 
-          // KAS Payout
+          // 1. KAS Payout
           try {
             await transactionManager!.transferBalances(balances);
           } catch (error) {
@@ -280,7 +288,7 @@ cron.schedule(paymentCronSchedule, () => {
             }
           }
 
-          // Transfer NACHO
+          // 2. Transfer NACHO
           if (amount == -1n) {
             monitoring.debug(
               `Main: NACHO rebate transfer skipped — floor price could not be fetched.`
@@ -309,6 +317,13 @@ cron.schedule(paymentCronSchedule, () => {
             monitoring.debug(
               `Main: Current amount of KASPA is too low to distribute NACHO rebate.`
             );
+          }
+
+          // 3. Uphold Payout
+          try {
+            await upholdPayout(balances, transactionManager!);
+          } catch (error) {
+            monitoring.error(`Main: Error during Uphold payout: ${error}`);
           }
 
           try {
