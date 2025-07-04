@@ -45,7 +45,13 @@ function findSuitableUtxo(entries: any[]): any {
   return utxo;
 }
 
-export async function transferKRC20(
+/**
+ * Handles transferring KRC20 tokens to the destination address.
+ * - Logs entry in the Pending KRC20 Transfer table (helps in debugging stuck P2SH transactions).
+ * - Resets the user's KRC20 balance in the database.
+ * - Records the payment in the payment history.
+ */
+export async function transferAndRecordKRC20Payment(
   pRPC: RpcClient,
   pTicker: string,
   pDest: string,

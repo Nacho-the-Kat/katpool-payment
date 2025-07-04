@@ -1,5 +1,5 @@
 import { RpcClient } from '../../../wasm/kaspa/kaspa';
-import { transferKRC20 } from './krc20Transfer';
+import { transferAndRecordKRC20Payment } from './krc20Transfer';
 import Database, { MinerBalanceRow, pendingKRC20TransferField, status } from '../../database';
 import { CONFIG } from '../../constants';
 import { krc20Token, nftAPI } from './krc20Api';
@@ -91,7 +91,7 @@ export async function transferKRC20Tokens(
       monitoring.debug(
         `transferKRC20Tokens: Transfering NACHO equivalent to ${amount} KAS in current cycle to ${address}.`
       );
-      await transferKRC20(
+      await transferAndRecordKRC20Payment(
         pRPC,
         pTicker,
         address,
