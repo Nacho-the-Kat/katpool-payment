@@ -1,7 +1,7 @@
 import fs from 'fs';
 import Monitoring from './monitoring';
 import path from 'path';
-import { kaspaToSompi } from '../wasm/kaspa-dev/kaspa';
+import { kaspaToSompi } from '../wasm/kaspa/kaspa';
 
 const monitoring = new Monitoring();
 

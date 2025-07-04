@@ -9,7 +9,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { RpcClient, Encoding, Resolver } from '../wasm/kaspa-dev';
+import { RpcClient, Encoding, Resolver } from '../wasm/kaspa';
 import { CONFIG } from './constants';
 import Monitoring from './monitoring';
 import trxManager from './trxs';

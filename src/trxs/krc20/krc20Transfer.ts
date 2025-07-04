@@ -6,7 +6,7 @@ import {
   createTransactions,
   kaspaToSompi,
   PendingTransaction,
-} from '../../../wasm/kaspa-dev';
+} from '../../../wasm/kaspa';
 import { CONFIG, FIXED_FEE } from '../../constants';
 import Monitoring from '../../monitoring';
 import { DEBUG, db } from '../../index.ts';
