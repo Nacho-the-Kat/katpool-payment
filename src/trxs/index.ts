@@ -17,6 +17,7 @@ import { CONFIG, FIXED_FEE } from '../constants';
 import type { ScriptPublicKey } from '../../wasm/kaspa-dev/kaspa';
 import { sompiToKAS } from '../utils';
 import { validatePendingTransactions } from './utils';
+import Jsonbig from 'json-bigint';
 export default class trxManager {
   public networkId: string;
   public rpc: RpcClient;
@@ -183,7 +184,9 @@ export default class trxManager {
         this.networkId
       );
       if (!decodedAddress) {
-        this.monitoring.error(`TrxManager: decodedAddress is undefined.`);
+        this.monitoring.error(
+          `TrxManager: decodedAddress is undefined. for ${Jsonbig.stringify(data)}`
+        );
       }
       const address = decodedAddress!.prefix + ':' + decodedAddress!.payload;
       const amount = data.value;
