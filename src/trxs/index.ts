@@ -18,6 +18,7 @@ import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { sompiToKAS } from '../utils';
 import { validatePendingTransactions } from './utils';
 import Jsonbig from 'json-bigint';
+
 export default class trxManager {
   public networkId: string;
   public rpc: RpcClient;
