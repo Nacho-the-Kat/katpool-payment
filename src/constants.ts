@@ -20,6 +20,7 @@ const DEFAULT_CONFIG = {
   defaultTicker: 'NACHO',
   nachoAlertThreshold: kaspaToSompi('1000')!,
   kasAlertThreshold: kaspaToSompi('250')!,
+  nftAllowedTicks: ['NACHO', 'KATCLAIM'],
 };
 
 // Function to validate config fields

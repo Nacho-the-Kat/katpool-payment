@@ -14,7 +14,7 @@ let KRC721_STREAM_URL = 'https://mainnet.krc721.stream';
 if (CONFIG.network === 'testnet-10') {
   KRC721_STREAM_URL = 'https://testnet-10.krc721.stream';
 }
-let NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${CONFIG.network}/address/{address}/{ticker}`;
+let NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${CONFIG.network}/address/{address}?offset={offset}`;
 
 const monitoring = new Monitoring();
 
@@ -26,7 +26,7 @@ axiosRetry(axios, {
   retryCondition(error) {
     // Ensure error.response exists before accessing status
     if (!error.response) {
-      new Monitoring().error(`No response received: ${error.message}`);
+      monitoring.error(`krc20Api: No response received: ${error.message}`);
       return false; // Do not retry if no response (e.g., network failure)
     }
 
@@ -54,22 +54,37 @@ export async function krc20Token(address: string, ticker = CONFIG.defaultTicker)
   }
 }
 
-export async function nftAPI(address: string, ticker = CONFIG.defaultTicker) {
+export async function nftAPI(address: string) {
   try {
-    const url = NFTAPI.replace('{address}', encodeURIComponent(address)).replace(
-      '{ticker}',
-      ticker
-    );
+    let offset = 0;
 
-    const response = await axios.get(url);
+    while (true) {
+      let url = NFTAPI.replace('{address}', encodeURIComponent(address)).replace(
+        '{offset}',
+        offset.toString()
+      );
+      if (offset == 0) {
+        url = NFTAPI.replace('{address}', encodeURIComponent(address)).replace(
+          '?offset={offset}',
+          ''
+        );
+      }
+      monitoring.log(`krc20API: nftAPI - Fetching NFTs for address: ${address} with url: ${url}`);
+      const response = await axios.get(url);
 
-    if (response.data.message.toLowerCase().includes('success')) {
-      return { error: '', count: response.data.result.length };
-    } else {
-      // API responded but with an error message (controlled failure)
-      const msg = `API Response: ${JSON.stringify(response)}`;
-      return { error: msg, count: null }; // API failure, return null as safe fallback
+      if (!response.data.result?.length) break;
+
+      for (const item of response.data.result) {
+        if (item.tick && CONFIG.nftAllowedTicks.includes(item.tick.toUpperCase())) {
+          monitoring.debug(`krc20API: nftAPI - Found allowed tick: ${JSON.stringify(item)}`);
+          return { error: '', count: 1 };
+        }
+      }
+
+      offset += response.data.result.length;
     }
+
+    return { error: '', count: null };
   } catch (error) {
     return { error, count: -1 }; // Indicate network/system failure
   }

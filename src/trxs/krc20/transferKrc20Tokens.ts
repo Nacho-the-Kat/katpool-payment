@@ -148,7 +148,7 @@ async function checkFullFeeRebate(address: string, ticker: string) {
   if (amount != null && BigInt(amount) >= fullRebateTokenThreshold) {
     return true;
   }
-  const result = await nftAPI(address, ticker);
+  const result = await nftAPI(address);
   const nftCount = result.count;
   if (result.error != '') {
     monitoring.error(
