@@ -9,5 +9,9 @@
   "nachoSwap": 95,
   "defaultTicker": "NACHO",
   "kasAlertThreshold": "25000000000",
-  "nachoAlertThreshold": "100000000000"
+  "nachoAlertThreshold": "100000000000",
+  "nftAllowedTicks": [
+    "NACHO",
+    "KATCLAIM"
+  ]
 }
