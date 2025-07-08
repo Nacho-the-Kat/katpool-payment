@@ -76,6 +76,14 @@ export async function nftAPI(address: string) {
 
       for (const item of response.data.result) {
         if (item.tick && CONFIG.nftAllowedTicks.includes(item.tick.toUpperCase())) {
+          // Allow only KATCLAIM Level 3 NFTs with token IDs in the range 736–843 (inclusive)
+          if (
+            item.tick.toUpperCase() === 'KATCLAIM' &&
+            (item.tokenId < 736 || item.tokenId > 843)
+          ) {
+            continue; // Skip non-Level 3 KATCLAIM NFTs
+          }
+
           monitoring.debug(`krc20API: nftAPI - Found allowed tick: ${JSON.stringify(item)}`);
           return { error: '', count: 1 };
         }

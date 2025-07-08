@@ -20,6 +20,11 @@ const DEFAULT_CONFIG = {
   defaultTicker: 'NACHO',
   nachoAlertThreshold: kaspaToSompi('1000')!,
   kasAlertThreshold: kaspaToSompi('250')!,
+  /*
+   * Allowed NFT tickers eligible for full NACHO rebate.
+   * Note: For 'KATCLAIM', only token IDs between 736 and 843 (inclusive) are considered valid.
+   * This check is implemented in `krc20Api.ts`.
+   */
   nftAllowedTicks: ['NACHO', 'KATCLAIM'],
 };
 
