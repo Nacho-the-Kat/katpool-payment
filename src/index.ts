@@ -118,6 +118,17 @@ const setupTransactionManager = () => {
 const startRpcConnection = async () => {
   if (DEBUG) monitoring.debug(`Main: Starting RPC connection`);
   try {
+    try {
+      await rpc.disconnect();
+    } catch (error) {
+      if (error instanceof Error && error.stack) {
+        monitoring.error(error.stack);
+      } else {
+        monitoring.error(`Main: Error during RPC disconnection: ${error}`);
+      }
+    }
+    // Wait for 1 minute before reconnecting
+    await Bun.sleep(60000);
     await rpc.connect();
     monitoring.log(`Main RPC connected.`);
   } catch (rpcError) {
@@ -133,6 +144,8 @@ const rpcConnectionTrxManagerSetup = async () => {
   await startRpcConnection();
   if (DEBUG) monitoring.debug('Main: RPC connection started');
   if (DEBUG) monitoring.debug(`Main: RPC connection established`);
+  // Wait for 1 minute before proceeding
+  await Bun.sleep(60000);
   setupTransactionManager();
 };
 
@@ -175,8 +188,8 @@ cron.schedule(paymentCronSchedule, () => {
         monitoring.debug(`Main: Resolver Options:${CONFIG.node}`);
       }
 
-      // Wait for one minute before invoking balance transfer.
-      await Bun.sleep(60000);
+      // Wait for 30 seconds before invoking balance transfer.
+      await Bun.sleep(30000);
 
       if (getRpcStatus()) {
         monitoring.log('Main: Running scheduled balance transfer');
@@ -360,7 +373,7 @@ cron.schedule(paymentAlertCronSchedule, () => {
       if (DEBUG) monitoring.debug(`Main: Setting up RPC client after Alerting cron is triggered`);
       await rpcConnectionTrxManagerSetup();
 
-      // Wait for one minute before invoking balance transfer.
+      // Wait for one minute before invoking alerts.
       await Bun.sleep(60000);
 
       if (getRpcStatus()) {
@@ -383,7 +396,7 @@ cron.schedule(paymentAlertCronSchedule, () => {
         monitoring.error(`Main: unregistering processor: ${error}`);
       }
 
-      await Bun.sleep(1000); // Just before unregisterProcessor
+      await Bun.sleep(10000); // Just after unregisterProcessor
       monitoring.log('Main: ✅ Alert Cron final sleep done — safe to exit.');
     } catch (error) {
       monitoring.error(`Main: Unhandled error in alertCronSchedule: ${error}`);
