@@ -38,15 +38,11 @@ process.on('exit', code => {
 });
 
 process.on('uncaughtException', err => {
-  monitoring.error(`Main: Uncaught Exception: ${err}\n${err.stack}`);
+  monitoring.error(`Main: Uncaught Exception: ${err}\n${err.stack}\n`);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  let message = `Unhandled Rejection at: ${promise}, reason: ${reason}`;
-  if (reason instanceof Error && reason.stack) {
-    message += `\n${reason.stack}`;
-  }
-  monitoring.error(message);
+  logErrorWithStack(`Main: Unhandled Rejection at: ${promise}, reason: ${reason}`, reason);
 });
 
 process.on('SIGINT', () => {
@@ -118,6 +114,13 @@ const setupTransactionManager = () => {
 const startRpcConnection = async () => {
   if (DEBUG) monitoring.debug(`Main: Starting RPC connection`);
   try {
+    try {
+      await rpc.disconnect();
+    } catch (error) {
+      logErrorWithStack(`Main: Error during RPC disconnection: ${error}`, error);
+    }
+    // Wait for 1 minute before reconnecting
+    await Bun.sleep(60000);
     await rpc.connect();
     monitoring.log(`Main RPC connected.`);
   } catch (rpcError) {
@@ -133,6 +136,8 @@ const rpcConnectionTrxManagerSetup = async () => {
   await startRpcConnection();
   if (DEBUG) monitoring.debug('Main: RPC connection started');
   if (DEBUG) monitoring.debug(`Main: RPC connection established`);
+  // Wait for 1 minute before proceeding
+  await Bun.sleep(60000);
   setupTransactionManager();
 };
 
@@ -152,10 +157,7 @@ const exitStepsPaymentCron = async () => {
       monitoring.debug(`Main: Removed event listener for 'utxos-changed'`);
     });
   } catch (error) {
-    monitoring.error(`Main: Removing event listener for 'utxos-changed': ${error}`);
-    if (error instanceof Error && error.stack) {
-      monitoring.error(error.stack);
-    }
+    logErrorWithStack(`Main: Error during event listener removal: ${error}`, error);
   }
 
   monitoring.log(`Main: Invoking DB Pool stats after every operation completion...`);
@@ -175,8 +177,8 @@ cron.schedule(paymentCronSchedule, () => {
         monitoring.debug(`Main: Resolver Options:${CONFIG.node}`);
       }
 
-      // Wait for one minute before invoking balance transfer.
-      await Bun.sleep(60000);
+      // Wait for 30 seconds before invoking balance transfer.
+      await Bun.sleep(30000);
 
       if (getRpcStatus()) {
         monitoring.log('Main: Running scheduled balance transfer');
@@ -234,10 +236,7 @@ cron.schedule(paymentCronSchedule, () => {
               `Main: ${CONFIG.defaultTicker} balance before transfer: ${sompiToKAS(Number(treasuryNACHOBalance))} ${CONFIG.defaultTicker}`
             );
           } catch (error) {
-            monitoring.error(`Main: Balance fetch before payout: ${error}`);
-            if (error instanceof Error && error.stack) {
-              monitoring.error(error.stack);
-            }
+            logErrorWithStack(`Main: Balance fetch before payout: ${error}`, error);
           }
 
           let poolBalance = 0n;
@@ -252,10 +251,18 @@ cron.schedule(paymentCronSchedule, () => {
           try {
             await transactionManager!.transferBalances(balances);
           } catch (error) {
-            monitoring.error(`Main: Error during KAS payout: ${error}`);
-            if (error instanceof Error && error.stack) {
-              monitoring.error(error.stack);
-            }
+            logErrorWithStack(`Main: Error during KAS payout: ${error}`, error);
+          }
+
+          try {
+            await Bun.sleep(1000);
+            // Fetch treasury wallet address balance after KAS Payout
+            const treasuryKASBalance = await fetchKASBalance(transactionManager!.address);
+            monitoring.log(
+              `Main: KAS balance after KAS transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`
+            );
+          } catch (error) {
+            logErrorWithStack(`Main: KAS Balance fetch after KAS payout: ${error}`, error);
           }
 
           // Get quote for KASPA to NACHO for rebate
@@ -273,10 +280,7 @@ cron.schedule(paymentCronSchedule, () => {
                 );
               }
             } catch (error) {
-              monitoring.error(`Main: Fetching KAS to NACHO quote: ${error}`);
-              if (error instanceof Error && error.stack) {
-                monitoring.error(error.stack);
-              }
+              logErrorWithStack(`Main: Fetching KAS to NACHO quote: ${error}`, error);
             }
           }
 
@@ -300,10 +304,7 @@ cron.schedule(paymentCronSchedule, () => {
               );
               monitoring.log(`Main: Scheduled KRC20 balance transfer completed`);
             } catch (error) {
-              monitoring.error(`Main: Error during KRC20 transfer: ${error}`);
-              if (error instanceof Error && error.stack) {
-                monitoring.error(error.stack);
-              }
+              logErrorWithStack(`Main: Error during KRC20 transfer: ${error}`, error);
             }
           } else {
             monitoring.debug(
@@ -313,10 +314,10 @@ cron.schedule(paymentCronSchedule, () => {
 
           try {
             await Bun.sleep(1000);
-            // Fetch treasury wallet address balance after Payout
+            // Fetch treasury wallet address balance after NACHO transfer
             const treasuryKASBalance = await fetchKASBalance(transactionManager!.address);
             monitoring.log(
-              `Main: KAS balance after transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`
+              `Main: KAS balance after NACHO transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`
             );
 
             const treasuryNACHOBalance = await krc20Token(
@@ -327,16 +328,13 @@ cron.schedule(paymentCronSchedule, () => {
               `Main: ${CONFIG.defaultTicker} balance after transfer: ${sompiToKAS(Number(treasuryNACHOBalance?.amount ?? 0))} ${CONFIG.defaultTicker}`
             );
           } catch (error) {
-            monitoring.error(`Main: Balance fetch after payout: ${error}`);
-            if (error instanceof Error && error.stack) {
-              monitoring.error(error.stack);
-            }
+            logErrorWithStack(`Main: Balance fetch after NACHO transfer: ${error}`, error);
           }
         } catch (transactionError) {
-          monitoring.error(`Main: Transaction manager error: ${transactionError}`);
-          if (transactionError instanceof Error && transactionError.stack) {
-            monitoring.error(transactionError.stack);
-          }
+          logErrorWithStack(
+            `Main: Transaction manager error: ${transactionError}`,
+            transactionError
+          );
         }
       } else {
         monitoring.error('Main: RPC connection is not established before balance transfer');
@@ -346,10 +344,7 @@ cron.schedule(paymentCronSchedule, () => {
 
       monitoring.log('Main: ✅ Payment Cron final sleep done — safe to exit.');
     } catch (error) {
-      monitoring.error(`Main: Unhandled error in paymentCronSchedule: ${error}`);
-      if (error instanceof Error && error.stack) {
-        monitoring.error(error.stack);
-      }
+      logErrorWithStack(`Main: Unhandled error in paymentCronSchedule: ${error}`, error);
     }
   })();
 });
@@ -360,7 +355,7 @@ cron.schedule(paymentAlertCronSchedule, () => {
       if (DEBUG) monitoring.debug(`Main: Setting up RPC client after Alerting cron is triggered`);
       await rpcConnectionTrxManagerSetup();
 
-      // Wait for one minute before invoking balance transfer.
+      // Wait for one minute before invoking alerts.
       await Bun.sleep(60000);
 
       if (getRpcStatus()) {
@@ -368,10 +363,7 @@ cron.schedule(paymentAlertCronSchedule, () => {
           const tgBotObj = new TelegramBotAlert();
           await tgBotObj.checkTreasuryWalletForAlert(transactionManager!);
         } catch (error) {
-          monitoring.error(`Main: payment alert: ${error}`);
-          if (error instanceof Error && error.stack) {
-            monitoring.error(error.stack);
-          }
+          logErrorWithStack(`Main: payment alert: ${error}`, error);
         }
       } else {
         monitoring.error('Main: RPC connection is not established before alerting cron');
@@ -380,16 +372,21 @@ cron.schedule(paymentAlertCronSchedule, () => {
       try {
         await transactionManager?.unregisterProcessor();
       } catch (error) {
-        monitoring.error(`Main: unregistering processor: ${error}`);
+        logErrorWithStack(`Main: unregistering processor: ${error}`, error);
       }
 
-      await Bun.sleep(1000); // Just before unregisterProcessor
+      await Bun.sleep(10000); // Just after unregisterProcessor
       monitoring.log('Main: ✅ Alert Cron final sleep done — safe to exit.');
     } catch (error) {
-      monitoring.error(`Main: Unhandled error in alertCronSchedule: ${error}`);
-      if (error instanceof Error && error.stack) {
-        monitoring.error(error.stack);
-      }
+      logErrorWithStack(`Main: Unhandled error in alertCronSchedule: ${error}`, error);
     }
   };
 });
+
+function logErrorWithStack(message: string, error: unknown) {
+  if (error instanceof Error && error.stack) {
+    message += `\n${error.stack}\n
+      `;
+  }
+  monitoring.error(message);
+}
