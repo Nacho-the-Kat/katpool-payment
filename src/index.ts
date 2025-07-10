@@ -271,6 +271,17 @@ cron.schedule(paymentCronSchedule, () => {
             }
           }
 
+          try {
+            await Bun.sleep(1000);
+            // Fetch treasury wallet address balance after KAS Payout
+            const treasuryKASBalance = await fetchKASBalance(transactionManager!.address);
+            monitoring.log(
+              `Main: KAS balance after KAS transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`
+            );
+          } catch (error) {
+            monitoring.error(`Main: KAS Balance fetch after KAS payout: ${error}`);
+          }
+
           // Get quote for KASPA to NACHO for rebate
           if (poolBalance == 0n) {
             monitoring.error(
@@ -326,10 +337,10 @@ cron.schedule(paymentCronSchedule, () => {
 
           try {
             await Bun.sleep(1000);
-            // Fetch treasury wallet address balance after Payout
+            // Fetch treasury wallet address balance after NACHO transfer
             const treasuryKASBalance = await fetchKASBalance(transactionManager!.address);
             monitoring.log(
-              `Main: KAS balance after transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`
+              `Main: KAS balance after NACHO transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`
             );
 
             const treasuryNACHOBalance = await krc20Token(
@@ -340,7 +351,7 @@ cron.schedule(paymentCronSchedule, () => {
               `Main: ${CONFIG.defaultTicker} balance after transfer: ${sompiToKAS(Number(treasuryNACHOBalance?.amount ?? 0))} ${CONFIG.defaultTicker}`
             );
           } catch (error) {
-            monitoring.error(`Main: Balance fetch after payout: ${error}`);
+            monitoring.error(`Main: Balance fetch after NACHO transfer: ${error}`);
             if (error instanceof Error && error.stack) {
               monitoring.error(error.stack);
             }
