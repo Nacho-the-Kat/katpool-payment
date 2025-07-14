@@ -89,7 +89,11 @@ export async function nftAPI(address: string) {
         }
       }
 
-      offset += response.data.result.length;
+      if (response.data.result.next) {
+        offset += response.data.result.next;
+      } else {
+        break; // No more results to fetch
+      }
     }
 
     return { error: '', count: null };
