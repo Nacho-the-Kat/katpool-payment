@@ -38,11 +38,11 @@ process.on('exit', code => {
 });
 
 process.on('uncaughtException', err => {
-  monitoring.error(`Main: Uncaught Exception: ${err}\n${err.stack}\n`);
+  logErrorWithStack(`Main: Uncaught Exception: ${err}`, err);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  logErrorWithStack(`Main: Unhandled Rejection at: ${promise}, reason: ${reason}`, reason);
+process.on('unhandledRejection', err => {
+  logErrorWithStack(`Main: Unhandled Rejection: ${err}`, err);
 });
 
 process.on('SIGINT', () => {
