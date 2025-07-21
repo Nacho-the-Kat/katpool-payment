@@ -68,8 +68,7 @@ RUN --mount=type=cache,target=/root/.cargo/registry \
 FROM node:20
 
 # Install Bun
-RUN curl -fsSL https://bun.sh/install | bash && \
-    ln -s /root/.bun/bin/bun /usr/local/bin/bun
+RUN curl -fsSL https://bun.sh/install | bash
 
 # Add Bun to the PATH environment variable
 ENV PATH="/root/.bun/bin:$PATH"
@@ -84,7 +83,7 @@ COPY --from=builder /rusty-kaspa/wasm/nodejs /app/wasm
 COPY package.json ./
 
 # Install dependencies (this layer will be cached unless package.json changes)
-RUN bun install && bun upgrade --canary
+RUN bun install
 
 # Install Google Chrome Stable and fonts
 # Note: this installs the necessary libs to make the browser work with Puppeteer.
