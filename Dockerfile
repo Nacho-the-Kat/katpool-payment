@@ -68,7 +68,8 @@ RUN --mount=type=cache,target=/root/.cargo/registry \
 FROM node:20
 
 # Install Bun
-RUN curl -fsSL https://bun.sh/install | bash
+RUN curl -fsSL https://bun.sh/install | bash && \
+    ln -s /root/.bun/bin/bun /usr/local/bin/bun
 
 # Add Bun to the PATH environment variable
 ENV PATH="/root/.bun/bin:$PATH"
