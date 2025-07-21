@@ -83,8 +83,7 @@ COPY --from=builder /rusty-kaspa/wasm/nodejs /app/wasm
 COPY package.json ./
 
 # Install dependencies (this layer will be cached unless package.json changes)
-RUN bun install
-RUN bun upgrade --canary
+RUN bun install && bun upgrade --canary
 
 # Install Google Chrome Stable and fonts
 # Note: this installs the necessary libs to make the browser work with Puppeteer.
