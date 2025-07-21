@@ -16,11 +16,17 @@ interface LogContext {
 
 const sendLog = async (level: string, message: string, context: LogContext = {}) => {
   const baseLogObject = {
+    ddtags: '',
     ddsource: 'nodejs',
-    service: DATADOG_PAYMENT_SERVICE_NAME || 'prod-katpool-payment',
+    service: DATADOG_PAYMENT_SERVICE_NAME || 'dev-katpool-payment',
     timestamp: new Date().toISOString(),
   };
 
+  // set tag based on service name, tag does change retention period
+  if(DATADOG_PAYMENT_SERVICE_NAME === 'prod-katpool-payment') {
+    baseLogObject.ddtags = 'retention:production';
+  }
+  
   await axios.post(
     DATADOG_LOG_URL!,
     {
