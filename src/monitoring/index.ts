@@ -70,7 +70,12 @@ export default class Monitoring {
     }
   }
 
-  error(message: string) {
+  error(message: string, error?: unknown) {
+    if (error instanceof Error) {
+      message += error.stack ? `${error.stack}` : `${error.message}`;
+    } else if (error !== undefined && error !== null) {
+      message += `${String(error)}`;
+    }
     datadogLogger.error(message);
     this.logQueue.add(() => this.processLog({ level: 'ERROR', message }));
   }

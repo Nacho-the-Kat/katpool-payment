@@ -63,7 +63,7 @@ export default class Database {
 
     this.pool.on('acquire', () => monitoring.debug('database: Client acquired'));
     this.pool.on('release', () => monitoring.debug('database: Client released'));
-    this.pool.on('error', err => monitoring.error(`database: Pool error ${err}`));
+    this.pool.on('error', error => monitoring.error(`database: Pool error `, error));
   }
 
   public getDBPoolStats() {
@@ -102,7 +102,7 @@ export default class Database {
         })
       );
     } catch (error) {
-      monitoring.error(`database: getAllBalancesExcludingPool - query error: ${error}`);
+      monitoring.error(`database: getAllBalancesExcludingPool - query error: `, error);
       return fallback;
     }
   }
@@ -123,7 +123,7 @@ export default class Database {
 
       return res.rows[0]?.sum ? BigInt(res.rows[0].sum) : BigInt(0);
     } catch (error) {
-      monitoring.error(`database: getAllPendingBalanceAboveThreshold - query error: ${error}`);
+      monitoring.error(`database: getAllPendingBalanceAboveThreshold - query error: `, error);
       return -1n;
     }
   }
@@ -144,7 +144,7 @@ export default class Database {
         })
       );
     } catch (error) {
-      monitoring.error(`database: getPoolBalance - query error: ${error}`);
+      monitoring.error(`database: getPoolBalance - query error: `, error);
       return balFallBack;
     }
   }
@@ -159,7 +159,7 @@ export default class Database {
         `database: reset for wallet balance - query executed for wallets: ${wallets}`
       );
     } catch (error) {
-      monitoring.error(`database: resetBalancesByWallet - query error: ${error}`);
+      monitoring.error(`database: resetBalancesByWallet - query error: `, error);
     }
   }
 
@@ -191,7 +191,7 @@ export default class Database {
         `database: recording pending KRC20 transfer - query executed for P2SH address: ${p2shAddress} - first txn hash ${firstTxnID}`
       );
     } catch (error) {
-      monitoring.error(`database: recording pending KRC20 transfer: ${error}`);
+      monitoring.error(`database: recording pending KRC20 transfer: `, error);
     }
   }
 
@@ -237,7 +237,7 @@ export default class Database {
         `database: updatePendingKRC20TransferStatus - query executed for ${p2shAddr}`
       );
     } catch (error) {
-      monitoring.error(`database: updating pending KRC20 transfer: ${error}`);
+      monitoring.error(`database: updating pending KRC20 transfer: `, error);
       throw error;
     }
   }

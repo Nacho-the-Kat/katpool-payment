@@ -23,7 +23,7 @@ export default class swapToKrc20 {
         args: ['--no-sandbox'],
       });
     } catch (error) {
-      monitoring.error(`swapKaspaToKRC: Pupeteer error: ${error}.`);
+      monitoring.error(`swapKaspaToKRC: Pupeteer error: `, error);
       return -1n;
     }
     const page = await browser.newPage();
@@ -44,8 +44,8 @@ export default class swapToKrc20 {
         const bodyText = document.body.innerText.trim();
         try {
           return JSON.parse(bodyText);
-        } catch (e) {
-          monitoring.error(`swapKaspaToKRC: Page content: ${bodyText}`);
+        } catch (error) {
+          monitoring.error(`swapKaspaToKRC: Page content: ${bodyText} - `, error);
           throw new Error('Not JSON response');
         }
       }),

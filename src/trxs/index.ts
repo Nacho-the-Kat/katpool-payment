@@ -60,7 +60,7 @@ export default class trxManager {
       const query = `INSERT INTO payments (wallet_address, amount, timestamp, transaction_hash) VALUES ${valuesPlaceHolder};`;
       await db.runQuery(query, queryParams);
     } catch (error) {
-      this.monitoring.error(`TrxManager: recording payment for ${transactionHash}: ${error}`);
+      this.monitoring.error(`TrxManager: recording payment for ${transactionHash}: `, error);
     }
   }
 
@@ -130,7 +130,7 @@ export default class trxManager {
       });
       transactions = result.transactions;
     } catch (error) {
-      this.monitoring.error(`TrxManager: Failed to create transactions: ${error}`);
+      this.monitoring.error(`TrxManager: Failed to create transactions: `, error);
       return;
     }
 
@@ -151,7 +151,7 @@ export default class trxManager {
     try {
       transaction.sign([this.privateKey]);
     } catch (error) {
-      this.monitoring.error(`TrxManager: Failed to sign transaction ${transaction.id}: ${error}`);
+      this.monitoring.error(`TrxManager: Failed to sign transaction ${transaction.id}: `, error);
       return;
     }
 
@@ -163,7 +163,7 @@ export default class trxManager {
     try {
       transactionHash = await transaction.submit(this.rpc);
     } catch (error) {
-      this.monitoring.error(`TrxManager: Failed to submit transaction ${transaction.id}: ${error}`);
+      this.monitoring.error(`TrxManager: Failed to submit transaction ${transaction.id}: `, error);
       return;
     }
 
@@ -220,7 +220,7 @@ export default class trxManager {
         }
       }
     } catch (error) {
-      this.monitoring.error(`TrxManager: Error during logging: ${error}`);
+      this.monitoring.error(`TrxManager: Error during logging: `, error);
     }
   }
 

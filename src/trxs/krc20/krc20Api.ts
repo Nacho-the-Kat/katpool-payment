@@ -26,11 +26,11 @@ axiosRetry(axios, {
   retryCondition(error) {
     // Ensure error.response exists before accessing status
     if (!error.response) {
-      monitoring.error(`krc20Api: No response received: ${error.message}`);
+      monitoring.error(`krc20Api: No response received: `, error);
       return false; // Do not retry if no response (e.g., network failure)
     }
 
-    const retryableStatusCodes = [404, 422, 429, 500, 501];
+    const retryableStatusCodes = [404, 422, 429, 500, 501, 503];
     return retryableStatusCodes.includes(error.response.status);
   },
 });

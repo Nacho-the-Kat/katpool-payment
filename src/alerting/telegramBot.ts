@@ -44,7 +44,7 @@ export class TelegramBotAlert {
         `TelegramBotAlert: KAS balance at alert schedule: ${sompiToKAS(Number(treasuryKASBalance))} KAS`
       );
     } catch (error) {
-      monitoring.error(`TelegramBotAlert: Can not fetch treasury KAS balance: ${error}.`);
+      monitoring.error(`TelegramBotAlert: Can not fetch treasury KAS balance: `, error);
     }
 
     try {
@@ -55,7 +55,7 @@ export class TelegramBotAlert {
         `TelegramBotAlert: ${CONFIG.defaultTicker} balance at alert schedule: ${sompiToKAS(Number(treasuryNACHOBalance))} ${CONFIG.defaultTicker}`
       );
     } catch (error) {
-      monitoring.error(`TelegramBotAlert: Can not fetch treasury NACHO balance: ${error}.`);
+      monitoring.error(`TelegramBotAlert: Can not fetch treasury NACHO balance: `, error);
     }
 
     try {
@@ -64,7 +64,7 @@ export class TelegramBotAlert {
         Number(CONFIG.thresholdAmount)
       );
     } catch (error) {
-      monitoring.error(`TelegramBotAlert: Can not fetch total outstanding KAS value: ${error}.`);
+      monitoring.error(`TelegramBotAlert: Can not fetch total outstanding KAS value: `, error);
     }
 
     try {
@@ -84,7 +84,8 @@ export class TelegramBotAlert {
       );
     } catch (error) {
       monitoring.error(
-        `TelegramBotAlert: Can not determine tokens to be used for NACHO rebate: ${error}.`
+        `TelegramBotAlert: Can not determine tokens to be used for NACHO rebate: `,
+        error
       );
     }
 
