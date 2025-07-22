@@ -51,7 +51,7 @@ export async function transferKRC20Tokens(
     );
     await pRPC.subscribeUtxosChanged([transactionManager.address.toString()]);
   } catch (error) {
-    monitoring.error(`transferKRC20Tokens: Failed to subscribe to UTXO changes: ${error}`);
+    monitoring.error(`transferKRC20Tokens: Failed to subscribe to UTXO changes: `, error);
     return;
   }
 
@@ -112,7 +112,8 @@ export async function transferKRC20Tokens(
       );
     } catch (error) {
       monitoring.error(
-        `transferKRC20Tokens: Transfering ${nachoAmount.toString()} ${pTicker} to ${address} : ${error}`
+        `transferKRC20Tokens: Transfering ${nachoAmount.toString()} ${pTicker} to ${address} : `,
+        error
       );
     }
 
@@ -141,7 +142,8 @@ async function checkFullFeeRebate(address: string, ticker: string) {
   const amount = res.amount;
   if (res.error != '') {
     monitoring.error(
-      `transferKRC20Tokens: Error fetching ${ticker} balance for address - ${address} : ${res.error}`
+      `transferKRC20Tokens: Error fetching ${ticker} balance for address - ${address} : `,
+      res.error
     );
   }
 
@@ -152,7 +154,8 @@ async function checkFullFeeRebate(address: string, ticker: string) {
   const nftCount = result.count;
   if (result.error != '') {
     monitoring.error(
-      `transferKRC20Tokens: Error fetching ${ticker} NFT holdings for address - ${address} : ${result.error}`
+      `transferKRC20Tokens: Error fetching ${ticker} NFT holdings for address - ${address} : `,
+      result.error
     );
   }
 
@@ -201,7 +204,7 @@ export async function recordPayment(
     }
     return { record: true, pending: true };
   } catch (error) {
-    monitoring.error(`transferKRC20Tokens: DB Rollback performed due to error: ${error}`);
+    monitoring.error(`transferKRC20Tokens: DB Rollback performed due to error: `, error);
   }
 }
 
@@ -257,6 +260,6 @@ export async function resetBalancesByWallet(
       `transferKRC20Tokens: Updated for Address: ${address}, Column: ${column}, Initial Balance: ${minerBalance}, Entries: ${count}`
     );
   } catch (error) {
-    monitoring.error(`transferKRC20Tokens: Error updating miner balance for ${address} - ${error}`);
+    monitoring.error(`transferKRC20Tokens: Error updating miner balance for ${address} - `, error);
   }
 }

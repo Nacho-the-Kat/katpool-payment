@@ -37,12 +37,12 @@ process.on('exit', code => {
   monitoring.log(`Main: 🛑 Process is exiting with code: ${code}`);
 });
 
-process.on('uncaughtException', err => {
-  logErrorWithStack(`Main: Uncaught Exception: ${err}`, err);
+process.on('uncaughtException', error => {
+  monitoring.error(`Main: Uncaught Exception: `, error);
 });
 
-process.on('unhandledRejection', err => {
-  logErrorWithStack(`Main: Unhandled Rejection: ${err}`, err);
+process.on('unhandledRejection', error => {
+  monitoring.error(`Main: Unhandled Rejection: `, error);
 });
 
 process.on('SIGINT', () => {
@@ -117,14 +117,14 @@ const startRpcConnection = async () => {
     try {
       await rpc.disconnect();
     } catch (error) {
-      logErrorWithStack(`Main: Error during RPC disconnection: ${error}`, error);
+      monitoring.error(`Main: Error during RPC disconnection: `, error);
     }
     // Wait for 1 minute before reconnecting
     await Bun.sleep(60000);
     await rpc.connect();
     monitoring.log(`Main RPC connected.`);
-  } catch (rpcError) {
-    throw Error(`RPC connection error: ${rpcError}`);
+  } catch (error) {
+    throw Error(`RPC connection error: ${error}`);
   }
   const serverInfo = await rpc.getServerInfo();
   if (!serverInfo.isSynced || !serverInfo.hasUtxoIndex) {
@@ -157,7 +157,7 @@ const exitStepsPaymentCron = async () => {
       monitoring.debug(`Main: Removed event listener for 'utxos-changed'`);
     });
   } catch (error) {
-    logErrorWithStack(`Main: Error during event listener removal: ${error}`, error);
+    monitoring.error(`Main: Error during event listener removal: `, error);
   }
 
   monitoring.log(`Main: Invoking DB Pool stats after every operation completion...`);
@@ -236,7 +236,7 @@ cron.schedule(paymentCronSchedule, () => {
               `Main: ${CONFIG.defaultTicker} balance before transfer: ${sompiToKAS(Number(treasuryNACHOBalance))} ${CONFIG.defaultTicker}`
             );
           } catch (error) {
-            logErrorWithStack(`Main: Balance fetch before payout: ${error}`, error);
+            monitoring.error(`Main: Balance fetch before payout: `, error);
           }
 
           let poolBalance = 0n;
@@ -251,7 +251,7 @@ cron.schedule(paymentCronSchedule, () => {
           try {
             await transactionManager!.transferBalances(balances);
           } catch (error) {
-            logErrorWithStack(`Main: Error during KAS payout: ${error}`, error);
+            monitoring.error(`Main: Error during KAS payout: `, error);
           }
 
           try {
@@ -262,7 +262,7 @@ cron.schedule(paymentCronSchedule, () => {
               `Main: KAS balance after KAS transfer : ${sompiToKAS(Number(treasuryKASBalance))} KAS`
             );
           } catch (error) {
-            logErrorWithStack(`Main: KAS Balance fetch after KAS payout: ${error}`, error);
+            monitoring.error(`Main: KAS Balance fetch after KAS payout: `, error);
           }
 
           // Get quote for KASPA to NACHO for rebate
@@ -280,7 +280,7 @@ cron.schedule(paymentCronSchedule, () => {
                 );
               }
             } catch (error) {
-              logErrorWithStack(`Main: Fetching KAS to NACHO quote: ${error}`, error);
+              monitoring.error(`Main: Fetching KAS to NACHO quote: `, error);
             }
           }
 
@@ -304,7 +304,7 @@ cron.schedule(paymentCronSchedule, () => {
               );
               monitoring.log(`Main: Scheduled KRC20 balance transfer completed`);
             } catch (error) {
-              logErrorWithStack(`Main: Error during KRC20 transfer: ${error}`, error);
+              monitoring.error(`Main: Error during KRC20 transfer: `, error);
             }
           } else {
             monitoring.debug(
@@ -328,13 +328,10 @@ cron.schedule(paymentCronSchedule, () => {
               `Main: ${CONFIG.defaultTicker} balance after transfer: ${sompiToKAS(Number(treasuryNACHOBalance?.amount ?? 0))} ${CONFIG.defaultTicker}`
             );
           } catch (error) {
-            logErrorWithStack(`Main: Balance fetch after NACHO transfer: ${error}`, error);
+            monitoring.error(`Main: Balance fetch after NACHO transfer: `, error);
           }
         } catch (transactionError) {
-          logErrorWithStack(
-            `Main: Transaction manager error: ${transactionError}`,
-            transactionError
-          );
+          monitoring.error(`Main: Transaction manager error: `, transactionError);
         }
       } else {
         monitoring.error('Main: RPC connection is not established before balance transfer');
@@ -344,7 +341,7 @@ cron.schedule(paymentCronSchedule, () => {
 
       monitoring.log('Main: ✅ Payment Cron final sleep done — safe to exit.');
     } catch (error) {
-      logErrorWithStack(`Main: Unhandled error in paymentCronSchedule: ${error}`, error);
+      monitoring.error(`Main: Unhandled error in paymentCronSchedule: `, error);
     }
   })();
 });
@@ -363,7 +360,7 @@ cron.schedule(paymentAlertCronSchedule, () => {
           const tgBotObj = new TelegramBotAlert();
           await tgBotObj.checkTreasuryWalletForAlert(transactionManager!);
         } catch (error) {
-          logErrorWithStack(`Main: payment alert: ${error}`, error);
+          monitoring.error(`Main: payment alert: `, error);
         }
       } else {
         monitoring.error('Main: RPC connection is not established before alerting cron');
@@ -372,21 +369,13 @@ cron.schedule(paymentAlertCronSchedule, () => {
       try {
         await transactionManager?.unregisterProcessor();
       } catch (error) {
-        logErrorWithStack(`Main: unregistering processor: ${error}`, error);
+        monitoring.error(`Main: unregistering processor: `, error);
       }
 
       await Bun.sleep(10000); // Just after unregisterProcessor
       monitoring.log('Main: ✅ Alert Cron final sleep done — safe to exit.');
     } catch (error) {
-      logErrorWithStack(`Main: Unhandled error in alertCronSchedule: ${error}`, error);
+      monitoring.error(`Main: Unhandled error in alertCronSchedule: `, error);
     }
   };
 });
-
-function logErrorWithStack(message: string, error: unknown) {
-  if (error instanceof Error && error.stack) {
-    message += `\n${error.stack}\n
-      `;
-  }
-  monitoring.error(message);
-}

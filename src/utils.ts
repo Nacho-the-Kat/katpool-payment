@@ -20,7 +20,7 @@ export async function fetchKASBalance(address: string) {
       return null; // To avoid confusion with actual 0 balance.
     }
   } catch (error) {
-    monitoring.error(`utils: Fetching KAS balance for address: ${address} : ${error}`);
+    monitoring.error(`utils: Fetching KAS balance for address: ${address} : `, error);
     return -1;
   }
 }
@@ -35,8 +35,8 @@ async function getDaaScoreFromBlockId(blockHash: string) {
     } else {
       return undefined;
     }
-  } catch (err) {
-    monitoring.error(`utils: while getting daaScore from block: ${err}`);
+  } catch (error) {
+    monitoring.error(`utils: while getting daaScore from block: `, error);
     return undefined;
   }
 }
@@ -50,8 +50,8 @@ export async function getDaaScoreFromTx(tx: string) {
       const daaScore = await getDaaScoreFromBlockId(blockHash);
       return daaScore;
     }
-  } catch (err) {
-    monitoring.error(`utils: while getting daaScore from tx: ${err}`);
+  } catch (error) {
+    monitoring.error(`utils: while getting daaScore from tx: `, error);
     return undefined;
   }
 }
@@ -64,8 +64,8 @@ export async function getKaspaUSDPrice() {
       const usdPrice = BigInt(response.data.price);
       return usdPrice;
     }
-  } catch (err) {
-    monitoring.error(`utils: While getting usd price of KASPA: ${err}`);
+  } catch (error) {
+    monitoring.error(`utils: While getting usd price of KASPA: `, error);
   }
 }
 
@@ -75,8 +75,8 @@ export async function fetchAccountTransactionCount(address: string) {
     const response = await axios.get(url);
     const count = response.data.total;
     return count;
-  } catch (err) {
-    monitoring.error(`utils: While getting transaction count of ${address} : ${err}`);
+  } catch (error) {
+    monitoring.error(`utils: While getting transaction count of ${address} : `, error);
     return 0;
   }
 }

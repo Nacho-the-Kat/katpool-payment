@@ -103,7 +103,7 @@ export async function transferAndRecordKRC20Payment(
   try {
     rpc.removeEventListener('utxos-changed', utxosChangedStartHandler);
   } catch (error) {
-    monitoring.error(`KRC20Transfer: Removing event listener for 'utxos-changed': ${error}`);
+    monitoring.error(`KRC20Transfer: Removing event listener for 'utxos-changed': `, error);
   }
 
   rpc.addEventListener('utxos-changed', utxosChangedStartHandler);
@@ -167,7 +167,7 @@ export async function transferAndRecordKRC20Payment(
       });
       transactions = result.transactions;
     } catch (error) {
-      monitoring.error(`KRC20Transfer: Failed to create transactions: ${error}`);
+      monitoring.error(`KRC20Transfer: Failed to create transactions: `, error);
       return;
     }
 
@@ -177,7 +177,7 @@ export async function transferAndRecordKRC20Payment(
         transaction.sign([privateKey]);
         monitoring.debug(`KRC20Transfer: Transaction signed with ID: ${transaction.id}`);
       } catch (error) {
-        monitoring.error(`KRC20Transfer: Failed to sign transaction: ${error}`);
+        monitoring.error(`KRC20Transfer: Failed to sign transaction: `, error);
         return;
       }
 
@@ -186,7 +186,7 @@ export async function transferAndRecordKRC20Payment(
         monitoring.log(`KRC20Transfer: submitted P2SH commit sequence transaction on: ${hash}`);
         SubmittedtrxId = hash;
       } catch (error) {
-        monitoring.error(`KRC20Transfer: Failed to submit transaction: ${error}`);
+        monitoring.error(`KRC20Transfer: Failed to submit transaction: `, error);
         return;
       }
 
@@ -206,14 +206,15 @@ export async function transferAndRecordKRC20Payment(
           status.PENDING
         );
       } catch (error) {
-        monitoring.error(`KRC20Transfer: Failed to record pending KRC20 transfer: ${error}`);
+        monitoring.error(`KRC20Transfer: Failed to record pending KRC20 transfer: `, error);
       }
 
       try {
         await resetBalancesByWallet(db, pDest, kasAmount, 'nacho_rebate_kas', fullRebate);
       } catch (error) {
         monitoring.error(
-          `KRC20Transfer: Failed to reset balances for nacho_rebate_kas of ${amount} sompi for ${pDest}: ${error}`
+          `KRC20Transfer: Failed to reset balances for nacho_rebate_kas of ${amount} sompi for ${pDest}: `,
+          error
         );
       }
 
@@ -222,7 +223,8 @@ export async function transferAndRecordKRC20Payment(
         await resetBalancesByWallet(db, treasuryAddr, kasAmount * 3n, 'balance', false);
       } catch (error) {
         monitoring.error(
-          `KRC20Transfer: Failed to reset balances for pool balance with needed reduction of ${kasAmount * 3n} sompi for ${pDest} : ${error}`
+          `KRC20Transfer: Failed to reset balances for pool balance with needed reduction of ${kasAmount * 3n} sompi for ${pDest} : `,
+          error
         );
       }
 
@@ -233,7 +235,7 @@ export async function transferAndRecordKRC20Payment(
         );
         finalStatus = await pollStatus(P2SHAddress.toString(), utxoAmount, control, false);
       } catch (error) {
-        monitoring.error(`KRC20Transfer: ❌ Operation failed:", ${error}`);
+        monitoring.error(`KRC20Transfer: ❌ Operation failed:", `, error);
       }
       if (finalStatus === true) {
         monitoring.log(
@@ -258,7 +260,7 @@ export async function transferAndRecordKRC20Payment(
     }
     clearTimeout(commitTimeout); // Clear the reveal timeout if the event is received
   } catch (initialError) {
-    monitoring.error(`KRC20Transfer: Initial transaction error: ${initialError}`);
+    monitoring.error(`KRC20Transfer: Initial transaction error: `, initialError);
   }
 
   if (eventReceived) {
@@ -289,7 +291,7 @@ export async function transferAndRecordKRC20Payment(
       });
       transactions = result.transactions;
     } catch (error) {
-      monitoring.error(`KRC20Transfer: Failed to create reveal transactions: ${error}`);
+      monitoring.error(`KRC20Transfer: Failed to create reveal transactions: `, error);
       return;
     }
 
@@ -302,7 +304,7 @@ export async function transferAndRecordKRC20Payment(
           `KRC20Transfer: Transaction with revealUTX0s signed with ID: ${transaction.id}`
         );
       } catch (error) {
-        monitoring.error(`KRC20Transfer: Failed to sign reveal transaction: ${error}`);
+        monitoring.error(`KRC20Transfer: Failed to sign reveal transaction: `, error);
         return;
       }
 
@@ -319,7 +321,7 @@ export async function transferAndRecordKRC20Payment(
         monitoring.log(`KRC20Transfer: submitted reveal tx sequence transaction: ${revealHash}`);
         SubmittedtrxId = revealHash;
       } catch (error) {
-        monitoring.error(`KRC20Transfer: Failed to submit reveal transaction: ${error}`);
+        monitoring.error(`KRC20Transfer: Failed to submit reveal transaction: `, error);
         return;
       }
     }
@@ -342,7 +344,7 @@ export async function transferAndRecordKRC20Payment(
       );
       revealFinalStatus = await pollStatus(P2SHAddress.toString(), revealUtxoAmount, control, true);
     } catch (error) {
-      monitoring.error(`KRC20Transfer: ❌ Reveal transaction polling failed: ${error}`);
+      monitoring.error(`KRC20Transfer: ❌ Reveal transaction polling failed: `, error);
       return;
     }
 
@@ -377,7 +379,8 @@ export async function transferAndRecordKRC20Payment(
           monitoring.log(`KRC20Transfer: Recorded payment - ${revealHash}`);
         } catch (error) {
           monitoring.error(
-            `KRC20Transfer: Recording payment for ${pDest} of ${pAmount} NACHO with P2SH - ${P2SHAddress.toString()} for reveal hash: ${revealHash} - ${error}`
+            `KRC20Transfer: Recording payment for ${pDest} of ${pAmount} NACHO with P2SH - ${P2SHAddress.toString()} for reveal hash: ${revealHash} - `,
+            error
           );
           try {
             monitoring.log(
@@ -393,7 +396,8 @@ export async function transferAndRecordKRC20Payment(
             );
           } catch (error) {
             monitoring.error(
-              `KRC20Transfer: Updating Pending KRC20 transfer status for ${P2SHAddress.toString()} for reveal hash: ${revealHash} - error: ${error}`
+              `KRC20Transfer: Updating Pending KRC20 transfer status for ${P2SHAddress.toString()} for reveal hash: ${revealHash} - error: `,
+              error
             );
           }
         }
@@ -402,7 +406,7 @@ export async function transferAndRecordKRC20Payment(
         monitoring.log('KRC20Transfer: Reveal transaction has not been accepted yet.');
       }
     } catch (error) {
-      monitoring.error(`KRC20Transfer: Error checking reveal transaction status: ${error}`);
+      monitoring.error(`KRC20Transfer: Error checking reveal transaction status: `, error);
     }
   } else {
     monitoring.error('KRC20Transfer: No UTXOs available for reveal');
@@ -461,7 +465,7 @@ async function pollStatus(
 
         setTimeout(checkStatus, interval);
       } catch (error) {
-        monitoring.error(`KRC20Transfer: Error polling API: ${error}`);
+        monitoring.error(`KRC20Transfer: Error polling API: `, error);
         reject(error);
       }
     };

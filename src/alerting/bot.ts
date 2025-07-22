@@ -20,7 +20,8 @@ export function isRunningInDocker(): boolean {
     if (fs.existsSync('/.dockerenv')) return true;
     const cgroup = fs.readFileSync('/proc/1/cgroup', 'utf8');
     return cgroup.includes('docker') || cgroup.includes('kubepods');
-  } catch {
+  } catch (error) {
+    monitoring.error('bot: Error checking if running in Docker: ', error);
     return false;
   }
 }
