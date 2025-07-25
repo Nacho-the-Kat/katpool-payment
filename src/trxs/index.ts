@@ -253,12 +253,16 @@ export default class trxManager {
   }
 
   async unregisterProcessor() {
-    if (DEBUG) this.monitoring.debug(`TrxManager: unregisterProcessor - this.context.clear()`);
-    await this.context.clear();
-    if (DEBUG) this.monitoring.debug(`TrxManager: removeEventListener("utxo-proc-start")`);
-    this.context.unregisterAddresses([this.address]);
-    this.processor.removeEventListener('utxo-proc-start', this.utxoProcStartHandler);
-    await this.processor.stop();
+    try {
+      if (DEBUG) this.monitoring.debug(`TrxManager: unregisterProcessor - this.context.clear()`);
+      await this.context.clear();
+      if (DEBUG) this.monitoring.debug(`TrxManager: removeEventListener("utxo-proc-start")`);
+      this.context.unregisterAddresses([this.address]);
+      this.processor.removeEventListener('utxo-proc-start', this.utxoProcStartHandler);
+      await this.processor.stop();
+    } catch (error) {
+      this.monitoring.error(`TrxManager: unregisterProcessor, error: `, error);
+    }
   }
 
   async fetchMatureUTXOs() {
