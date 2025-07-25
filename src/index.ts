@@ -151,7 +151,15 @@ const getRpcStatus = () => {
 const exitStepsPaymentCron = async () => {
   await Bun.sleep(60000);
 
-  await transactionManager?.unregisterProcessor();
+  try {
+    if (!transactionManager) {
+      monitoring.error('Main: exitStepsPaymentCron - transactionManager is undefined.');
+    } else {
+      await transactionManager?.unregisterProcessor();
+    }
+  } catch (error) {
+    monitoring.error(`Main: exitStepsPaymentCron - unregisterProcessor: `, error);
+  }
   try {
     rpc.removeEventListener('utxos-changed', () => {
       monitoring.debug(`Main: Removed event listener for 'utxos-changed'`);
@@ -202,7 +210,7 @@ cron.schedule(paymentCronSchedule, () => {
 
           if (balances[0].balance === -1n) {
             monitoring.error('Main: Could not fetch balances for payout from Database.');
-            exitStepsPaymentCron();
+            await exitStepsPaymentCron();
             monitoring.error(
               `Main: Payment Cron skipped for this cycle - ${new Date().toISOString()}.`
             );
@@ -337,7 +345,7 @@ cron.schedule(paymentCronSchedule, () => {
         monitoring.error('Main: RPC connection is not established before balance transfer');
       }
 
-      exitStepsPaymentCron();
+      await exitStepsPaymentCron();
 
       monitoring.log('Main: ✅ Payment Cron final sleep done — safe to exit.');
     } catch (error) {
