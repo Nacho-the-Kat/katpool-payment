@@ -1,16 +1,12 @@
-import { kaspaToSompi } from '../../../wasm/kaspa/kaspa';
+import {
+  ABSOLUTE_MIN_UTXO,
+  fullRebateNFTThreshold,
+  fullRebateTokenThreshold,
+  PREFERRED_MIN_UTXO,
+} from '../../constants';
 import Monitoring from '../../monitoring';
 import { fetchAccountTransactionCount, fetchKASBalance, sompiToKAS } from '../../utils';
 import { krc20Token, nftAPI } from './krc20Api';
-import { parseUnits } from 'ethers';
-
-// Full rebate constants
-const fullRebateTokenThreshold = parseUnits('100', 14); // Minimum 100M (NACHO)
-const fullRebateNFTThreshold = 1; // Minimum 1 NFT
-
-// UTXO selection thresholds in sompi (1 KAS = 100_000_000 sompi)
-export const PREFERRED_MIN_UTXO = BigInt(kaspaToSompi('3')!); // 3 KAS
-const ABSOLUTE_MIN_UTXO = BigInt(kaspaToSompi('1')!); // 1 KAS
 
 const monitoring = new Monitoring();
 

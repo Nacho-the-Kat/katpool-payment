@@ -1,9 +1,10 @@
 import axios from 'axios';
-import { CONFIG, KASPA_BASE_URL } from './constants';
+import { CONFIG, getNetworkConfig } from './constants';
 import Monitoring from './monitoring';
 import { kaspaToSompi } from '../wasm/kaspa/kaspa';
 
 const monitoring = new Monitoring();
+const { apiBaseUrl: KASPA_BASE_URL } = getNetworkConfig(CONFIG.network);
 
 // Also to be used for NACHO as it also has 8 decimals
 export function sompiToKAS(amount: number) {

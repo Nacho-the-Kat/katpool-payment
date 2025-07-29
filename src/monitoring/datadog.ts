@@ -1,13 +1,5 @@
 import axios from 'axios';
-
-const { DATADOG_SECRET, DATADOG_LOG_URL, DATADOG_PAYMENT_SERVICE_NAME } = process.env;
-if (!DATADOG_SECRET) {
-  throw new Error('Environment variable DATADOG_SECRET is not set.');
-}
-
-if (!DATADOG_LOG_URL) {
-  throw new Error('Environment variable DATADOG_LOG_URL is not set.');
-}
+import { DATADOG_LOG_URL, DATADOG_SECRET, DATADOG_PAYMENT_SERVICE_NAME } from '../constants';
 
 interface LogContext {
   [key: string]: any;
@@ -28,7 +20,7 @@ const sendLog = async (level: string, message: string, context: LogContext = {})
   }
 
   await axios.post(
-    DATADOG_LOG_URL!,
+    DATADOG_LOG_URL,
     {
       ...baseLogObject,
       ...context,
@@ -38,7 +30,7 @@ const sendLog = async (level: string, message: string, context: LogContext = {})
     {
       headers: {
         'Content-Type': 'application/json',
-        'DD-API-KEY': DATADOG_SECRET!,
+        'DD-API-KEY': DATADOG_SECRET,
       },
     }
   );

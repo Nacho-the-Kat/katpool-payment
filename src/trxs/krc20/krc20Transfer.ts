@@ -7,14 +7,14 @@ import {
   kaspaToSompi,
   PendingTransaction,
 } from '../../../wasm/kaspa';
-import { CONFIG, FIXED_FEE } from '../../constants';
+import { CONFIG, DEBUG, FIXED_FEE, PREFERRED_MIN_UTXO } from '../../constants';
 import Monitoring from '../../monitoring';
-import { DEBUG, db } from '../../index.ts';
+import { db } from '../../index.ts';
 import trxManager from '../index.ts';
 import { pendingKRC20TransferField, status } from '../../database/index.ts';
 import { recordPayment, resetBalancesByWallet } from './transferKrc20Tokens.ts';
 import { validatePendingTransactions } from '../utils.ts';
-import { findSuitableUtxo, pollStatus, PREFERRED_MIN_UTXO } from './utils.ts';
+import { findSuitableUtxo, pollStatus } from './utils.ts';
 
 let ticker = CONFIG.defaultTicker;
 let dest = '';

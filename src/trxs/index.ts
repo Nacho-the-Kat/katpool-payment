@@ -12,8 +12,8 @@ import {
   kaspaToSompi,
 } from '../../wasm/kaspa';
 import Monitoring from '../monitoring';
-import { db, DEBUG } from '../index';
-import { CONFIG, FIXED_FEE } from '../constants';
+import { db } from '../index';
+import { CONFIG, DEBUG, FIXED_FEE } from '../constants';
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { sompiToKAS } from '../utils';
 import { validatePendingTransactions } from './utils';
