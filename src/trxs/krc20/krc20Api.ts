@@ -57,40 +57,35 @@ export async function krc20Token(address: string, ticker = CONFIG.defaultTicker)
 export async function nftAPI(address: string) {
   try {
     let offset = 0;
+    let url: string;
 
     while (true) {
-      let url = NFTAPI.replace('{address}', encodeURIComponent(address)).replace(
-        '{offset}',
-        offset.toString()
-      );
-      if (offset == 0) {
-        url = NFTAPI.replace('{address}', encodeURIComponent(address)).replace(
-          '?offset={offset}',
-          ''
-        );
+      let baseUrl = NFTAPI.replace('{address}', encodeURIComponent(address));
+      if (offset === 0) {
+        url = baseUrl.replace('?offset={offset}', '');
+      } else {
+        url = baseUrl.replace('{offset}', offset.toString());
       }
       monitoring.log(`krc20API: nftAPI - Fetching NFTs for address: ${address} with url: ${url}`);
       const response = await axios.get(url);
 
-      if (!response.data.result?.length) break;
+      const result = response.data.result || [];
+      if (!result.length) break;
 
-      for (const item of response.data.result) {
-        if (item.tick && CONFIG.nftAllowedTicks.includes(item.tick.toUpperCase())) {
-          // Allow only KATCLAIM Level 3 NFTs with token IDs in the range 736–843 (inclusive)
-          if (
-            item.tick.toUpperCase() === 'KATCLAIM' &&
-            (item.tokenId < 736 || item.tokenId > 843)
-          ) {
-            continue; // Skip non-Level 3 KATCLAIM NFTs
-          }
-
-          monitoring.debug(`krc20API: nftAPI - Found allowed tick: ${JSON.stringify(item)}`);
-          return { error: '', count: 1 };
+      for (const item of result) {
+        const tick = item.tick?.toUpperCase();
+        if (!tick || !CONFIG.nftAllowedTicks.includes(tick)) continue;
+        // Allow only KATCLAIM Level 3 NFTs with token IDs in the range 736–843 (inclusive)
+        if (tick === 'KATCLAIM' && (item.tokenId < 736 || item.tokenId > 843)) {
+          continue; // Skip non-Level 3 KATCLAIM NFTs
         }
+
+        monitoring.debug(`krc20API: nftAPI - Found allowed tick: ${JSON.stringify(item)}`);
+        return { error: '', count: 1 };
       }
 
-      if (response.data.result.next) {
-        offset += response.data.result.next;
+      if (response.data.next) {
+        offset = response.data.next;
       } else {
         break; // No more results to fetch
       }
