@@ -7,7 +7,7 @@ import Monitoring from './monitoring';
 const monitoring = new Monitoring();
 
 export const app = express();
-const port = 9301;
+const port = 3000;
 
 // Add basic middleware
 app.use(express.json());
@@ -27,7 +27,7 @@ app.get('/full_rebate/:wallet_address', async (req, res) => {
     const status = await checkFullFeeRebate(walletAddress, CONFIG.defaultTicker);
 
     const durationMs = Date.now() - start; // Duration in milliseconds
-    return res.json({ walletAddress, status, durationMs }); // Example: { "status": true }
+    return res.json({ walletAddress, status, durationMs });
   } catch (err) {
     const durationMs = Date.now() - start;
     console.error('Error in /full_rebate route:', err);
