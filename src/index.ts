@@ -23,6 +23,7 @@ import { fetchKASBalance, sompiToKAS } from './utils';
 import { TelegramBotAlert } from './alerting/telegramBot';
 import bot from './alerting/bot';
 import Database from './database';
+import { startServer } from './web';
 
 // Debug mode setting
 export let DEBUG = 0;
@@ -94,6 +95,7 @@ if (CONFIG.network === 'testnet-10') {
 }
 
 monitoring.log(`Main: rpc url: ${rpcUrl}`);
+startServer();
 
 const rpc = new RpcClient({
   url: rpcUrl, // This is WRPC (borsh) end point

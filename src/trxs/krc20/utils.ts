@@ -1,6 +1,12 @@
 import { kaspaToSompi } from '../../../wasm/kaspa/kaspa';
 import Monitoring from '../../monitoring';
 import { fetchAccountTransactionCount, fetchKASBalance } from '../../utils';
+import { krc20Token, nftAPI } from './krc20Api';
+import { parseUnits } from 'ethers';
+
+// Full rebate constants
+const fullRebateTokenThreshold = parseUnits('100', 14); // Minimum 100M (NACHO)
+const fullRebateNFTThreshold = 1; // Minimum 1 NFT
 
 // UTXO selection thresholds in sompi (1 KAS = 100_000_000 sompi)
 export const PREFERRED_MIN_UTXO = BigInt(kaspaToSompi('3')!); // 3 KAS
@@ -156,4 +162,32 @@ export async function pollStatus(
 
     checkStatus();
   });
+}
+
+export async function checkFullFeeRebate(address: string, ticker: string) {
+  const res = await krc20Token(address, ticker);
+  const amount = res.amount;
+  if (res.error != '') {
+    monitoring.error(
+      `transferKRC20Tokens: Error fetching ${ticker} balance for address - ${address} : `,
+      res.error
+    );
+  }
+
+  if (amount != null && BigInt(amount) >= fullRebateTokenThreshold) {
+    return true;
+  }
+  const result = await nftAPI(address);
+  const nftCount = result.count;
+  if (result.error != '') {
+    monitoring.error(
+      `transferKRC20Tokens: Error fetching ${ticker} NFT holdings for address - ${address} : `,
+      result.error
+    );
+  }
+
+  if (nftCount != null && BigInt(nftCount) >= fullRebateNFTThreshold) {
+    return true;
+  }
+  return false;
 }

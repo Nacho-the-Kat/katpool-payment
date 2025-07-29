@@ -2,13 +2,9 @@ import { RpcClient } from '../../../wasm/kaspa/kaspa';
 import { transferAndRecordKRC20Payment } from './krc20Transfer';
 import Database, { MinerBalanceRow, pendingKRC20TransferField, status } from '../../database';
 import { CONFIG } from '../../constants';
-import { krc20Token, nftAPI } from './krc20Api';
-import { parseUnits } from 'ethers';
 import trxManager from '..';
 import Monitoring from '../../monitoring';
-
-const fullRebateTokenThreshold = parseUnits('100', 14); // Minimum 100M (NACHO)
-const fullRebateNFTThreshold = 1; // Minimum 1 NFT
+import { checkFullFeeRebate } from './utils';
 
 const monitoring = new Monitoring();
 
@@ -135,34 +131,6 @@ export async function transferKRC20Tokens(
   }
 
   monitoring.debug(`transferKRC20Tokens: Total eligible NACHO transfers: ${eligibleNACHOTransfer}`);
-}
-
-async function checkFullFeeRebate(address: string, ticker: string) {
-  const res = await krc20Token(address, ticker);
-  const amount = res.amount;
-  if (res.error != '') {
-    monitoring.error(
-      `transferKRC20Tokens: Error fetching ${ticker} balance for address - ${address} : `,
-      res.error
-    );
-  }
-
-  if (amount != null && BigInt(amount) >= fullRebateTokenThreshold) {
-    return true;
-  }
-  const result = await nftAPI(address);
-  const nftCount = result.count;
-  if (result.error != '') {
-    monitoring.error(
-      `transferKRC20Tokens: Error fetching ${ticker} NFT holdings for address - ${address} : `,
-      result.error
-    );
-  }
-
-  if (nftCount != null && BigInt(nftCount) >= fullRebateNFTThreshold) {
-    return true;
-  }
-  return false;
 }
 
 export async function recordPayment(
