@@ -81,7 +81,7 @@ export async function nftAPI(address: string) {
         }
 
         monitoring.debug(`krc20API: nftAPI - Found allowed tick: ${JSON.stringify(item)}`);
-        return { error: '', count: 1 };
+        return { error: '', count: 1, nft: item };
       }
 
       if (response.data.next) {
@@ -91,8 +91,8 @@ export async function nftAPI(address: string) {
       }
     }
 
-    return { error: '', count: null };
+    return { error: '', count: null, nft: '' };
   } catch (error) {
-    return { error, count: -1 }; // Indicate network/system failure
+    return { error, count: -1, nft: '' }; // Indicate network/system failure
   }
 }

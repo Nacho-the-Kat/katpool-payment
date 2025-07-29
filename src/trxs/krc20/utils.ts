@@ -1,6 +1,6 @@
 import { kaspaToSompi } from '../../../wasm/kaspa/kaspa';
 import Monitoring from '../../monitoring';
-import { fetchAccountTransactionCount, fetchKASBalance } from '../../utils';
+import { fetchAccountTransactionCount, fetchKASBalance, sompiToKAS } from '../../utils';
 import { krc20Token, nftAPI } from './krc20Api';
 import { parseUnits } from 'ethers';
 
@@ -175,7 +175,10 @@ export async function checkFullFeeRebate(address: string, ticker: string) {
   }
 
   if (amount != null && BigInt(amount) >= fullRebateTokenThreshold) {
-    return true;
+    monitoring.debug(
+      `utils: checkFullFeeRebate: NACHO balance for address: ${address} - ${sompiToKAS(amount)} NACHO`
+    );
+    return { NACHO: sompiToKAS(amount) };
   }
   const result = await nftAPI(address);
   const nftCount = result.count;
@@ -187,7 +190,7 @@ export async function checkFullFeeRebate(address: string, ticker: string) {
   }
 
   if (nftCount != null && BigInt(nftCount) >= fullRebateNFTThreshold) {
-    return true;
+    return result.nft;
   }
   return false;
 }
