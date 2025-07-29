@@ -178,7 +178,7 @@ export async function checkFullFeeRebate(address: string, ticker: string) {
     monitoring.debug(
       `utils: checkFullFeeRebate: NACHO balance for address: ${address} - ${sompiToKAS(amount)} NACHO`
     );
-    return { NACHO: sompiToKAS(amount) };
+    return { status: true, NACHO: sompiToKAS(amount) };
   }
   const result = await nftAPI(address);
   const nftCount = result.count;
@@ -192,5 +192,5 @@ export async function checkFullFeeRebate(address: string, ticker: string) {
   if (nftCount != null && BigInt(nftCount) >= fullRebateNFTThreshold) {
     return result.nft;
   }
-  return false;
+  return { status: false, NACHO: sompiToKAS(amount), nft: result.nft };
 }
