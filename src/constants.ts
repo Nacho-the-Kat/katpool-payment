@@ -97,10 +97,14 @@ export const NETWORK_CONFIG = {
   mainnet: {
     rpcUrl: 'kaspad:17110',
     apiBaseUrl: 'https://api.kaspa.org',
+    kasplexUrl: 'https://api.kasplex.org',
+    krc721StreamUrl: 'https://mainnet.krc721.stream',
   },
   'testnet-10': {
     rpcUrl: 'kaspad-test10:17210',
     apiBaseUrl: 'https://api-tn10.kaspa.org',
+    kasplexUrl: 'https://tn10api.kasplex.org',
+    krc721StreamUrl: 'https://testnet-10.krc721.stream',
   },
 } as const;
 

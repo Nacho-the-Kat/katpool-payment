@@ -113,7 +113,7 @@ export async function pollStatus(
   return new Promise((resolve, reject) => {
     const checkStatus = async () => {
       if (control.stopPolling) {
-        monitoring.log(`KRC20Transfer: ⏹ Polling stopped manually.`);
+        monitoring.log(`utils/krc20- pollStatus: ⏹ Polling stopped manually.`);
         resolve(false);
         return;
       }
@@ -122,7 +122,9 @@ export async function pollStatus(
 
       try {
         const p2shKASBalance = BigInt(await fetchKASBalance(P2SHAddress));
-        monitoring.log(`KRC20Transfer: Polling attempt ${attempts}: ${p2shKASBalance} sompi`);
+        monitoring.log(
+          `utils/krc20- pollStatus: Polling attempt ${attempts}: ${p2shKASBalance} sompi`
+        );
 
         if (
           checkReveal &&
