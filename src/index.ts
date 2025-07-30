@@ -10,7 +10,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { RpcClient, Encoding, Resolver } from '../wasm/kaspa';
-import { CONFIG, databaseUrl, DEBUG, getNetworkConfig, treasuryPrivateKey } from './constants';
+import { CONFIG } from './config/appConfig';
+import { getNetworkConfig } from './config/constants';
+import { databaseUrl, DEBUG, treasuryPrivateKey } from './config/environment';
 import Monitoring from './monitoring';
 import trxManager from './trxs';
 import cron from 'node-cron';

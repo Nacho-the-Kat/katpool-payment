@@ -3,7 +3,7 @@ import {
   fullRebateNFTThreshold,
   fullRebateTokenThreshold,
   PREFERRED_MIN_UTXO,
-} from '../../constants';
+} from '../../config/constants';
 import Monitoring from '../../monitoring';
 import { fetchAccountTransactionCount, fetchKASBalance, sompiToKAS } from '../../utils';
 import { krc20Token, nftAPI } from './krc20Api';

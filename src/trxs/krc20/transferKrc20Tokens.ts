@@ -1,7 +1,7 @@
 import { RpcClient } from '../../../wasm/kaspa/kaspa';
 import { transferAndRecordKRC20Payment } from './krc20Transfer';
 import Database, { MinerBalanceRow, pendingKRC20TransferField, status } from '../../database';
-import { CONFIG } from '../../constants';
+import { CONFIG } from '../../config/appConfig';
 import trxManager from '..';
 import Monitoring from '../../monitoring';
 import { checkFullFeeRebate } from './utils';

@@ -7,7 +7,9 @@ import {
   kaspaToSompi,
   PendingTransaction,
 } from '../../../wasm/kaspa';
-import { CONFIG, DEBUG, FIXED_FEE, PREFERRED_MIN_UTXO } from '../../constants';
+import { CONFIG } from '../../config/appConfig.ts';
+import { DEBUG } from '../../config/environment.ts';
+import { FIXED_FEE, PREFERRED_MIN_UTXO } from '../../config/constants.ts';
 import Monitoring from '../../monitoring';
 import { db } from '../../index.ts';
 import trxManager from '../index.ts';

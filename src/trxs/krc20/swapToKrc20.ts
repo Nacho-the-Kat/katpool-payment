@@ -1,7 +1,6 @@
+import { quoteURL } from '../../config/constants.ts';
 import Monitoring from '../../monitoring/index.ts';
 import puppeteer, { Browser } from 'puppeteer';
-
-const quoteURL = 'https://api.kaspa.com/api/floor-price?ticker=NACHO';
 
 const monitoring = new Monitoring();
 

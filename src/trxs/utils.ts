@@ -5,7 +5,7 @@ import {
   PrivateKey,
   sompiToKaspaStringWithSuffix,
 } from '../../wasm/kaspa/kaspa';
-import { DEBUG } from '../constants';
+import { DEBUG } from '../config/environment';
 import Monitoring from '../monitoring';
 
 const monitoring = new Monitoring();

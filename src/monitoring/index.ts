@@ -6,7 +6,7 @@ import chalk from 'chalk';
 import fs from 'fs';
 import path from 'path';
 import datadogLogger from './datadog';
-import { DEBUG } from '../constants';
+import { DEBUG } from '../config/environment';
 
 interface LogJobData {
   level: 'DEBUG' | 'ERROR' | 'INFO';

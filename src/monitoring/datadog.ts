@@ -1,5 +1,9 @@
 import axios from 'axios';
-import { DATADOG_LOG_URL, DATADOG_SECRET, DATADOG_PAYMENT_SERVICE_NAME } from '../constants';
+import {
+  DATADOG_LOG_URL,
+  DATADOG_SECRET,
+  DATADOG_PAYMENT_SERVICE_NAME,
+} from '../config/environment';
 
 interface LogContext {
   [key: string]: any;

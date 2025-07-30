@@ -1,7 +1,8 @@
 import axios, { AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import Monitoring from '../../monitoring';
-import { CONFIG, getNetworkConfig } from '../../constants';
+import { CONFIG } from '../../config/appConfig';
+import { getNetworkConfig } from '../../config/constants';
 
 const { kasplexUrl: KASPLEX_URL } = getNetworkConfig(CONFIG.network);
 const krc20TokenAPI = `${KASPLEX_URL}/v1/krc20/address/{address}/token/{ticker}`;

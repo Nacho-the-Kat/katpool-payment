@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { CONFIG, getNetworkConfig } from './constants';
+import { CONFIG } from './config/appConfig';
+import { getNetworkConfig } from './config/constants';
 import Monitoring from './monitoring';
 import { kaspaToSompi } from '../wasm/kaspa/kaspa';
 
