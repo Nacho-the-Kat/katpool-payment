@@ -8,7 +8,6 @@ import {
   UtxoContext,
   type RpcClient,
   addressFromScriptPublicKey,
-  // calculateTransactionFee,
   kaspaToSompi,
 } from '../../wasm/kaspa';
 import Monitoring from '../monitoring';
@@ -156,9 +155,6 @@ export default class trxManager {
       this.monitoring.error(`TrxManager: Failed to sign transaction ${transaction.id}: `, error);
       return;
     }
-
-    //const txFee = calculateTransactionFee(this.networkId, transaction.transaction, 1)!;
-    //this.monitoring.log(`TrxManager: Tx Fee ${sompiToKaspaStringWithSuffix(txFee, this.networkId)}`);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
     let transactionHash;

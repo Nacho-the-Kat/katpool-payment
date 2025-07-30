@@ -1,7 +1,6 @@
 import { parseUnits } from 'ethers';
 import { kaspaToSompi } from '../../wasm/kaspa/kaspa';
 
-// Fixed application constants
 export const FIXED_FEE = '0.0001'; // Fixed minimal fee
 
 // Full rebate constants
