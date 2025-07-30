@@ -113,7 +113,7 @@ export async function pollStatus(
   return new Promise((resolve, reject) => {
     const checkStatus = async () => {
       if (control.stopPolling) {
-        monitoring.log(`utils/krc20- pollStatus: ⏹ Polling stopped manually.`);
+        monitoring.log(`pollStatus: ⏹ Polling stopped manually.`);
         resolve(false);
         return;
       }
@@ -122,38 +122,36 @@ export async function pollStatus(
 
       try {
         const p2shKASBalance = BigInt(await fetchKASBalance(P2SHAddress));
-        monitoring.log(
-          `utils/krc20- pollStatus: Polling attempt ${attempts}: ${p2shKASBalance} sompi`
-        );
+        monitoring.log(`pollStatus: Polling attempt ${attempts}: ${p2shKASBalance} sompi`);
 
         if (
           checkReveal &&
           p2shKASBalance === 0n &&
           (await fetchAccountTransactionCount(P2SHAddress)) % 2 == 0
         ) {
-          monitoring.log('KRC20Transfer: ✅ Reveal operation completed successfully!');
+          monitoring.log('pollStatus: ✅ Reveal operation completed successfully!');
           control.stopPolling = true;
           resolve(true); // ✅ Resolve with `true`
           return;
         }
 
         if (!checkReveal && (p2shKASBalance > 0 || p2shKASBalance >= utxoAmount)) {
-          monitoring.log('KRC20Transfer: ✅ Submit operation completed successfully!');
+          monitoring.log('pollStatus: ✅ Submit operation completed successfully!');
           control.stopPolling = true;
           resolve(true); // ✅ Resolve with `true`
           return;
         }
 
         if (attempts >= maxAttempts) {
-          monitoring.log(`KRC20Transfer: ❌ Max polling attempts reached. Stopping...`);
-          monitoring.log(`KRC20Transfer: Stopping polling for id: ${P2SHAddress}`);
+          monitoring.log(`pollStatus: ❌ Max polling attempts reached. Stopping...`);
+          monitoring.log(`pollStatus: Stopping polling for id: ${P2SHAddress}`);
           resolve(false); // ✅ Resolve with `false` instead of rejecting
           return;
         }
 
         setTimeout(checkStatus, interval);
       } catch (error) {
-        monitoring.error(`KRC20Transfer: Error polling API: `, error);
+        monitoring.error(`pollStatus: Error polling API: `, error);
         reject(error);
       }
     };
@@ -167,14 +165,14 @@ export async function checkFullFeeRebate(address: string, ticker: string) {
   const amount = res.amount;
   if (res.error != '') {
     monitoring.error(
-      `transferKRC20Tokens: Error fetching ${ticker} balance for address - ${address} : `,
+      `checkFullFeeRebate: Error fetching ${ticker} balance for address - ${address} : `,
       res.error
     );
   }
 
   if (amount != null && BigInt(amount) >= fullRebateTokenThreshold) {
     monitoring.debug(
-      `utils: checkFullFeeRebate: NACHO balance for address: ${address} - ${sompiToKAS(amount)} NACHO`
+      `checkFullFeeRebate: NACHO balance for address: ${address} - ${sompiToKAS(amount)} NACHO`
     );
     return { status: true, NACHO: sompiToKAS(amount) };
   }
@@ -182,7 +180,7 @@ export async function checkFullFeeRebate(address: string, ticker: string) {
   const nftCount = result.count;
   if (result.error != '') {
     monitoring.error(
-      `transferKRC20Tokens: Error fetching ${ticker} NFT holdings for address - ${address} : `,
+      `checkFullFeeRebate: Error fetching ${ticker} NFT holdings for address - ${address} : `,
       result.error
     );
   }
