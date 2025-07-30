@@ -11,10 +11,10 @@ import { CONFIG, FIXED_FEE } from '../../constants';
 import Monitoring from '../../monitoring';
 import { DEBUG, db } from '../../index.ts';
 import trxManager from '../index.ts';
-import { fetchAccountTransactionCount, fetchKASBalance } from '../../utils.ts';
 import { pendingKRC20TransferField, status } from '../../database/index.ts';
 import { recordPayment, resetBalancesByWallet } from './transferKrc20Tokens.ts';
 import { validatePendingTransactions } from '../utils.ts';
+import { findSuitableUtxo, pollStatus, PREFERRED_MIN_UTXO } from './utils.ts';
 
 let ticker = CONFIG.defaultTicker;
 let dest = '';
@@ -25,25 +25,6 @@ const network = CONFIG.network;
 const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 const timeout = 180000; // 3 minutes timeout
 const monitoring = new Monitoring();
-
-// UTXO selection thresholds in sompi (1 KAS = 100_000_000 sompi)
-const PREFERRED_MIN_UTXO = BigInt(kaspaToSompi('3')!); // 3 KAS
-const ABSOLUTE_MIN_UTXO = BigInt(kaspaToSompi('1')!); // 1 KAS
-
-// Helper function to find suitable UTXO
-function findSuitableUtxo(entries: any[]): any {
-  if (!entries.length) return null;
-
-  // First try to find a UTXO ≥ 3 KAS
-  let utxo = entries.find(entry => BigInt(entry.entry.amount) >= PREFERRED_MIN_UTXO);
-
-  // If not found, try to find a UTXO ≥ 1 KAS
-  if (!utxo) {
-    utxo = entries.find(entry => BigInt(entry.entry.amount) >= ABSOLUTE_MIN_UTXO);
-  }
-
-  return utxo;
-}
 
 /**
  * Handles transferring KRC20 tokens to the destination address.
@@ -412,64 +393,4 @@ export async function transferAndRecordKRC20Payment(
     monitoring.error('KRC20Transfer: No UTXOs available for reveal');
     return;
   }
-}
-
-async function pollStatus(
-  P2SHAddress: string,
-  utxoAmount: bigint,
-  control: { stopPolling: boolean },
-  checkReveal: boolean,
-  interval = 60000,
-  maxAttempts = 30
-): Promise<boolean> {
-  let attempts = 0;
-
-  return new Promise((resolve, reject) => {
-    const checkStatus = async () => {
-      if (control.stopPolling) {
-        monitoring.log(`KRC20Transfer: ⏹ Polling stopped manually.`);
-        resolve(false);
-        return;
-      }
-
-      attempts++;
-
-      try {
-        const p2shKASBalance = BigInt(await fetchKASBalance(P2SHAddress));
-        monitoring.log(`KRC20Transfer: Polling attempt ${attempts}: ${p2shKASBalance} sompi`);
-
-        if (
-          checkReveal &&
-          p2shKASBalance === 0n &&
-          (await fetchAccountTransactionCount(P2SHAddress)) % 2 == 0
-        ) {
-          monitoring.log('KRC20Transfer: ✅ Reveal operation completed successfully!');
-          control.stopPolling = true;
-          resolve(true); // ✅ Resolve with `true`
-          return;
-        }
-
-        if (!checkReveal && (p2shKASBalance > 0 || p2shKASBalance >= utxoAmount)) {
-          monitoring.log('KRC20Transfer: ✅ Submit operation completed successfully!');
-          control.stopPolling = true;
-          resolve(true); // ✅ Resolve with `true`
-          return;
-        }
-
-        if (attempts >= maxAttempts) {
-          monitoring.log(`KRC20Transfer: ❌ Max polling attempts reached. Stopping...`);
-          monitoring.log(`KRC20Transfer: Stopping polling for id: ${P2SHAddress}`);
-          resolve(false); // ✅ Resolve with `false` instead of rejecting
-          return;
-        }
-
-        setTimeout(checkStatus, interval);
-      } catch (error) {
-        monitoring.error(`KRC20Transfer: Error polling API: `, error);
-        reject(error);
-      }
-    };
-
-    checkStatus();
-  });
 }
