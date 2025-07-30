@@ -13,8 +13,8 @@ import {
 } from '../../wasm/kaspa';
 import Monitoring from '../monitoring';
 import { db } from '../index';
-import { CONFIG } from '../config/appConfig';
 import { DEBUG } from '../config/environment';
+import { CONFIG } from '../config/appConfig';
 import { FIXED_FEE } from '../config/constants';
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { sompiToKAS } from '../utils';

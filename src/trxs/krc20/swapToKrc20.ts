@@ -1,6 +1,6 @@
-import { quoteURL } from '../../config/constants.ts';
 import Monitoring from '../../monitoring/index.ts';
 import puppeteer, { Browser } from 'puppeteer';
+import { quoteURL } from '../../config/constants.ts';
 
 const monitoring = new Monitoring();
 

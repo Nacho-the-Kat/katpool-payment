@@ -8,9 +8,9 @@ import {
   PendingTransaction,
 } from '../../../wasm/kaspa';
 import { CONFIG } from '../../config/appConfig.ts';
-import { DEBUG } from '../../config/environment.ts';
 import { FIXED_FEE, PREFERRED_MIN_UTXO } from '../../config/constants.ts';
 import Monitoring from '../../monitoring';
+import { DEBUG } from '../../config/environment.ts';
 import { db } from '../../index.ts';
 import trxManager from '../index.ts';
 import { pendingKRC20TransferField, status } from '../../database/index.ts';
