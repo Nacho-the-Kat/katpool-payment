@@ -2,6 +2,7 @@ import fs from 'fs';
 import Monitoring from '../monitoring';
 import path from 'path';
 import { kaspaToSompi } from '../../wasm/kaspa/kaspa';
+import Jsonbig from 'json-bigint';
 
 const monitoring = new Monitoring();
 
@@ -42,7 +43,7 @@ const validateConfig = (config: any, defaults: any) => {
 // Load `config.json` dynamically (if exists)
 let CONFIG = { ...DEFAULT_CONFIG };
 try {
-  const configPath = path.resolve(__dirname, '../config/config.json');
+  const configPath = path.resolve(__dirname, '../../config/config.json');
   const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   monitoring.log(
     `Constants: Data loaded from config.json \n ${JSON.stringify(configData, null, 4)}`
@@ -53,7 +54,7 @@ try {
 }
 
 monitoring.log(
-  `Constants: Current configuration used for Payments is : \n ${JSON.stringify(CONFIG, null, 4)}`
+  `Constants: Current configuration used for Payments is : \n ${Jsonbig.stringify(CONFIG, null, 4)}`
 );
 
 export { CONFIG };
