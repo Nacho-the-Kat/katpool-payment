@@ -4,7 +4,7 @@ import { fetchKASBalance, sompiToKAS } from '../utils';
 import { krc20Token } from '../trxs/krc20/krc20Api';
 import swapToKrc20 from '../trxs/krc20/swapToKrc20';
 import { sendTelegramAlert } from './bot';
-import { CONFIG } from '../constants';
+import { CONFIG } from '../config/appConfig';
 import { db } from '..';
 
 const explorerUrl = `https://kas.fyi/address/{address}`;

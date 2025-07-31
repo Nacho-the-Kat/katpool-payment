@@ -1,20 +1,14 @@
 import axios, { AxiosError } from 'axios';
 import axiosRetry from 'axios-retry';
 import Monitoring from '../../monitoring';
-import { CONFIG } from '../../constants';
+import { CONFIG } from '../../config/appConfig';
+import { getNetworkConfig } from '../../config/constants';
 
-export let KASPLEX_URL = 'https://api.kasplex.org';
-if (CONFIG.network === 'testnet-10') {
-  KASPLEX_URL = 'https://tn10api.kasplex.org';
-}
+const { kasplexUrl: KASPLEX_URL } = getNetworkConfig(CONFIG.network);
+const krc20TokenAPI = `${KASPLEX_URL}/v1/krc20/address/{address}/token/{ticker}`;
 
-let krc20TokenAPI = `${KASPLEX_URL}/v1/krc20/address/{address}/token/{ticker}`;
-
-let KRC721_STREAM_URL = 'https://mainnet.krc721.stream';
-if (CONFIG.network === 'testnet-10') {
-  KRC721_STREAM_URL = 'https://testnet-10.krc721.stream';
-}
-let NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${CONFIG.network}/address/{address}?offset={offset}`;
+const { krc721StreamUrl: KRC721_STREAM_URL } = getNetworkConfig(CONFIG.network);
+const NFTAPI = `${KRC721_STREAM_URL}/api/v1/krc721/${CONFIG.network}/address/{address}?offset={offset}`;
 
 const monitoring = new Monitoring();
 

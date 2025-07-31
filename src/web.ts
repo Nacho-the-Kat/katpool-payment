@@ -1,7 +1,7 @@
 import express from 'express';
 import logger from './monitoring/datadog';
 import { checkFullFeeRebate } from './trxs/krc20/utils';
-import { CONFIG } from './constants';
+import { CONFIG } from './config/appConfig';
 import Monitoring from './monitoring';
 
 const monitoring = new Monitoring();

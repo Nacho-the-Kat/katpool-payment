@@ -10,7 +10,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { RpcClient, Encoding, Resolver } from '../wasm/kaspa';
-import { CONFIG } from './constants';
+import { CONFIG } from './config/appConfig';
+import { getNetworkConfig } from './config/constants';
+import { databaseUrl, DEBUG, treasuryPrivateKey } from './config/environment';
 import Monitoring from './monitoring';
 import trxManager from './trxs';
 import cron from 'node-cron';
@@ -24,12 +26,6 @@ import { TelegramBotAlert } from './alerting/telegramBot';
 import bot from './alerting/bot';
 import Database from './database';
 import { startServer } from './web';
-
-// Debug mode setting
-export let DEBUG = 0;
-if (process.env.DEBUG === '1') {
-  DEBUG = 1;
-}
 
 const monitoring = new Monitoring();
 monitoring.log(`Main: Starting katpool Payment App`);
@@ -56,17 +52,8 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-// Environment variable checks
-const treasuryPrivateKey = process.env.TREASURY_PRIVATE_KEY;
-if (!treasuryPrivateKey) {
-  throw new Error('Environment variable TREASURY_PRIVATE_KEY is not set.');
-}
 if (!CONFIG.network) {
   throw new Error('No network has been set in config.json');
-}
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  throw new Error('Environment variable DATABASE_URL is not set.');
 }
 export const db = new Database(databaseUrl);
 
@@ -89,10 +76,7 @@ const alertInterval = cronParser.parseExpression(paymentAlertCronSchedule);
 const nextAlertScedule = new Date(alertInterval.next().getTime()).toISOString();
 if (DEBUG) monitoring.debug(`Main: Next alert is scheduled at ${nextAlertScedule}`);
 
-let rpcUrl = 'kaspad:17110';
-if (CONFIG.network === 'testnet-10') {
-  rpcUrl = 'kaspad-test10:17210';
-}
+const { rpcUrl } = getNetworkConfig(CONFIG.network);
 
 monitoring.log(`Main: rpc url: ${rpcUrl}`);
 startServer();
