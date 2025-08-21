@@ -119,7 +119,7 @@ export default class trxManager {
     const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 
     // Split outputs into smaller batches to avoid storage mass limits
-    const batchSize = 60; // Adjust this number based on your network's limits
+    const batchSize = 50;
     const batches = this.createBatches(outputs, batchSize);
 
     this.monitoring.log(
@@ -131,6 +131,8 @@ export default class trxManager {
       // Refresh UTXOs for each batch to avoid conflicts
       const matureEntries = await this.fetchMatureUTXOs();
       await this.processBatch(batch, matureEntries, feeInSompi);
+      // Wait 3 minutes before processing the next batch to avoid conflicts
+      await new Promise(resolve => setTimeout(resolve, 3 * 60 * 1000));
     }
   }
 
