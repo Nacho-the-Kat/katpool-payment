@@ -116,9 +116,33 @@ export default class trxManager {
   }
 
   private async enqueueTransactions(outputs: IPaymentOutput[]) {
-    const matureEntries = await this.fetchMatureUTXOs();
     const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 
+    // Split outputs into smaller batches to avoid storage mass limits
+    const batchSize = 60; // Adjust this number based on your network's limits
+    const batches = this.createBatches(outputs, batchSize);
+
+    this.monitoring.log(
+      `TrxManager: Processing ${outputs.length} outputs in ${batches.length} batches`
+    );
+
+    // Process each batch sequentially
+    for (const batch of batches) {
+      // Refresh UTXOs for each batch to avoid conflicts
+      const matureEntries = await this.fetchMatureUTXOs();
+      await this.processBatch(batch, matureEntries, feeInSompi);
+    }
+  }
+
+  private createBatches(outputs: IPaymentOutput[], batchSize: number): IPaymentOutput[][] {
+    const batches: IPaymentOutput[][] = [];
+    for (let i = 0; i < outputs.length; i += batchSize) {
+      batches.push(outputs.slice(i, i + batchSize));
+    }
+    return batches;
+  }
+
+  private async processBatch(outputs: IPaymentOutput[], matureEntries: any[], feeInSompi: bigint) {
     let transactions: PendingTransaction[];
     try {
       const result = await createTransactions({
