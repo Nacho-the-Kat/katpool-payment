@@ -14,6 +14,8 @@ const monitoring = new Monitoring();
 const kasAlertThreshold = Number(CONFIG.kasAlertThreshold); // 250 KAS if not set
 const nachoAlertThreshold = Number(CONFIG.nachoAlertThreshold); // 1000 NACHO if not set
 
+// TODO: Uphold: Alert for Katpool Uphold balance.?
+
 export class TelegramBotAlert {
   async checkTreasuryWalletForAlert(transactionManager: trxManager) {
     const url = explorerUrl.replace('{address}', encodeURIComponent(transactionManager!.address));
