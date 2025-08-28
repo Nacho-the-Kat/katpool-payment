@@ -8,12 +8,13 @@ import {
   UtxoContext,
   type RpcClient,
   addressFromScriptPublicKey,
-  // calculateTransactionFee,
   kaspaToSompi,
 } from '../../wasm/kaspa';
 import Monitoring from '../monitoring';
-import { db, DEBUG } from '../index';
-import { CONFIG, FIXED_FEE } from '../constants';
+import { db } from '../index';
+import { DEBUG } from '../config/environment';
+import { CONFIG } from '../config/appConfig';
+import { FIXED_FEE } from '../config/constants';
 import type { ScriptPublicKey } from '../../wasm/kaspa/kaspa';
 import { sompiToKAS } from '../utils';
 import { validatePendingTransactions } from './utils';
@@ -180,9 +181,6 @@ export default class trxManager {
       this.monitoring.error(`TrxManager: Failed to sign transaction ${transaction.id}: `, error);
       return;
     }
-
-    //const txFee = calculateTransactionFee(this.networkId, transaction.transaction, 1)!;
-    //this.monitoring.log(`TrxManager: Tx Fee ${sompiToKaspaStringWithSuffix(txFee, this.networkId)}`);
 
     if (DEBUG) this.monitoring.debug(`TrxManager: Submitting transaction ID: ${transaction.id}`);
     let transactionHash;

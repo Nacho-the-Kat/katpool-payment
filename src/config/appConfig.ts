@@ -1,11 +1,10 @@
 import fs from 'fs';
-import Monitoring from './monitoring';
+import Monitoring from '../monitoring';
 import path from 'path';
-import { kaspaToSompi } from '../wasm/kaspa/kaspa';
+import { kaspaToSompi } from '../../wasm/kaspa/kaspa';
+import Jsonbig from 'json-bigint';
 
 const monitoring = new Monitoring();
-
-export const FIXED_FEE = '0.0001'; // Fixed minimal fee
 
 // Default values
 const DEFAULT_CONFIG = {
@@ -44,7 +43,7 @@ const validateConfig = (config: any, defaults: any) => {
 // Load `config.json` dynamically (if exists)
 let CONFIG = { ...DEFAULT_CONFIG };
 try {
-  const configPath = path.resolve(__dirname, '../config/config.json');
+  const configPath = path.resolve(__dirname, '../../config/config.json');
   const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   monitoring.log(
     `Constants: Data loaded from config.json \n ${JSON.stringify(configData, null, 4)}`
@@ -55,13 +54,7 @@ try {
 }
 
 monitoring.log(
-  `Constants: Current configuration used for Payments is : \n ${JSON.stringify(CONFIG, null, 4)}`
+  `Constants: Current configuration used for Payments is : \n ${Jsonbig.stringify(CONFIG, null, 4)}`
 );
 
-let KASPA_BASE_URL = 'https://api.kaspa.org';
-
-if (CONFIG.network === 'testnet-10') {
-  KASPA_BASE_URL = 'https://api-tn10.kaspa.org';
-}
-
-export { KASPA_BASE_URL, CONFIG };
+export { CONFIG };
