@@ -12,7 +12,8 @@ export function cronValidation(expr: string, alert = false) {
       monitoring.error(
         'cron-schedule: Invalid cron expression for payout. Defaulting to Twice a day.'
       );
-      return '0 */12 * * *';
+      // return '0 */12 * * *';
+      return '0 6 * * 1'; // every Monday at 6:00 AM
     } else {
       monitoring.error(
         'cron-schedule: Invalid cron expression for alerting. Defaulting to Four times a day.'

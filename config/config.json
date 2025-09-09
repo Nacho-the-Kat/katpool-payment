@@ -1,7 +1,7 @@
 {
   "node": [],
   "network": "mainnet",
-  "payoutCronSchedule": "0 */12 * * *",
+  "payoutCronSchedule": "0 6 * * 1",
   "payoutAlertCronSchedule": "0 1,7,13,19 * * *",
   "thresholdAmount": "500000000",
   "nachoThresholdAmount": "50000000000",
