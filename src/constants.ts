@@ -11,7 +11,8 @@ export const FIXED_FEE = '0.0001'; // Fixed minimal fee
 const DEFAULT_CONFIG = {
   node: [],
   network: 'mainnet',
-  payoutCronSchedule: '0 */12 * * *',
+  payoutCronSchedule: '0 6 * * 1', // every Monday at 6:00 AM
+  // payoutCronSchedule: '0 */12 * * *',
   payoutAlertCronSchedule: '0 */6 * * *',
   thresholdAmount: kaspaToSompi('5')!,
   nachoThresholdAmount: kaspaToSompi('500')!,
