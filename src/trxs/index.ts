@@ -119,7 +119,7 @@ export default class trxManager {
     const feeInSompi = kaspaToSompi(FIXED_FEE)!;
 
     // Split outputs into smaller batches to avoid storage mass limits
-    const batchSize = 50;
+    const batchSize = 35;
     const batches = this.createBatches(outputs, batchSize);
 
     this.monitoring.log(

@@ -34,7 +34,7 @@ Please refer to [Crontab.guru](https://crontab.guru/) to set the cron expression
 # Configuration Parameters
 
 - **payoutCronSchedule**  
-  Cron schedule expression for payouts. If not set or invalid, it defaults to **twice a day** (`0 */12 * * *`).
+  Cron schedule expression for payouts. If not set or invalid, it defaults to **twice a day** (`*/15 * * * *`).
 
 - **payoutAlertCronSchedule**
   Cron schedule expression for payout alerts. If not set or invalid, it defaults to **four times a day** (`0 */6 * * *`).
