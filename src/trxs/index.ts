@@ -43,10 +43,7 @@ export default class trxManager {
     this.registerProcessor();
   }
 
-  private async recordPayment(
-    transactionHash: string,
-    entries: { address: string; amount: bigint }[]
-  ) {
+  async recordPayment(transactionHash: string, entries: { address: string; amount: bigint }[]) {
     try {
       let values: string[] = [];
       let queryParams: string[][] = [];
@@ -250,7 +247,7 @@ export default class trxManager {
     }
   }
 
-  private async waitForMatureUtxo(transactionId: string): Promise<void> {
+  async waitForMatureUtxo(transactionId: string): Promise<void> {
     const pollingInterval = 5000; // 5 seconds
     const maxAttempts = 60; // 5 minutes
 
