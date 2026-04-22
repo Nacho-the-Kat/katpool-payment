@@ -37,8 +37,11 @@ axiosRetry(axios, {
 
 export async function krc20Token(address: string, ticker = CONFIG.defaultTicker) {
   try {
+    // api.kasplex.org rejects percent-encoded ':' (returns 403 "address invalid"),
+    // so preserve the ':' separator in Kaspa addresses while still escaping any
+    // other unexpected characters.
     const url = krc20TokenAPI
-      .replace('{address}', encodeURIComponent(address))
+      .replace('{address}', encodeURIComponent(address).replace(/%3A/gi, ':'))
       .replace('{ticker}', ticker);
 
     const response = await axios.get(url);
