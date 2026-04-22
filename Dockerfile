@@ -45,8 +45,11 @@ RUN . "$HOME/.cargo/env" && rustup install 1.82.0 && rustup default 1.82.0
 # Step 4: Add Rust's cargo to the PATH using ENV
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Step 5: Install wasm-pack (tool for building WASM)
-RUN cargo install wasm-pack
+# Step 5: Install wasm-pack (tool for building WASM).
+# Using the upstream precompiled-binary installer instead of `cargo install`
+# so the wasm-pack version is decoupled from the pinned Rust toolchain
+# (latest wasm-pack crates require Cargo edition2024, which 1.82.0 lacks).
+RUN curl --proto '=https' --tlsv1.2 -sSfL https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
 
 # Step 6: Add the wasm32-unknown-unknown target for wasm compilation
 RUN rustup target add wasm32-unknown-unknown
